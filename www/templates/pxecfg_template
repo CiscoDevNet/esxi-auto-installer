@@ -1,0 +1,6 @@
+DEFAULT install
+NOHALT 1
+LABEL install
+ KERNEL ISOVER/mboot.c32
+ APPEND -c ISOVER/boot.cfg ks=KSURL
+ IPAPPEND 2

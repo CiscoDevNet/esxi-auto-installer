@@ -55,7 +55,7 @@
                                   <option value="usb" checked>USB Disks</option>
                               </select><br />
                             </div>
-                          <input type="radio" id="FirstDisk" name="FirstDisk" value="disk" oninput="InstallDiskShow('disk')"">
+                          <input type="radio" id="FirstDisk" name="FirstDisk" value="disk" oninput="InstallDiskShow('disk')">
                           <label for="FirstDisk">Use a specific disk</label><br />
                           <div id="DiskPathTypeControls" style="display:none">
                               - - <Input type=text value=''><BR>
@@ -72,9 +72,8 @@
                     <td>Erase existing partition? </td><td><input type="checkbox" value="enablessh" name="clearpart" ></td>
                     <td>If checked, the disk will be erased before ESXi is installed.</td>
                   </tr>
- 
-              </table>
 
+              </table>
               <h1>Step 2</h1>
               <div class="content_section_text">
                 Enter network information for the ESXi hosts:<BR><BR>
@@ -89,9 +88,9 @@
                 Common Settings:<BR>
                 <Table style="Border: none; margin-left: 50px;">
                   <tr>
-                    <td style="Border: none; padding: 10px;">ESXi Hostname Prefix<br><input type="text" name="HOSTNAMEPREFIX" id="HOSTNAMEPREFIX" oninput="UpdateESXiHostName()">
+                    <td style="Border: none; padding: 10px;">ESXi Hostname Prefix<br><input type="text" name="HOSTPREFIX" id="HOSTPREFIX" oninput="UpdateESXiHostName()">
                     <BR><div style="font-size: smaller;">Optional</div></td>
-                    <td style="Border: none; padding: 10px;">ESXi Hostname Suffix<br><input type="text" name="HOSTNAMESUFFIX" id="HOSTNAMESUFFIX" oninput="UpdateESXiHostName()">
+                    <td style="Border: none; padding: 10px;">ESXi Hostname Suffix<br><input type="text" name="HOSTSUFFIX" id="HOSTSUFFIX" oninput="UpdateESXiHostName()">
                     <BR><div style="font-size: smaller;">Optional</div></td></td>
                     <td style="Border: none; padding: 10px;">IP Subnet<br><input type="text" name="SUBNET"></td>
                     <td style="Border: none; padding: 10px;">Netmask<br><input type="text" name="NETMASK"></td>
@@ -100,7 +99,6 @@
                 </Table>
                 <BR>
                 Unique Settings:
-
                 <table id="ManualIPTable" Style="padding: 50px; margin-left: 50px">
                   <thead>
                     <td Style="font-size: smaller;text-align: center;Border:none">Prefix</td>
@@ -113,7 +111,6 @@
                 <input type="button" value="Add Row" onclick="AddManualIPRow()" Style="margin-left: 50px;">
                 <input type="button" value="Delete Last Row" onclick="RemoveManualIPRow()" Style="margin-left: 50px;">
               </div>
-
               <Div id='CSV' style="display: none;margin-left: 50px">
                 <div class="content_section_text">
                   Upload a CSV file
@@ -132,7 +129,6 @@
               <div-- class="content_section_text_small">
                 If needed, you can enter commands that will be run on the ESXi server the first time it boots up.
               </div-->
-
               <h1>Step 3</h1>
               <div style="margin-left: 50px;">
                 <div class="content_section_text">
@@ -157,7 +153,6 @@
             DiskPathTypeControls.style.display = "none";
           }
         }
-
         function IPListShow(itemclickedon) {
           // alert(itemclickedon);
           if (itemclickedon == "CSV") {
@@ -171,7 +166,6 @@
             ManualIP.style.display = "none";
           }
         }
-
         function AddManualIPRow() {
           ServerCount++
           if (ServerCount<=99) { ServerCountStr = ("0"+ServerCount).slice(-2); }
@@ -180,15 +174,14 @@
           var tr = table.insertRow(); //ManualIPTable.rows.length
           var CellCount;
           CellCount = 0;
-          
+
           //Hostname Prefix
           //var td = document.createElement('td')
           td = tr.insertCell(CellCount);
           td.setAttribute('class','prefix');
-          td.setAttribute('id','HostnamePrefixStr' + ServerCount);
-          td.innerHTML = document.getElementById('HOSTNAMEPREFIX').value;
+          td.setAttribute('id','HOSTPREFIXStr' + ServerCount);
+          td.innerHTML = document.getElementById('HOSTPREFIX').value;
           CellCount++
-
           //Unique hostname
           td = tr.insertCell(CellCount);
           td.setAttribute('class','hostname');
@@ -198,14 +191,12 @@
           newelement.setAttribute('Value',ServerCountStr);
           td.appendChild(newelement);
           CellCount++
-
           //Hostname suffix
           td = tr.insertCell(CellCount);
           td.setAttribute('class','suffix');
-          td.setAttribute('id','HostnameSuffixStr' + ServerCount);
-          td.innerHTML = document.getElementById('HOSTNAMESUFFIX').value;
+          td.setAttribute('id','HOSTSUFFIXStr' + ServerCount);
+          td.innerHTML = document.getElementById('HOSTSUFFIX').value;
           CellCount++
-
           //Unique IP Address
           td = tr.insertCell(CellCount);
           td.setAttribute('class','ipaddr');
@@ -222,7 +213,6 @@
           //newelement.setAttribute('Value',ServerCount);
           td.appendChild(newelement);
           CellCount++
-
           //Unique Mac Address
           td = tr.insertCell(CellCount);
           td.setAttribute('class','ipaddr');
@@ -237,26 +227,22 @@
           td.appendChild(newelement);
           CellCount++
         }
-
         function RemoveManualIPRow() {
           if (ServerCount > 1) {
             document.getElementById('ManualIPTable').deleteRow(ServerCount);
             ServerCount--;
           }
         }
-
         function UpdateESXiHostName() {
-          var prefix = document.getElementById("HOSTNAMEPREFIX").value;
-          var suffix = document.getElementById("HOSTNAMESUFFIX").value;
+          var prefix = document.getElementById("HOSTPREFIX").value;
+          var suffix = document.getElementById("HOSTSUFFIX").value;
           var table = document.getElementById('ManualIPTable');
-
           var i;
           for (i = 1; i < document.getElementById('ManualIPTable').rows.length; i++)  {
-            document.getElementById('HostnamePrefixStr' + i).innerText = prefix;
-            document.getElementById('HostnameSuffixStr' + i).innerText = suffix;
+            document.getElementById('HOSTPREFIXStr' + i).innerText = prefix;
+            document.getElementById('HOSTSUFFIXStr' + i).innerText = suffix;
           }
         }
-
         ServerCount = 0 // Find usage will increment to 1.
         AddManualIPRow()
         </script>

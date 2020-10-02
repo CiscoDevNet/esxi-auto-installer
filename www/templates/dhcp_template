@@ -1,0 +1,12 @@
+
+### custom entries for HOSTNAME ###
+subnet SUBNET netmask NETMASK {
+  range IPADDR IPADDR;
+  option routers GATEWAY;
+}
+host HOSTNAME {
+  hardware ethernet MAC;
+  fixed-address IPADDR;
+}
+### end of custom entries for HOSTNAME ###
+
