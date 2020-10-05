@@ -69,8 +69,12 @@
                     <td>If checked, SSH will be enabled on the ESXi.</td>
                   </tr>
                   <tr>
-                    <td>Erase existing partition? </td><td><input type="checkbox" value="enablessh" name="clearpart" ></td>
+                    <td>Erase existing partition? </td><td><input type="checkbox" value="enablessh" name="clearpart"></td>
                     <td>If checked, the disk will be erased before ESXi is installed.</td>
+                  </tr>
+                  <tr>
+                    <td>Overwrite existing VMFS partitions? </td><td><input type="checkbox" value="overwritevmfs" name="overwritevmfs"></td>
+                    <td>If checked, ESXi will install over a pre-existing ESXi installation. If "Erase existing partition?" is selected, it will also erase partitions even if there is a pre-existing VMFS partition.</td>
                   </tr>
 
               </table>
@@ -188,7 +192,18 @@
           var newelement = document.createElement('input');
           newelement.setAttribute('type','text');
           newelement.setAttribute('name','HOSTNAME' + ServerCount);
-          newelement.setAttribute('Value',ServerCountStr);
+          if (ServerCount > 1) {
+            prevValue = ManualIPTable.rows[ServerCount-1].children[CellCount].childNodes[0].value;
+            if (isNaN(prevValue) == false) {
+              IntValue = parseInt(prevValue);
+              IntValue++
+              newValue = ''.padStart(prevValue.length - IntValue.toString().length, '0') + IntValue
+              newelement.setAttribute('Value',newValue);
+            }
+          } else {
+            newelement.setAttribute('Value','01');
+          }
+          //newelement.setAttribute('Value',ServerCountStr);
           td.appendChild(newelement);
           CellCount++
           //Hostname suffix
@@ -204,8 +219,8 @@
           newelement.setAttribute('type','text');
           newelement.setAttribute('name','IPADDR' + ServerCount);
           if (ServerCount > 1) {
-            prevIP = ManualIPTable.rows[ServerCount-1].children[3].childNodes[0].value.split('.')
-            console.log(prevIP)
+            prevIP = ManualIPTable.rows[ServerCount-1].children[CellCount].childNodes[0].value.split('.')
+            //console.log(prevIP)
             if (parseInt(prevIP[3]) < 254) {
               newelement.setAttribute('Value', ([prevIP[0], prevIP[1], prevIP[2], (parseInt(prevIP[3]) + 1)].join('.')))
             }
