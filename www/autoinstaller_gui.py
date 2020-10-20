@@ -1,12 +1,11 @@
-import json
-
-from flask import Flask, render_template, request, send_from_directory, redirect, url_for, session
+from flask import Flask, render_template, request, send_from_directory, redirect, url_for, session, jsonify
 from flask_wtf import FlaskForm
 # from wtforms.validators import (DataRequired, Email, EqualTo, Length, URL)
 # from forms import GatherInput
 from os import system
 from vmai_functions import *
 from config import *
+#from config_local import *
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'cll-vmware-auto-installer'
@@ -54,11 +53,11 @@ def autoinstaller_gui():
                                    result['NETMASK'], result['GATEWAY'], result['VMNIC'], kscfg, enablessh, clearpart)
 
                 ### customize PXE config ###
-                #srvip = request.host.split(':')[0]
-                srvip = '192.168.100.1'             # on dev VM we have separate installation NIC
+                srvip = request.host.split(':')[0]
+                #srvip = '192.168.100.1'             # on dev VM we have separate installation NIC
                 ksurl = 'http://' + srvip + '/ks/' + kscfg
                 # generate PXE config file and save to PXEDIR
-                generate_pxe(ksurl, result['ISOFile'], result['MAC' + seq])
+                isover = generate_pxe(ksurl, result['ISOFile'], result['MAC' + seq])
 
                 # generate custom EFI boot.cfg and save to /tftpboot/01-'mac-addr-dir'
                 generate_efi(ksurl, result['MAC' + seq])
@@ -74,6 +73,11 @@ def autoinstaller_gui():
                 # reload dhcpd config - need to add error handling
                 system('systemctl restart dhcpd')
 
+                ### save installation data to local database (VMAI_DB)
+                save_install_data_to_db(hostname, result['MAC' + seq], result['IPADDR' + seq], result['SUBNET'],
+                                        result['NETMASK'], result['GATEWAY'], result['VLAN'], result['VMNIC'],
+                                        enablessh, clearpart, result['ROOTPW'], isover, 'Ready to deploy')
+                print_vmai_db()
 
                 ### tmp file for debugging ###
                 with open('/tmp/autotuner.out', 'a+') as file:
@@ -81,13 +85,21 @@ def autoinstaller_gui():
                     file.write(key + ': ' + value + '\n')
 
         # display status page
-        return render_template('status.html', install_data=result)
+        # return render_template('status.html', install_data=result)
+        return redirect(url_for('show'))
     return render_template('index.html', form=form)
 
 # allow listing kickstart files in 'ks' directory
 @app.route('/ks/<path:filename>')
 def send_ks(filename):
     return send_from_directory(directory='ks', filename=filename)
+
+# allow listing kickstart files in 'ks' directory
+@app.route('/show')
+def show():
+    with open(VMAI_DB, 'r') as vmaidb_file:
+        vmaidb = json.load(vmaidb_file)
+    return render_template('show-vmai-db.html', vmaidb=vmaidb)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=80, debug=True)

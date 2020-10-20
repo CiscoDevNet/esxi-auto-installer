@@ -35,10 +35,12 @@
                   <tr>
                       <td>ESXi root password: </td><td><input type="text" name="ROOTPW" value=""></td><td>Enter the password for the root account.</td>
                   </tr>
+		  <!--
                   <tr>
                       <td>Mgmt VLAN ID: </td><td><input type="number" name="VLAN" value='0' max=4094 name="VLAN"><BR><div style="font-size: smaller;">Optional</div></td>
                       <td>If your mgmt interface requires a VLAN tag add it here. Otherwise set to 0 for no VLAN.</td>
                   </tr>
+		  -->
                   <tr>
                       <td>Mgmt VMNic: </td><td><input type="number" name="VMNIC" value='0' max=99></td><td>Select which VMNic is going to be the Mgmt Nic.<br />Normally this is set to 0 for VMNic0, but you can specify a different VMNic here.</td>
                   </tr>
@@ -69,14 +71,15 @@
                     <td>If checked, SSH will be enabled on the ESXi.</td>
                   </tr>
                   <tr>
-                    <td>Erase existing partition? </td><td><input type="checkbox" value="enablessh" name="clearpart"></td>
+                    <td>Erase existing partition? </td><td><input type="checkbox" value="clearpart" name="clearpart"></td>
                     <td>If checked, the disk will be erased before ESXi is installed.</td>
                   </tr>
+                  <!--
                   <tr>
                     <td>Overwrite existing VMFS partitions? </td><td><input type="checkbox" value="overwritevmfs" name="overwritevmfs"></td>
                     <td>If checked, ESXi will install over a pre-existing ESXi installation. If "Erase existing partition?" is selected, it will also erase partitions even if there is a pre-existing VMFS partition.</td>
                   </tr>
-
+                  -->
               </table>
               <h1>Step 2</h1>
               <div class="content_section_text">
