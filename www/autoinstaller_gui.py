@@ -5,7 +5,7 @@ from flask_wtf import FlaskForm
 from os import system
 from vmai_functions import *
 from config import *
-#from config_local import *
+# from config_local import *
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'cll-vmware-auto-installer'
@@ -74,8 +74,12 @@ def autoinstaller_gui():
                 system('systemctl restart dhcpd')
 
                 ### save installation data to local database (VMAI_DB)
+                # save_install_data_to_db(hostname, result['MAC' + seq], result['IPADDR' + seq], result['SUBNET'],
+                #                         result['NETMASK'], result['GATEWAY'], result['VLAN'], result['VMNIC'],
+                #                         enablessh, clearpart, result['ROOTPW'], isover, 'Ready to deploy')
+                ## setting VLAN disabled in web form - adjusting function call accordingly
                 save_install_data_to_db(hostname, result['MAC' + seq], result['IPADDR' + seq], result['SUBNET'],
-                                        result['NETMASK'], result['GATEWAY'], result['VLAN'], result['VMNIC'],
+                                        result['NETMASK'], result['GATEWAY'], '0', result['VMNIC'],
                                         enablessh, clearpart, result['ROOTPW'], isover, 'Ready to deploy')
                 print_vmai_db()
 
