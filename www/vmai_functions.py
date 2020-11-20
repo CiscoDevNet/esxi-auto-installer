@@ -1,5 +1,4 @@
 # VMware Auto-Installer functions
-#from config_local import *
 from config import *
 from os import system, path
 import re, json
@@ -28,7 +27,6 @@ def generate_kickstart(rootpw, hostname, ipaddr, subnet, netmask, gateway, vmnic
             ksfile.write(SSHTXT)
         else:
             ksfile.write(NOSSHTXT)
-    ksfile.close()
     kstemplate_file.close()
 
 def generate_pxe(ksurl, isofile, macaddr):
@@ -51,7 +49,6 @@ def generate_pxe(ksurl, isofile, macaddr):
 
     with open(pxecfg, 'w+') as pxefile:
         pxefile.write(pxetemplate)
-    pxefile.close()
     pxetemplate_file.close()
     return ISOVER
 
@@ -91,6 +88,7 @@ def save_install_data_to_db(hostname, mac, ipaddr, subnet, netmask, gateway, vla
                             enablessh, clearpart, rootpw, isover, status):
     if path.isfile(VMAI_DB):
         print('[INFO] ' + VMAI_DB + ' file exists - importing data and adding new entry:')
+
         with open(VMAI_DB, 'r') as vmaidb_file:
             vmaidb_dict = json.load(vmaidb_file)
             # need to add checking of 'hostname' already exists ion VMAI_DB
@@ -180,3 +178,4 @@ def deployment_status(ipaddr, mac):
         deployment_status = 'Installation in progress'
 
     return deployment_status
+
