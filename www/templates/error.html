@@ -1,0 +1,42 @@
+
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Cisco Learning Labs VMware Auto-Installer</title>
+    <link rel="stylesheet" href="static/css/styles.css">
+  </head>
+    <body>
+      <div class="main_page">
+        <div class="logo">
+          <img src="static/cisco-logo.png" alt="Cisco Logo"/>
+        </div>
+        <div class="page_header">
+           Welcome to Cisco Learning Labs <br />VMware Auto-Installer<br />(v0.1 2020-09-21)
+        </div>
+
+        <div class="content_section">
+          <h1 class="error">ERROR: Some manadatory data is missing!</h1>
+          <h2>Mandatory fields are:</h2>
+          <ul>
+            <li>ESXi root password</li>
+            <li>ESXi Hostname Prefix</li>
+            <li>IP Subnet</li>
+            <li>Netmask</li>
+            <li>Gateway</li>
+            <li>Desired IP</li>
+            <li>Mac Address</li>
+          </ul>
+          <h2>Entered data:</h2>
+          {% for key,value in install_data.items() %}
+            <div class="content_section_text">
+	 	          {{key}} : {{value}}
+	          </div>
+ 	        {% endfor %}
+	</div>
+	<div class="content_section">
+          <h1>Operation aborted - proceed to the <a href={{ request.base_url }}>main page</a></h1>
+	</div>
+
+      </div>
+    </body>
+</html>
