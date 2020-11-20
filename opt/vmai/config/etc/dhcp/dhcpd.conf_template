@@ -1,0 +1,31 @@
+#
+# DHCP Server Configuration file.
+#   see /usr/share/doc/dhcp-server/dhcpd.conf.example
+#   see dhcpd.conf(5) man page
+#
+ignore unknown-clients;
+default-lease-time 600;
+max-lease-time 7200;
+ddns-update-style none;
+authoritative;
+log-facility local6;
+allow booting;
+allow bootp;
+option client-system-arch code 93 = unsigned integer 16;
+
+class "pxeclients" {
+   match if substring(option vendor-class-identifier, 0, 9) = "PXEClient";
+   # specifies the TFTP Server
+   next-server NEXTSERVER;
+   if option client-system-arch = 00:07 or option client-system-arch = 00:09 {
+      filename = "mboot.efi";
+   }
+   else {
+      filename = "pxelinux.0";
+   }
+}
+
+subnet SUBNET netmask NETMASK {
+  range IPADDR IPADDR;
+  option routers GATEWAY;
+}
