@@ -1,13 +1,14 @@
 # VMware Auto-Installer config
-
-VMAI_DB = 'vmai_db.json'
+DOCROOT= '/var/www/demo/'
+VMAI_DB = DOCROOT + 'vmai_db.json'
+VMAI_LOG = '/opt/vmai/log/vmai.log'
 DHCPCFG = '/etc/dhcp/dhcpd.conf'
 TFTPBOOT = '/tftpboot/'
 KSDIR = TFTPBOOT + 'ks/'
 PXEDIR = TFTPBOOT + 'pxelinux.cfg/'
-KSTEMPLATE = 'templates/kickstart_template'
-PXETEMPLATE = 'templates/pxecfg_template'
-DHCPTEMPLATE = 'templates/dhcp_template'
+KSTEMPLATE = DOCROOT + 'templates/kickstart_template'
+PXETEMPLATE = DOCROOT + 'templates/pxecfg_template'
+DHCPTEMPLATE = DOCROOT + 'templates/dhcp_template'
 SSHTXT = """%firstboot --interpreter=busybox
 # enable & start remote ESXi Shell  (SSH)
 vim-cmd hostsvc/enable_ssh
@@ -15,14 +16,14 @@ vim-cmd hostsvc/start_ssh
 # disable IPv6
 esxcli network ip set --ipv6-enabled=false
 echo "`date` - Server `hostname` installation finished." >/usr/lib/vmware/hostd/docroot/READY
-sleep 30
+sleep 75
 reboot
 """
 NOSSHTXT = """%firstboot --interpreter=busybox
 # disable IPv6
 esxcli network ip set --ipv6-enabled=false
 echo "`date` - Server `hostname` installation finished." >/usr/lib/vmware/hostd/docroot/READY
-sleep 30
+sleep 75
 reboot
 """
 

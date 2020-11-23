@@ -1,0 +1,40 @@
+#!/bin/bash
+# THIS FILE IS ADDED FOR COMPATIBILITY PURPOSES
+#
+# It is highly advisable to create own systemd services or udev rules
+# to run scripts during boot instead of using this file.
+#
+# In contrast to previous versions due to parallel execution during boot
+# this script will NOT be run after all other services.
+#
+# Please note that you must run 'chmod +x /etc/rc.d/rc.local' to ensure
+# that this script will be executed during boot.
+
+touch /var/lock/subsys/local
+
+set -e
+
+case "$1" in
+  start)
+	echo -e "\n### Starting rc.local execution - `date +'%m.%d.%Y %T '` ###" >>/opt/vmai/log/vmai_boot.log
+	echo "[INFO] Running ovf_set.py script - `date +'%m.%d.%Y %T '`" >>/opt/vmai/log/vmai_boot.log
+	#echo "[INFO] Running ovf_set.py - check /opt/ovfset/run.log for details. Exit code:" >>/opt/vmai/log/vmai_boot.log
+	#/usr/bin/python3 -u /opt/ovfset/ovf_set.py >>/opt/ovfset/run.log 2>&1
+	/usr/bin/python3 -u /opt/ovfset/ovf_set.py 2>&1 | tee -a /opt/ovfset/run.log -a /opt/vmai/log/vmai_boot.log
+	echo $? >>/opt/vmai/log/vmai_boot.log
+	#/opt/vmai/scripts/vmai_dhcp-set-next-server.sh >>/opt/vmai/log/vmai_boot.log 2>&1
+	python3 /opt/vmai/scripts/vmai_dhcp-setup.py >>/opt/vmai/log/vmai_boot.log 2>&1
+	/opt/vmai/scripts/vmai_cleanup.sh >>/opt/vmai/log/vmai_boot.log 2>&1
+	echo -e "### Finished rc.local execution - `date +'%m.%d.%Y %T '` ###" >>/opt/vmai/log/vmai_boot.log
+	;;
+  stop)
+	echo "Stop not implemented"
+	;;
+
+  status)
+	echo "Checking for lock file:"
+	ls -l /opt/ovfset/state
+	;;
+esac
+
+exit 0

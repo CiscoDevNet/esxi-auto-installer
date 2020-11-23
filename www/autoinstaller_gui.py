@@ -5,7 +5,7 @@ from flask_wtf import FlaskForm
 from os import system
 from vmai_functions import *
 from config import *
-# from config_local import *
+# import logging
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'cll-vmware-auto-installer'
@@ -13,21 +13,29 @@ app.config['SECRET_KEY'] = 'cll-vmware-auto-installer'
 
 @app.route("/", methods=('GET', 'POST'))
 def autoinstaller_gui():
+    print('[DEBUG] ' + request.url)
+
     form = FlaskForm()
     #if form.validate_on_submit():
     if form.is_submitted():
         # get data entered on main page
         result = request.form
         # debug output
-        print(result)
+        print('[DEBUG] ' + str(result))
 
         for key in result.keys():
             if 'HOSTNAME' in key:
                 hostname = result['HOSTPREFIX'] + result[key] + result['HOSTSUFFIX']
-                print("Processing " + key + ": " + hostname)
+                print("[INFO] Processing " + key + ": " + hostname)
 
                 # generate seq number based on HOSTNAME#
                 seq = key.replace('HOSTNAME', '')
+
+                # basic validation / error handling - abort in case mandatory data is missing
+                if not (result['ROOTPW'] and result['HOSTPREFIX'] and result['MAC' + seq]
+                        and result['IPADDR' + seq] and result['SUBNET'] and result['NETMASK'] and result['GATEWAY']):
+                    print('[ERROR] Some manadatory data is missing!')
+                    return render_template('error.html', install_data=result)
 
                 ### customize kickstart config ###
                 kscfg = hostname + "_ks.cfg"
@@ -48,13 +56,12 @@ def autoinstaller_gui():
                 except Exception:
                     pass
 
-                # generate kickstart file and save to KSDIR
+                ### generate kickstart file and save to KSDIR ###
                 generate_kickstart(result['ROOTPW'], hostname, result['IPADDR' + seq], result['SUBNET'],
                                    result['NETMASK'], result['GATEWAY'], result['VMNIC'], kscfg, enablessh, clearpart)
 
                 ### customize PXE config ###
                 srvip = request.host.split(':')[0]
-                #srvip = '192.168.100.1'             # on dev VM we have separate installation NIC
                 ksurl = 'http://' + srvip + '/ks/' + kscfg
                 # generate PXE config file and save to PXEDIR
                 isover = generate_pxe(ksurl, result['ISOFile'], result['MAC' + seq])
@@ -71,7 +78,7 @@ def autoinstaller_gui():
                               result['IPADDR' + seq], result['GATEWAY'], result['MAC' + seq])
 
                 # reload dhcpd config - need to add error handling
-                system('systemctl restart dhcpd')
+                system('sudo /usr/bin/systemctl restart dhcpd')
 
                 ### save installation data to local database (VMAI_DB)
                 # save_install_data_to_db(hostname, result['MAC' + seq], result['IPADDR' + seq], result['SUBNET'],
@@ -98,14 +105,13 @@ def autoinstaller_gui():
 def send_ks(filename):
     return send_from_directory(directory='ks', filename=filename)
 
-# allow listing kickstart files in 'ks' directory
+# show VMAI_DB page
 @app.route('/show')
 def show():
     with open(VMAI_DB, 'r') as vmaidb_file:
         vmaidb = json.load(vmaidb_file)
-    return render_template('show-vmai-db.html', vmaidb=vmaidb)
+    return render_template('show-vmai-db.html', vmaidb=vmaidb, srvip=request.host.split(':')[0])
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=80, debug=True)
-
 
