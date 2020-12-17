@@ -1,13 +1,12 @@
 # VMware Auto-Installer functions
 from config import *
-from os import system, path
+from os import system, path, listdir
 import re, json
 
 def generate_kickstart(rootpw, hostname, ipaddr, subnet, netmask, gateway, vmnicid, kscfg, enablessh=False, clearpart=False):
     # uses KSTEMPLATE to build custom kickstart config based on provided parameters
-    # customkickstart is saved to KSDIR
+    # custom kickstart is saved to KSDIR
     kstemplate_file = open(KSTEMPLATE)
-
     kstemplate = kstemplate_file.read()
     # check if "Erase existing partition" has been set
     if clearpart:
@@ -29,28 +28,21 @@ def generate_kickstart(rootpw, hostname, ipaddr, subnet, netmask, gateway, vmnic
             ksfile.write(NOSSHTXT)
     kstemplate_file.close()
 
-def generate_pxe(ksurl, isofile, macaddr):
+def generate_pxe(ksurl, isover, macaddr):
     # uses PXETEMPLATE to build custom PXE config based on provided parameters
-    pxetemplate_file = open(PXETEMPLATE)
-    pxetemplate = pxetemplate_file.read()
+    with open(PXETEMPLATE, 'r') as pxetemplate_file:
+        pxetemplate = pxetemplate_file.read()
 
-    # need to decide where to keep these - keep here or in config? generate dynamically?
-    if '6.7.0_U3_Installer-14320388' in isofile:
-        ISOVER = 'esxi67u3'
-    elif '6.5.0_U3_Installer-13932383' in isofile:
-        ISOVER = 'esxi65u3'
-    elif '6.5.0_U2_Installer-9298722' in isofile:
-        ISOVER = 'esxi65u2'
-
-    pxetemplate = pxetemplate.replace('ISOVER', ISOVER)
+    # customize ISO and kickstart URL locations
+    isopath = 'iso/' + isover
+    pxetemplate = pxetemplate.replace('ISOVER', isopath)
     pxetemplate = pxetemplate.replace('KSURL', ksurl)
     # generate PXE config file name based on MAC address (add prefix + replace ':' with '-')
     pxecfg = PXEDIR + '01-' + macaddr.replace(':', '-')
 
     with open(pxecfg, 'w+') as pxefile:
         pxefile.write(pxetemplate)
-    pxetemplate_file.close()
-    return ISOVER
+    # return ISOVER
 
 def generate_dhcp(hostname, subnet, netmask, ipaddr, gateway, macaddr):
     dhcptemplate_file = open(DHCPTEMPLATE)
@@ -70,14 +62,15 @@ def generate_dhcp(hostname, subnet, netmask, ipaddr, gateway, macaddr):
         dhcpfile.write(dhcptemplate)
     dhcpfile.close()
 
-def generate_efi(ksurl, macaddr):
+def generate_efi(ksurl, isover, macaddr):
     # create /tftboot/01-aa:bb:cc:dd:ee:ff directory
     efidir = TFTPBOOT + '01-' + macaddr.replace(':', '-')
     system('mkdir ' + efidir)
     bootcfg_custom = efidir + '/boot.cfg'
-    # read default boot.cfg
-    bootcfg_file = open(TFTPBOOT + 'boot.cfg')
-    bootcfg = bootcfg_file.read()
+    # read original boot.cfg
+    bootcfg_orig_path = TFTPISODIR + isover + '/boot.cfg'
+    with open(bootcfg_orig_path, 'r') as bootcfg_file:
+        bootcfg = bootcfg_file.read()
     # search for kernelopt line and replace parameters with ksurl
     kerneloptline = 'kernelopt=ks=' + ksurl
     bootcfg = re.sub(r"kernelopt.*", kerneloptline, bootcfg)
@@ -171,11 +164,70 @@ def deployment_status(ipaddr, mac):
     #         print('[INFO] Waiting for Bootloader request...')
 
     # print('[INFO] Checking for Stage 3...')
+    # TODO: change the logic so that we don't run wget if status is finished
     system('wget --timeout=3 -t 1 --no-check-certificate https://' + ipaddr + '/READY -O /tmp/READY-' + ipaddr + '>/dev/null 2>&1')
     if path.isfile('/tmp/READY-' + ipaddr) and path.getsize('/tmp/READY-' + ipaddr) > 0:
         deployment_status = 'Finished'
     else:
         deployment_status = 'Installation in progress'
-
     return deployment_status
 
+def extract_iso_to_tftpboot(uploaded_file, uploaddir=UPLOADDIR, tmpisodir=TMPISODIR, tftpisodir=TFTPISODIR):
+    print('[INFO] Extracting uploaded ISO: ' + uploaded_file.filename)
+    # STEP 1: save ISO to uploaddir (eg. /var/www/demo/upload/<iso_filename>)
+    iso_save_path = path.join(uploaddir, uploaded_file.filename)
+    uploaded_file.save(iso_save_path)
+    # STEP 2: create mountpoint under tmpisodir (default: /var/www/demo/upload/<iso_filebase>)
+    filebase = path.splitext(uploaded_file.filename)[0]
+    mountdir = tmpisodir + filebase
+    print('[DEBUG] Create mountpoint: ' + mountdir)
+    system('sudo /usr/bin/mkdir -p ' + mountdir + ' 1>&2')
+    # STEP 3: mount the ISO
+    print('[DEBUG] Mount the ISO: ')
+    print('[DEBUG] CMD: sudo /usr/bin/mount -r -o loop ' + iso_save_path + ' ' + mountdir)
+    system('sudo /usr/bin/mount -r -o loop ' + iso_save_path + ' ' + mountdir + ' 1>&2')
+    system('ls -la ' + mountdir + ' 1>&2')
+
+    # STEP 4: copy mounted ISO content to tftpisodir (i.e. /tftpboot/iso/<iso_filebase>)
+    iso_tftp_dir = path.join(tftpisodir, filebase)
+    print('[DEBUG] CMD: cp -R ' + mountdir + ' ' + iso_tftp_dir)
+    system('cp -R ' + mountdir + ' ' + iso_tftp_dir + ' 1>&2')
+    system('sudo /usr/bin/chown apache.apache ' + iso_tftp_dir + ' 1>&2')
+    system('/usr/bin/chmod 644 ' + iso_tftp_dir + '/boot.cfg' + ' 1>&2')
+
+    # STEP 5: prepare boot.cfg
+    bootcfg_path = iso_tftp_dir + '/boot.cfg'
+    # read original boot.cfg
+    with open(bootcfg_path, 'r') as bootcfg_file:
+        bootcfg = bootcfg_file.read()
+    # customize boot.cfg file
+    title = 'title=Loading ESXi installer - ' + filebase
+    prefix = 'prefix=iso/' + filebase
+    # customize 'title' and 'prefix'
+    bootcfg = re.sub(r"title.*", title, bootcfg)
+    if 'prefix' in bootcfg:
+        bootcfg = re.sub(r"prefix.*", prefix, bootcfg)
+    else:
+        # if there is no 'prefix=' line - add it just before 'kernel=' line
+        bootcfg = re.sub(r"kernel=", prefix + '\nkernel=', bootcfg)
+    # remove '/' from 'kernel=' and 'modules=' paths
+    bootcfg = re.sub(r"kernel=/", "kernel=", bootcfg)
+    # findall returns a list - extract string in position [0] to run replace() function
+    modules = re.findall("^modules=.*", bootcfg, re.MULTILINE)[0].replace('/', '')
+    bootcfg = re.sub(r"modules=.*", modules, bootcfg)
+    # save customized boot.cfg
+    with open(bootcfg_path, 'w+') as bootcfg_file:
+        bootcfg_file.write(bootcfg)
+
+    # STEP 6: cleanup - unmount and delete ISO and temporary mountpoint
+    system('sudo /usr/bin/umount ' + mountdir + ' 1>&2')
+    # system('sudo umount ' + mountdir)
+    print('[DEBUG] Cleanup - remove ISO: ' + iso_save_path + ' and mountdir: ' + mountdir)
+    system('rm -f ' + iso_save_path + ' 1>&2')
+    system('sudo /usr/bin/rmdir ' + mountdir + ' 1>&2')
+    # INFO: check content of tftpisodir directory (INFO only)
+    print('[INFO] New ISO: ' + filebase)
+    print('[INFO] Listing ' + tftpisodir + ' content:')
+    dirs = [f for f in listdir(tftpisodir) if path.isdir(path.join(tftpisodir, f))]
+    print(dirs)
+    system('ls -la ' + tftpisodir + ' 1>&2')
