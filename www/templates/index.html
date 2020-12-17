@@ -10,7 +10,7 @@
           <img src="static/cisco-logo.png" alt="Cisco Logo"/>
         </div>
         <div class="page_header">
-           Welcome to Cisco Learning Labs <br />VMware Auto-Installer<br />(v0.7alpha 2020-11-06)
+           Welcome to Cisco Learning Labs <br />VMware Auto-Installer<br />(v0.8alpha 2020-12-16)
         </div>
 
         <div class="content_section">
@@ -25,12 +25,12 @@
                       <td>Select your ISO Image: </td>
                       <td>
                         <select name="ISOFile" id="ISOFile">
-                          <option value="VMware-ESXi-6.7.0_U3_Installer-14320388_Custom_Cisco_6.7.3.1.iso" checked>VMware-ESXi-6.7.0_U3_Installer-14320388_Custom_Cisco_6.7.3.1</option>
-                          <!--option value="VMware-ESXi-6.5.0_U3_Installer-13932383_Custom_Cisco_6.5.3.1.iso">VMware-ESXi-6.5.0_U3_Installer-13932383_Custom_Cisco_6.5.3.1</option>
-                          <option value="VMware-ESXi-6.5.0_U2_Installer-9298722-Custom-Cisco-6.5.2.2.iso">VMware-ESXi-6.5.0_U2_Installer-9298722-Custom-Cisco-6.5.2.2</option-->
+                          {% for isover in isodirs %}
+                            <option value="{{isover}}" checked>{{isover}}</option>
+                          {% endfor %}
                         </select>
                       </td>
-                      <td>Specify which image your ESXi server will boot from. If the image you need is not listed, you can <a href="">upload your own ISO</a>.</td>
+                      <td>Specify which image your ESXi server will boot from. If the image you need is not listed, you can <a href="/upload">upload your own ISO</a>.</td>
                   </tr>
                   <tr>
                       <td>ESXi root password: </td><td><input type="text" name="ROOTPW" value=""></td><td>Enter the password for the root account.</td>
@@ -60,7 +60,7 @@
                           <input type="radio" id="FirstDisk" name="FirstDisk" value="disk" oninput="InstallDiskShow('disk')">
                           <label for="FirstDisk">Use a specific disk</label><br />
                           <div id="DiskPathTypeControls" style="display:none">
-                              - - <Input type=text value=''><BR>
+                              - - <Input type=text name='DiskPath' value=''><BR>
                                 Enter disk path<BR>
                           </div>
                       </td>
