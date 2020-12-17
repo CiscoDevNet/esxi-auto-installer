@@ -108,3 +108,7 @@
       div.content_section_text_small {
         font-size: small;
       }
+
+      input[type=file] {
+        width: 600px
+      }
