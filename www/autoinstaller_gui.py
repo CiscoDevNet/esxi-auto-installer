@@ -2,17 +2,29 @@ from flask import Flask, render_template, request, send_from_directory, redirect
 from flask_wtf import FlaskForm
 # from wtforms.validators import (DataRequired, Email, EqualTo, Length, URL)
 # from forms import GatherInput
-from os import system
+from os import system, path, listdir
+import sys
 from vmai_functions import *
 from config import *
+# from config_local import *
 # import logging
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'cll-vmware-auto-installer'
+app.config['UPLOAD_EXTENSIONS'] = ['.iso']
+# app.config['UPLOAD_PATH'] = UPLOADDIR
 
 
 @app.route("/", methods=('GET', 'POST'))
 def autoinstaller_gui():
+    # get directories from TFTPISODIR to build 'Select your ISO Image' dropdown menu
+    print('[DEBUG] Listing ' + TFTPISODIR + ' content:')
+    dirs = [f for f in listdir(TFTPISODIR) if path.isdir(path.join(TFTPISODIR, f))]
+    dirs.sort()
+    print(dirs)
+    system('ls -la ' + TFTPISODIR + ' 1>&2')
+
+    # pring page URL
     print('[DEBUG] ' + request.url)
 
     form = FlaskForm()
@@ -63,32 +75,33 @@ def autoinstaller_gui():
                 ### customize PXE config ###
                 srvip = request.host.split(':')[0]
                 ksurl = 'http://' + srvip + '/ks/' + kscfg
+                mac = str(result['MAC' + seq]).lower()
                 # generate PXE config file and save to PXEDIR
-                isover = generate_pxe(ksurl, result['ISOFile'], result['MAC' + seq])
+                generate_pxe(ksurl, result['ISOFile'], mac)
 
                 # generate custom EFI boot.cfg and save to /tftpboot/01-'mac-addr-dir'
-                generate_efi(ksurl, result['MAC' + seq])
+                generate_efi(ksurl, result['ISOFile'], mac)
 
 
                 ### customize dhcp entries and update dhcp config ###
                 # generate dhcp config add to DHCPCFG
-                # add verification if IP address isn't already used in dhcp.conf
-                # ping verification to check if IP address is actually free?
+                # TODO: add verification if IP address isn't already used in dhcp.conf
+                # TODO: ping verification to check if IP address is actually free?
                 generate_dhcp(hostname, result['SUBNET'], result['NETMASK'],
-                              result['IPADDR' + seq], result['GATEWAY'], result['MAC' + seq])
+                              result['IPADDR' + seq], result['GATEWAY'], mac)
 
                 # reload dhcpd config - need to add error handling
                 system('sudo /usr/bin/systemctl restart dhcpd')
 
                 ### save installation data to local database (VMAI_DB)
-                # save_install_data_to_db(hostname, result['MAC' + seq], result['IPADDR' + seq], result['SUBNET'],
+                # save_install_data_to_db(hostname, mac, result['IPADDR' + seq], result['SUBNET'],
                 #                         result['NETMASK'], result['GATEWAY'], result['VLAN'], result['VMNIC'],
                 #                         enablessh, clearpart, result['ROOTPW'], isover, 'Ready to deploy')
                 ## setting VLAN disabled in web form - adjusting function call accordingly
-                save_install_data_to_db(hostname, result['MAC' + seq], result['IPADDR' + seq], result['SUBNET'],
+                save_install_data_to_db(hostname, mac, result['IPADDR' + seq], result['SUBNET'],
                                         result['NETMASK'], result['GATEWAY'], '0', result['VMNIC'],
-                                        enablessh, clearpart, result['ROOTPW'], isover, 'Ready to deploy')
-                print_vmai_db()
+                                        enablessh, clearpart, result['ROOTPW'], result['ISOFile'], 'Ready to deploy')
+
 
                 ### tmp file for debugging ###
                 with open('/tmp/autotuner.out', 'a+') as file:
@@ -98,7 +111,7 @@ def autoinstaller_gui():
         # display status page
         # return render_template('status.html', install_data=result)
         return redirect(url_for('show'))
-    return render_template('index.html', form=form)
+    return render_template('index.html', form=form, isodirs=dirs)
 
 # allow listing kickstart files in 'ks' directory
 @app.route('/ks/<path:filename>')
@@ -111,6 +124,28 @@ def show():
     with open(VMAI_DB, 'r') as vmaidb_file:
         vmaidb = json.load(vmaidb_file)
     return render_template('show-vmai-db.html', vmaidb=vmaidb, srvip=request.host.split(':')[0])
+
+@app.route('/upload', methods=['GET', 'POST'])
+def upload_iso():
+    print('[DEBUG] Listing ' + TFTPISODIR + ' content:')
+    dirs = [f for f in listdir(TFTPISODIR) if path.isdir(path.join(TFTPISODIR, f))]
+    print(dirs)
+    system('ls -la ' + TFTPISODIR + ' 1>&2')
+
+    if request.method == 'POST':
+        # read file name
+        uploaded_iso = request.files['file']
+        if uploaded_iso.filename != '':
+            file_ext = path.splitext(uploaded_iso.filename)[1]
+            if file_ext not in app.config['UPLOAD_EXTENSIONS']:
+                # return an error if file is not an ISO
+                print('[ERROR] Incorrect file extension - not an ISO: ' + uploaded_iso.filename)
+                return '[ERROR] Incorrect file extension - not an ISO: ' + uploaded_iso.filename
+            else:
+                # extract ISO to TFTPISODIR (default: /tftpboot/iso)
+                extract_iso_to_tftpboot(uploaded_iso)
+        return redirect(url_for('autoinstaller_gui'))
+    return render_template('upload.html')
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=80, debug=True)
