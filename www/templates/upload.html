@@ -1,18 +1,6 @@
+{% extends 'base.html' %}
 
-<html>
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Cisco Learning Labs VMware Auto-Installer</title>
-    <link rel="stylesheet" href="static/css/styles.css">
-  </head>
-    <body>
-      <div class="main_page">
-        <div class="logo">
-          <img src="static/cisco-logo.png" alt="Cisco Logo"/>
-        </div>
-        <div class="page_header">
-           Welcome to Cisco Learning Labs <br />VMware Auto-Installer<br />(v0.8alpha 2020-12-16)
-        </div>
+{% block content %}
 
         <div class="content_section">
           <h1>Upload ESXi installation ISO</h1>
@@ -24,7 +12,4 @@
            </div>
 	    </div>
 
-
-      </div>
-    </body>
-</html>
+{% endblock %}

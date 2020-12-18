@@ -1,45 +1,30 @@
+{% extends 'base.html' %}
 
-<html>
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <meta http-equiv="refresh" content="5"/>
-    <title>Cisco Learning Labs VMware Auto-Installer</title>
-    <link rel="stylesheet" href="static/css/styles.css">
-  </head>
-    <body>
-      <div class="main_page">
-        <div class="logo">
-          <img src="static/cisco-logo.png" alt="Cisco Logo"/>
-        </div>
-        <div class="page_header">
-	   Welcome to Cisco Learning Labs <br />VMware Auto-Installer<br />(v0.8alpha 2020-12-16)
-        </div>
+{% block metarefresh %}
+  <meta http-equiv="refresh" content="5"/>
+{% endblock %}
 
-        <div class="content_section">
-          <h1>Server status</h1>
-
-            <table>
-                <tr style="font-weight:bold;background-color:#D8DBE2">
-                    <td width="300px"> Hostname </td>
-                    <td width="250px"> MAC address </td>
-                    <td width="250px"> IP address </td>
-                    <td width="500px"> Status </td>
-                </tr>
-                {% for host in vmaidb.items() %}
-                    <tr>
-                        <td>{{ host[0] }}</td>
-                        <td>{{ host[1]['MAC'] }}</td>
-                        <td>{{ host[1]['IPADDR'] }}</td>
-                        <td>{{ host[1]['STATUS'] }}</td>
-                    </tr>
-                {% endfor %}
-            </table>
-        </div>
-        <div class="content_section">
-          <a href="http://{{ srvip }}">Back to the main page</a>
-        </div>
-
-
-      </div>
-    </body>
-</html>
+{% block content %}
+  <div class="content_section">
+    <h1>Server status</h1>
+    <table>
+        <tr style="font-weight:bold;background-color:#D8DBE2">
+            <td width="300px"> Hostname </td>
+            <td width="250px"> MAC address </td>
+            <td width="250px"> IP address </td>
+            <td width="500px"> Status </td>
+        </tr>
+        {% for host in vmaidb.items() %}
+        <tr>
+            <td>{{ host[0] }}</td>
+            <td>{{ host[1]['MAC'] }}</td>
+            <td>{{ host[1]['IPADDR'] }}</td>
+            <td>{{ host[1]['STATUS'] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+  </div>
+  <div class="content_section">
+    <a href="{{ url_for('autoinstaller_gui') }}">Back to the main page</a>
+  </div>
+{% endblock %}

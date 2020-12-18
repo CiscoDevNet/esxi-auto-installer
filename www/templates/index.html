@@ -1,268 +1,257 @@
-<html>
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Cisco Learning Labs VMware Auto-Installer</title>
-    <link rel="stylesheet" href="static/css/styles.css">
-  </head>
-    <body>
-      <div class="main_page">
-        <div class="logo">
-          <img src="static/cisco-logo.png" alt="Cisco Logo"/>
-        </div>
-        <div class="page_header">
-           Welcome to Cisco Learning Labs <br />VMware Auto-Installer<br />(v0.8alpha 2020-12-16)
+{% extends 'base.html' %}
+
+{% block content %}
+      <div class="content_section">
+        <h1>Step 1</h1>
+        <div class="content_section_text">
+          Set your ESXi Installation Options
         </div>
 
-        <div class="content_section">
-          <h1>Step 1</h1>
-          <div class="content_section_text">
-            Set your ESXi Installation Options
-          </div>
-
-          <form action="" method="POST">
-              <table>
-                  <tr>
-                      <td>Select your ISO Image: </td>
-                      <td>
-                        <select name="ISOFile" id="ISOFile">
-                          {% for isover in isodirs %}
-                            <option value="{{isover}}" checked>{{isover}}</option>
-                          {% endfor %}
-                        </select>
-                      </td>
-                      <td>Specify which image your ESXi server will boot from. If the image you need is not listed, you can <a href="/upload">upload your own ISO</a>.</td>
-                  </tr>
-                  <tr>
-                      <td>ESXi root password: </td><td><input type="text" name="ROOTPW" value=""></td><td>Enter the password for the root account.</td>
-                  </tr>
-		  <!--
-                  <tr>
-                      <td>Mgmt VLAN ID: </td><td><input type="number" name="VLAN" value='0' max=4094 name="VLAN"><BR><div style="font-size: smaller;">Optional</div></td>
-                      <td>If your mgmt interface requires a VLAN tag add it here. Otherwise set to 0 for no VLAN.</td>
-                  </tr>
-		  -->
-                  <tr>
-                      <td>Mgmt VMNic: </td><td><input type="number" name="VMNIC" value='0' max=99></td><td>Select which VMNic is going to be the Mgmt Nic.<br />Normally this is set to 0 for VMNic0, but you can specify a different VMNic here.</td>
-                  </tr>
-                  <tr>
-                      <td>Install Disk: </td><td>
-                          <input type="radio" id="FirstDisk" name="FirstDisk" value="" checked oninput="InstallDiskShow('')">
-                          <label for="FirstDiskType">First Disk Found (Default)</label><br />
-                          <input type="radio" id="FirstDisk" name="FirstDisk" value="firstdisk" oninput="InstallDiskShow('firstdisk')">
-                          <label for="FirstDiskType">First Disk of a certain type</label><br />
-                          <div id="FistDiskTypeControls" style="display:none">
-                              - - <select name="FirstDiskType" id="FirstDiskType">
-                                  <option value="local">Locally attached storage</option>
-                                  <option value="remote">Network storage</option>
-                                  <option value="usb" checked>USB Disks</option>
-                              </select><br />
-                            </div>
-                          <input type="radio" id="FirstDisk" name="FirstDisk" value="disk" oninput="InstallDiskShow('disk')">
-                          <label for="FirstDisk">Use a specific disk</label><br />
-                          <div id="DiskPathTypeControls" style="display:none">
-                              - - <Input type=text name='DiskPath' value=''><BR>
-                                Enter disk path<BR>
+        <form action="" method="POST">
+            <table>
+                <tr>
+                    <td>Select your ISO Image: </td>
+                    <td>
+                      <select name="ISOFile" id="ISOFile">
+                        {% for isover in isodirs %}
+                          <option value="{{isover}}" checked>{{isover}}</option>
+                        {% endfor %}
+                      </select>
+                    </td>
+                    <td>Specify which image your ESXi server will boot from. If the image you need is not listed, you can <a href="{{ url_for('upload_iso') }}">upload your own ISO</a>.</td>
+                </tr>
+                <tr>
+                    <td>ESXi root password: </td><td><input type="text" name="ROOTPW" value=""></td><td>Enter the password for the root account.</td>
+                </tr>
+	  <!--
+                <tr>
+                    <td>Mgmt VLAN ID: </td><td><input type="number" name="VLAN" value='0' max=4094 name="VLAN"><br /><div style="font-size: smaller;">Optional</div></td>
+                    <td>If your mgmt interface requires a VLAN tag add it here. Otherwise set to 0 for no VLAN.</td>
+                </tr>
+	  -->
+                <tr>
+                    <td>Mgmt VMNic: </td><td><input type="number" name="VMNIC" value='0' max=99></td><td>Select which VMNic is going to be the Mgmt Nic.<br />Normally this is set to 0 for VMNic0, but you can specify a different VMNic here.</td>
+                </tr>
+                <tr>
+                    <td>Install Disk: </td><td>
+                        <input type="radio" id="FirstDisk" name="FirstDisk" value="" checked oninput="InstallDiskShow('')">
+                        <label for="FirstDiskType">First Disk Found (Default)</label><br />
+                        <input type="radio" id="FirstDisk" name="FirstDisk" value="firstdisk" oninput="InstallDiskShow('firstdisk')">
+                        <label for="FirstDiskType">First Disk of a certain type</label><br />
+                        <div id="FistDiskTypeControls" style="display:none">
+                            - - <select name="FirstDiskType" id="FirstDiskType">
+                                <option value="local">Locally attached storage</option>
+                                <option value="remote">Network storage</option>
+                                <option value="usb" checked>USB Disks</option>
+                            </select><br />
                           </div>
-                      </td>
-                      <td>You can specify a particular disk to install ESXi into.</td>
-                  </tr>
-                  <tr>
-                    <td>Enable SSH? </td><td><input type="checkbox" value="enablessh" name="SSH" checked></td>
-                    <td>If checked, SSH will be enabled on the ESXi.</td>
-                  </tr>
-                  <tr>
-                    <td>Erase existing partition? </td><td><input type="checkbox" value="clearpart" name="clearpart"></td>
-                    <td>If checked, the disk will be erased before ESXi is installed.</td>
-                  </tr>
-                  <!--
-                  <tr>
-                    <td>Overwrite existing VMFS partitions? </td><td><input type="checkbox" value="overwritevmfs" name="overwritevmfs"></td>
-                    <td>If checked, ESXi will install over a pre-existing ESXi installation. If "Erase existing partition?" is selected, it will also erase partitions even if there is a pre-existing VMFS partition.</td>
-                  </tr>
-                  -->
+                        <input type="radio" id="FirstDisk" name="FirstDisk" value="disk" oninput="InstallDiskShow('disk')">
+                        <label for="FirstDisk">Use a specific disk</label><br />
+                        <div id="DiskPathTypeControls" style="display:none">
+                            - - <Input type=text name='DiskPath' value=''><br />
+                              Enter disk path<br />
+                        </div>
+                    </td>
+                    <td>You can specify a particular disk to install ESXi into.</td>
+                </tr>
+                <tr>
+                  <td>Enable SSH? </td><td><input type="checkbox" value="enablessh" name="SSH" checked></td>
+                  <td>If checked, SSH will be enabled on the ESXi.</td>
+                </tr>
+                <tr>
+                  <td>Erase existing partition? </td><td><input type="checkbox" value="clearpart" name="clearpart"></td>
+                  <td>If checked, the disk will be erased before ESXi is installed.</td>
+                </tr>
+                <!--
+                <tr>
+                  <td>Overwrite existing VMFS partitions? </td><td><input type="checkbox" value="overwritevmfs" name="overwritevmfs"></td>
+                  <td>If checked, ESXi will install over a pre-existing ESXi installation. If "Erase existing partition?" is selected, it will also erase partitions even if there is a pre-existing VMFS partition.</td>
+                </tr>
+                -->
+            </table>
+            <h1>Step 2</h1>
+            <div class="content_section_text">
+              Enter network information for the ESXi hosts:<br /><br />
+            </div>
+            How do you want to enter your IP Addresses?<br />
+            <input type="radio" id="IPList" name="IPList" value="Manual" Checked oninput="IPListShow('ManualIP')">
+            <label>Manual Entry</label><br />
+            <input type="radio" id="IPList" name="IPList" value="CSV" oninput="IPListShow('CSV')">
+            <label>CSV Spreadsheet</label><br />
+            <br />
+            <div ID="ManualIP" style="margin-left: 50px;">
+              Common Settings:<br />
+              <Table style="Border: none; margin-left: 50px;">
+                <tr>
+                  <td style="Border: none; padding: 10px;">ESXi Hostname Prefix<br /><input type="text" name="HOSTPREFIX" id="HOSTPREFIX" oninput="UpdateESXiHostName()">
+                  <br /><div style="font-size: smaller;">Optional</div></td>
+                  <td style="Border: none; padding: 10px;">ESXi Hostname Suffix<br /><input type="text" name="HOSTSUFFIX" id="HOSTSUFFIX" oninput="UpdateESXiHostName()">
+                  <br /><div style="font-size: smaller;">Optional</div></td></td>
+                  <td style="Border: none; padding: 10px;">IP Subnet<br /><input type="text" name="SUBNET"></td>
+                  <td style="Border: none; padding: 10px;">Netmask<br /><input type="text" name="NETMASK"></td>
+                  <td style="Border: none; padding: 10px;">Gateway<br /><input type="text" name="GATEWAY"></td>
+                </tr>
+              </Table>
+              <br />
+              Unique Settings:
+              <table id="ManualIPTable" Style="padding: 50px; margin-left: 50px">
+                <thead>
+                  <td Style="font-size: smaller;text-align: center;Border:none">Prefix</td>
+                  <td Style="text-align: center;Border:none">ESXi Hostname</td>
+                  <td Style="font-size: smaller;Border:none">Suffix</td>
+                  <td Style="text-align: center;Border: None">Desired ESXi IP</td>
+                  <td Style="text-align: center;border:None">Mac Address</td>
+                </thead>
               </table>
-              <h1>Step 2</h1>
+              <input type="button" value="Add Row" onclick="AddManualIPRow()" Style="margin-left: 50px;">
+              <input type="button" value="Delete Last Row" onclick="RemoveManualIPRow()" Style="margin-left: 50px;">
+            </div>
+            <Div id='CSV' style="display: none;margin-left: 50px">
               <div class="content_section_text">
-                Enter network information for the ESXi hosts:<BR><BR>
+                Upload a CSV file
               </div>
-              How do you want to enter your IP Addresses?<BR>
-              <input type="radio" id="IPList" name="IPList" value="Manual" Checked oninput="IPListShow('ManualIP')">
-              <label>Manual Entry</label><BR>
-              <input type="radio" id="IPList" name="IPList" value="CSV" oninput="IPListShow('CSV')">
-              <label>CSV Spreadsheet</label><BR>
-              <BR>
-              <div ID="ManualIP" style="margin-left: 50px;">
-                Common Settings:<BR>
-                <Table style="Border: none; margin-left: 50px;">
-                  <tr>
-                    <td style="Border: none; padding: 10px;">ESXi Hostname Prefix<br><input type="text" name="HOSTPREFIX" id="HOSTPREFIX" oninput="UpdateESXiHostName()">
-                    <BR><div style="font-size: smaller;">Optional</div></td>
-                    <td style="Border: none; padding: 10px;">ESXi Hostname Suffix<br><input type="text" name="HOSTSUFFIX" id="HOSTSUFFIX" oninput="UpdateESXiHostName()">
-                    <BR><div style="font-size: smaller;">Optional</div></td></td>
-                    <td style="Border: none; padding: 10px;">IP Subnet<br><input type="text" name="SUBNET"></td>
-                    <td style="Border: none; padding: 10px;">Netmask<br><input type="text" name="NETMASK"></td>
-                    <td style="Border: none; padding: 10px;">Gateway<br><input type="text" name="GATEWAY"></td>
-                  </tr>
-                </Table>
-                <BR>
-                Unique Settings:
-                <table id="ManualIPTable" Style="padding: 50px; margin-left: 50px">
-                  <thead>
-                    <td Style="font-size: smaller;text-align: center;Border:none">Prefix</td>
-                    <td Style="text-align: center;Border:none">ESXi Hostname</td>
-                    <td Style="font-size: smaller;Border:none">Suffix</td>
-                    <td Style="text-align: center;Border: None">Desired ESXi IP</td>
-                    <td Style="text-align: center;border:None">Mac Address</td>
-                  </thead>
-                </table>
-                <input type="button" value="Add Row" onclick="AddManualIPRow()" Style="margin-left: 50px;">
-                <input type="button" value="Delete Last Row" onclick="RemoveManualIPRow()" Style="margin-left: 50px;">
-              </div>
-              <Div id='CSV' style="display: none;margin-left: 50px">
-                <div class="content_section_text">
-                  Upload a CSV file
-                </div>
-                <div style="margin-left: 50px;">
-                <input type="text" value="c:\Documents\IPList.csv"> <input type="button" value="Browse"><br />
-                <a href="">Download Sample File</a>
-                <BR><BR><BR><BR><BR><BR><BR><BR>
-                </div>
-              </Div>
-              <!--h1>Step 3 (optional)</!--h1>
-              <div class="content_section_text">
-                Run console commands on first boot:
-              </div>
-              <textarea id="firstbootscript" cols="82" rows="4"></textarea>
-              <div-- class="content_section_text_small">
-                If needed, you can enter commands that will be run on the ESXi server the first time it boots up.
-              </div-->
-              <h1>Step 3</h1>
               <div style="margin-left: 50px;">
-                <div class="content_section_text">
-                  Add Server(s):
-                </div>
-                <input type="submit" value="Launch Automation">
+              <input type="text" value="c:\Documents\IPList.csv"> <input type="button" value="Browse"><br />
+              <a href="">Download Sample File</a>
+              <br /><br /><br /><br /><br /><br /><br /><br />
               </div>
-            </form>
-          </div>
-      </div>
-      <script>
-        function InstallDiskShow(itemclickedon) {
-          // alert(itemclickedon);
-          if (itemclickedon == "firstdisk") {
-            FistDiskTypeControls.style.display = "block";
-          } else {
-            FistDiskTypeControls.style.display = "none";
-          }
-          if (itemclickedon == "disk") {
-            DiskPathTypeControls.style.display = "block";
-          } else {
-            DiskPathTypeControls.style.display = "none";
-          }
-        }
-        function IPListShow(itemclickedon) {
-          // alert(itemclickedon);
-          if (itemclickedon == "CSV") {
-            CSV.style.display = "block";
-          } else {
-            CSV.style.display = "none";
-          }
-          if (itemclickedon == "ManualIP") {
-            ManualIP.style.display = "block";
-          } else {
-            ManualIP.style.display = "none";
-          }
-        }
-        function AddManualIPRow() {
-          ServerCount++
-          if (ServerCount<=99) { ServerCountStr = ("0"+ServerCount).slice(-2); }
-          var table = document.getElementById('ManualIPTable');
-          //var columns = ManualIPTable.rows[0].cells.length;
-          var tr = table.insertRow(); //ManualIPTable.rows.length
-          var CellCount;
-          CellCount = 0;
+            </Div>
+            <!--h1>Step 3 (optional)</!--h1>
+            <div class="content_section_text">
+              Run console commands on first boot:
+            </div>
+            <textarea id="firstbootscript" cols="82" rows="4"></textarea>
+            <div-- class="content_section_text_small">
+              If needed, you can enter commands that will be run on the ESXi server the first time it boots up.
+            </div-->
+            <h1>Step 3</h1>
+            <div style="margin-left: 50px;">
+              <div class="content_section_text">
+                Add Server(s):
+              </div>
+              <input type="submit" value="Launch Automation">
+            </div>
+          </form>
+        </div>
+{% endblock %}
 
-          //Hostname Prefix
-          //var td = document.createElement('td')
-          td = tr.insertCell(CellCount);
-          td.setAttribute('class','prefix');
-          td.setAttribute('id','HOSTPREFIXStr' + ServerCount);
-          td.innerHTML = document.getElementById('HOSTPREFIX').value;
-          CellCount++
-          //Unique hostname
-          td = tr.insertCell(CellCount);
-          td.setAttribute('class','hostname');
-          var newelement = document.createElement('input');
-          newelement.setAttribute('type','text');
-          newelement.setAttribute('name','HOSTNAME' + ServerCount);
-          if (ServerCount > 1) {
-            prevValue = ManualIPTable.rows[ServerCount-1].children[CellCount].childNodes[0].value;
-            if (isNaN(prevValue) == false) {
-              IntValue = parseInt(prevValue);
-              IntValue++
-              newValue = ''.padStart(prevValue.length - IntValue.toString().length, '0') + IntValue
-              newelement.setAttribute('Value',newValue);
-            }
-          } else {
-            newelement.setAttribute('Value','01');
-          }
-          //newelement.setAttribute('Value',ServerCountStr);
-          td.appendChild(newelement);
-          CellCount++
-          //Hostname suffix
-          td = tr.insertCell(CellCount);
-          td.setAttribute('class','suffix');
-          td.setAttribute('id','HOSTSUFFIXStr' + ServerCount);
-          td.innerHTML = document.getElementById('HOSTSUFFIX').value;
-          CellCount++
-          //Unique IP Address
-          td = tr.insertCell(CellCount);
-          td.setAttribute('class','ipaddr');
-          var newelement = document.createElement('input');
-          newelement.setAttribute('type','text');
-          newelement.setAttribute('name','IPADDR' + ServerCount);
-          if (ServerCount > 1) {
-            prevIP = ManualIPTable.rows[ServerCount-1].children[CellCount].childNodes[0].value.split('.')
-            //console.log(prevIP)
-            if (parseInt(prevIP[3]) < 254) {
-              newelement.setAttribute('Value', ([prevIP[0], prevIP[1], prevIP[2], (parseInt(prevIP[3]) + 1)].join('.')))
-            }
-          }
-          //newelement.setAttribute('Value',ServerCount);
-          td.appendChild(newelement);
-          CellCount++
-          //Unique Mac Address
-          td = tr.insertCell(CellCount);
-          td.setAttribute('class','ipaddr');
-          var newelement = document.createElement('input');
-          newelement.setAttribute('type','text');
-          newelement.setAttribute('name','MAC' + ServerCount);
-          newelement.setAttribute('placeholder',"00:00:00:00:00:00");
-          if (ServerCount > 1) {
-            newelement.setAttribute('Value',ManualIPTable.rows[ServerCount-1].children[4].childNodes[0].value.substring(0,9))
-          }
-          //newelement.setAttribute('Value',ServerCount);
-          td.appendChild(newelement);
-          CellCount++
+{% block scripts %}
+    <script>
+      function InstallDiskShow(itemclickedon) {
+        // alert(itemclickedon);
+        if (itemclickedon == "firstdisk") {
+          FistDiskTypeControls.style.display = "block";
+        } else {
+          FistDiskTypeControls.style.display = "none";
         }
-        function RemoveManualIPRow() {
-          if (ServerCount > 1) {
-            document.getElementById('ManualIPTable').deleteRow(ServerCount);
-            ServerCount--;
+        if (itemclickedon == "disk") {
+          DiskPathTypeControls.style.display = "block";
+        } else {
+          DiskPathTypeControls.style.display = "none";
+        }
+      }
+      function IPListShow(itemclickedon) {
+        // alert(itemclickedon);
+        if (itemclickedon == "CSV") {
+          CSV.style.display = "block";
+        } else {
+          CSV.style.display = "none";
+        }
+        if (itemclickedon == "ManualIP") {
+          ManualIP.style.display = "block";
+        } else {
+          ManualIP.style.display = "none";
+        }
+      }
+      function AddManualIPRow() {
+        ServerCount++
+        if (ServerCount<=99) { ServerCountStr = ("0"+ServerCount).slice(-2); }
+        var table = document.getElementById('ManualIPTable');
+        //var columns = ManualIPTable.rows[0].cells.length;
+        var tr = table.insertRow(); //ManualIPTable.rows.length
+        var CellCount;
+        CellCount = 0;
+
+        //Hostname Prefix
+        //var td = document.createElement('td')
+        td = tr.insertCell(CellCount);
+        td.setAttribute('class','prefix');
+        td.setAttribute('id','HOSTPREFIXStr' + ServerCount);
+        td.innerHTML = document.getElementById('HOSTPREFIX').value;
+        CellCount++
+        //Unique hostname
+        td = tr.insertCell(CellCount);
+        td.setAttribute('class','hostname');
+        var newelement = document.createElement('input');
+        newelement.setAttribute('type','text');
+        newelement.setAttribute('name','HOSTNAME' + ServerCount);
+        if (ServerCount > 1) {
+          prevValue = ManualIPTable.rows[ServerCount-1].children[CellCount].childNodes[0].value;
+          if (isNaN(prevValue) == false) {
+            IntValue = parseInt(prevValue);
+            IntValue++
+            newValue = ''.padStart(prevValue.length - IntValue.toString().length, '0') + IntValue
+            newelement.setAttribute('Value',newValue);
+          }
+        } else {
+          newelement.setAttribute('Value','01');
+        }
+        //newelement.setAttribute('Value',ServerCountStr);
+        td.appendChild(newelement);
+        CellCount++
+        //Hostname suffix
+        td = tr.insertCell(CellCount);
+        td.setAttribute('class','suffix');
+        td.setAttribute('id','HOSTSUFFIXStr' + ServerCount);
+        td.innerHTML = document.getElementById('HOSTSUFFIX').value;
+        CellCount++
+        //Unique IP Address
+        td = tr.insertCell(CellCount);
+        td.setAttribute('class','ipaddr');
+        var newelement = document.createElement('input');
+        newelement.setAttribute('type','text');
+        newelement.setAttribute('name','IPADDR' + ServerCount);
+        if (ServerCount > 1) {
+          prevIP = ManualIPTable.rows[ServerCount-1].children[CellCount].childNodes[0].value.split('.')
+          //console.log(prevIP)
+          if (parseInt(prevIP[3]) < 254) {
+            newelement.setAttribute('Value', ([prevIP[0], prevIP[1], prevIP[2], (parseInt(prevIP[3]) + 1)].join('.')))
           }
         }
-        function UpdateESXiHostName() {
-          var prefix = document.getElementById("HOSTPREFIX").value;
-          var suffix = document.getElementById("HOSTSUFFIX").value;
-          var table = document.getElementById('ManualIPTable');
-          var i;
-          for (i = 1; i < document.getElementById('ManualIPTable').rows.length; i++)  {
-            document.getElementById('HOSTPREFIXStr' + i).innerText = prefix;
-            document.getElementById('HOSTSUFFIXStr' + i).innerText = suffix;
-          }
+        //newelement.setAttribute('Value',ServerCount);
+        td.appendChild(newelement);
+        CellCount++
+        //Unique Mac Address
+        td = tr.insertCell(CellCount);
+        td.setAttribute('class','ipaddr');
+        var newelement = document.createElement('input');
+        newelement.setAttribute('type','text');
+        newelement.setAttribute('name','MAC' + ServerCount);
+        newelement.setAttribute('placeholder',"00:00:00:00:00:00");
+        if (ServerCount > 1) {
+          newelement.setAttribute('Value',ManualIPTable.rows[ServerCount-1].children[4].childNodes[0].value.substring(0,9))
         }
-        ServerCount = 0 // Find usage will increment to 1.
-        AddManualIPRow()
-        </script>
-    </body>
-</html>
+        //newelement.setAttribute('Value',ServerCount);
+        td.appendChild(newelement);
+        CellCount++
+      }
+      function RemoveManualIPRow() {
+        if (ServerCount > 1) {
+          document.getElementById('ManualIPTable').deleteRow(ServerCount);
+          ServerCount--;
+        }
+      }
+      function UpdateESXiHostName() {
+        var prefix = document.getElementById("HOSTPREFIX").value;
+        var suffix = document.getElementById("HOSTSUFFIX").value;
+        var table = document.getElementById('ManualIPTable');
+        var i;
+        for (i = 1; i < document.getElementById('ManualIPTable').rows.length; i++)  {
+          document.getElementById('HOSTPREFIXStr' + i).innerText = prefix;
+          document.getElementById('HOSTSUFFIXStr' + i).innerText = suffix;
+        }
+      }
+      ServerCount = 0 // Find usage will increment to 1.
+      AddManualIPRow()
+      </script>
+{% endblock %}
