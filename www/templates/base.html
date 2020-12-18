@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    {% block metarefresh %}{% endblock %}
+    <title>Cisco Learning Labs VMware Auto-Installer</title>
+    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/styles.css') }}">
+  </head>
+  <body>
+    <div class="main_page">
+      <div class="logo"><img src="{{ url_for('static', filename='cisco-logo.png') }}" alt="Cisco Logo"/></div>
+      <div class="page_header">Welcome to Cisco Learning Labs <br />VMware Auto-Installer<br />(v0.9alpha 2020-12-18)</div>
+      <div id="navbar" class="menu">
+        <a href="{{ url_for('autoinstaller_gui') }}">Home</a>
+        <a href="{{ url_for('show') }}">Status</a>
+        <a href="{{ url_for('upload_iso') }}">Upload ISO</a>
+        <a href="{{ url_for('services') }}">Show services</a>
+      </div>
+      {% block content %}{% endblock %}
+    </div>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

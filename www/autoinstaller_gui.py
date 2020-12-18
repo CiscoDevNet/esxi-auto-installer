@@ -101,15 +101,6 @@ def autoinstaller_gui():
                 save_install_data_to_db(hostname, mac, result['IPADDR' + seq], result['SUBNET'],
                                         result['NETMASK'], result['GATEWAY'], '0', result['VMNIC'],
                                         enablessh, clearpart, result['ROOTPW'], result['ISOFile'], 'Ready to deploy')
-
-
-                ### tmp file for debugging ###
-                with open('/tmp/autotuner.out', 'a+') as file:
-                  for key, value in result.items():
-                    file.write(key + ': ' + value + '\n')
-
-        # display status page
-        # return render_template('status.html', install_data=result)
         return redirect(url_for('show'))
     return render_template('index.html', form=form, isodirs=dirs)
 
@@ -123,8 +114,9 @@ def send_ks(filename):
 def show():
     with open(VMAI_DB, 'r') as vmaidb_file:
         vmaidb = json.load(vmaidb_file)
-    return render_template('show-vmai-db.html', vmaidb=vmaidb, srvip=request.host.split(':')[0])
+    return render_template('show-vmai-db.html', vmaidb=vmaidb)
 
+# upload and extract ISO
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_iso():
     print('[DEBUG] Listing ' + TFTPISODIR + ' content:')
@@ -146,6 +138,30 @@ def upload_iso():
                 extract_iso_to_tftpboot(uploaded_iso)
         return redirect(url_for('autoinstaller_gui'))
     return render_template('upload.html')
+
+# show system services
+@app.route('/services')
+def services():
+    services_dict = {}
+    for service in 'dhcpd', 'crond', 'tftp':
+        if 'tftp' in service:
+            # tftp-server get's activatrd through socket
+            services_dict[service] = check_service_status('tftp-server.socket')
+        else:
+            services_dict[service] = check_service_status(service)
+    return render_template('show-services.html', services=services_dict)
+
+# show service detailed status
+@app.route('/service-details/<service_name>', methods=['GET'])
+def service_details(service_name):
+    if 'tftp' in service_name:
+        service_name = 'tftp-server.socket'
+    status_file = DOCROOT + 'tmp/' + service_name
+    system('/usr/bin/systemctl status ' + service_name + ' >' + status_file)
+
+    with open(status_file, 'r') as output_file:
+        output = output_file.read()
+    return render_template('service-detailed-status.html', service=service_name, details=output)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=80, debug=True)
