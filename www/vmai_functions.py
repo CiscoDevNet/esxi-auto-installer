@@ -231,3 +231,11 @@ def extract_iso_to_tftpboot(uploaded_file, uploaddir=UPLOADDIR, tmpisodir=TMPISO
     dirs = [f for f in listdir(tftpisodir) if path.isdir(path.join(tftpisodir, f))]
     print(dirs)
     system('ls -la ' + tftpisodir + ' 1>&2')
+
+def check_service_status(service_name):
+    return_code = system('/usr/bin/systemctl status ' + service_name + '>/dev/null')
+    if return_code == 0:
+        service_status = 'Running.'
+    else:
+        service_status = 'Stopped. Check details.'
+    return service_status
