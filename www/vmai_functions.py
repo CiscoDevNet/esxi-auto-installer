@@ -52,7 +52,6 @@ def generate_kickstart(rootpw, hostname, ipaddr, netmask, gateway, vmnicid, kscf
                                   ipaddr=ipaddr,
                                   netmask=netmask, gateway=gateway, hostname=hostname, pre_section=pre_section,
                                   set_def_gw=set_def_gw, enable_ssh=enable_ssh, disable_ipv6=disable_ipv6)
-    print(kickstart)
     with open(KSDIR + kscfg, 'w+') as ksfile:
         ksfile.write(kickstart)
 
