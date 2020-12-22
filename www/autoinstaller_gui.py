@@ -6,7 +6,6 @@ from os import system, path, listdir
 import sys
 from vmai_functions import *
 from config import *
-# from config_local import *
 # import logging
 
 app = Flask(__name__)
@@ -51,26 +50,16 @@ def autoinstaller_gui():
 
                 ### customize kickstart config ###
                 kscfg = hostname + "_ks.cfg"
-                enablessh = False
-                clearpart = False
-
-                # check if "Enable SSH" has been set
-                try:
-                    if result['SSH']:
-                        enablessh = True
-                except Exception:
-                    pass
-
-                # check if "Erase existing partition" has been set
-                try:
-                    if result['clearpart']:
-                        clearpart = True
-                except Exception:
-                    pass
+                pre_section = ''
+                # generate %pre section with static routes
+                if result['StaticRoute'] in 'True':
+                    pre_section = generate_ks_pre_section(result)
 
                 ### generate kickstart file and save to KSDIR ###
-                generate_kickstart(result['ROOTPW'], hostname, result['IPADDR' + seq], result['SUBNET'],
-                                   result['NETMASK'], result['GATEWAY'], result['VMNIC'], kscfg, enablessh, clearpart)
+                generate_kickstart(result['ROOTPW'], hostname, result['IPADDR' + seq],
+                                   result['NETMASK'], result['GATEWAY'], result['VMNIC'], kscfg,
+                                   result['FirstDisk'], result['FirstDiskType'], result['DiskPath'], pre_section,
+                                   result.get('SSH'), result.get('clearpart'))
 
                 ### customize PXE config ###
                 srvip = request.host.split(':')[0]
@@ -94,13 +83,10 @@ def autoinstaller_gui():
                 system('sudo /usr/bin/systemctl restart dhcpd')
 
                 ### save installation data to local database (VMAI_DB)
-                # save_install_data_to_db(hostname, mac, result['IPADDR' + seq], result['SUBNET'],
-                #                         result['NETMASK'], result['GATEWAY'], result['VLAN'], result['VMNIC'],
-                #                         enablessh, clearpart, result['ROOTPW'], isover, 'Ready to deploy')
-                ## setting VLAN disabled in web form - adjusting function call accordingly
                 save_install_data_to_db(hostname, mac, result['IPADDR' + seq], result['SUBNET'],
                                         result['NETMASK'], result['GATEWAY'], '0', result['VMNIC'],
-                                        enablessh, clearpart, result['ROOTPW'], result['ISOFile'], 'Ready to deploy')
+                                        result.get('SSH'), result.get('clearpart'), result['ROOTPW'],
+                                        result['ISOFile'], 'Ready to deploy')
         return redirect(url_for('show'))
     return render_template('index.html', form=form, isodirs=dirs)
 

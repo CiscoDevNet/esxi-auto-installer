@@ -21,7 +21,9 @@
                     <td>Specify which image your ESXi server will boot from. If the image you need is not listed, you can <a href="{{ url_for('upload_iso') }}">upload your own ISO</a>.</td>
                 </tr>
                 <tr>
-                    <td>ESXi root password: </td><td><input type="text" name="ROOTPW" value=""></td><td>Enter the password for the root account.</td>
+                    <td>ESXi root password: </td>
+                    <td><input type="text" name="ROOTPW" value=""></td>
+                    <td>Enter the password for the root account.</td>
                 </tr>
 	  <!--
                 <tr>
@@ -30,11 +32,15 @@
                 </tr>
 	  -->
                 <tr>
-                    <td>Mgmt VMNic: </td><td><input type="number" name="VMNIC" value='0' max=99></td><td>Select which VMNic is going to be the Mgmt Nic.<br />Normally this is set to 0 for VMNic0, but you can specify a different VMNic here.</td>
+                    <td>Mgmt VMNic: </td>
+                    <td><input type="number" name="VMNIC" value='0' max=99></td>
+                    <td>Select which VMNic is going to be the Mgmt Nic.<br />
+                      Normally this is set to 0 for VMNic0, but you can specify a different VMNic here.</td>
                 </tr>
                 <tr>
-                    <td>Install Disk: </td><td>
-                        <input type="radio" id="FirstDisk" name="FirstDisk" value="" checked oninput="InstallDiskShow('')">
+                    <td>Install Disk: </td>
+                    <td>
+                        <input type="radio" id="FirstDisk" name="FirstDisk" value="firstdiskfound" checked oninput="InstallDiskShow('')">
                         <label for="FirstDiskType">First Disk Found (Default)</label><br />
                         <input type="radio" id="FirstDisk" name="FirstDisk" value="firstdisk" oninput="InstallDiskShow('firstdisk')">
                         <label for="FirstDiskType">First Disk of a certain type</label><br />
@@ -45,7 +51,7 @@
                                 <option value="usb" checked>USB Disks</option>
                             </select><br />
                           </div>
-                        <input type="radio" id="FirstDisk" name="FirstDisk" value="disk" oninput="InstallDiskShow('disk')">
+                        <input type="radio" id="FirstDisk" name="FirstDisk" value="diskpath" oninput="InstallDiskShow('disk')">
                         <label for="FirstDisk">Use a specific disk</label><br />
                         <div id="DiskPathTypeControls" style="display:none">
                             - - <Input type=text name='DiskPath' value=''><br />
@@ -55,11 +61,13 @@
                     <td>You can specify a particular disk to install ESXi into.</td>
                 </tr>
                 <tr>
-                  <td>Enable SSH? </td><td><input type="checkbox" value="enablessh" name="SSH" checked></td>
+                  <td>Enable SSH? </td>
+                  <td><input type="checkbox" value="enablessh" name="SSH" checked></td>
                   <td>If checked, SSH will be enabled on the ESXi.</td>
                 </tr>
                 <tr>
-                  <td>Erase existing partition? </td><td><input type="checkbox" value="clearpart" name="clearpart"></td>
+                  <td>Erase existing partition? </td>
+                  <td><input type="checkbox" value="clearpart" name="clearpart"></td>
                   <td>If checked, the disk will be erased before ESXi is installed.</td>
                 </tr>
                 <!--
@@ -73,6 +81,22 @@
             <div class="content_section_text">
               Enter network information for the ESXi hosts:<br /><br />
             </div>
+            Does ESXi require static routes at boot time?
+            <input type="radio" id="StaticRoute" name="StaticRoute" value="True"  oninput="StaticRoutesShow('True')">Yes
+            <input type="radio" checked id="StaticRoute" name="StaticRoute" value="False" oninput="StaticRoutesShow('False')">No<br />
+            <div ID="StaticRoutes" style="display: none;margin-left: 50px">
+              <Table  id="StaticRouteTable" style="Border: none; margin-left: 50px;">
+                <tr>
+                  <td style="Border: none; padding: 0px;">Subnet Address<br /><input type="text" name="StaticSubnet0" id="StaticSubnet0">/</td>
+                  <td style="Border: none; padding: 0px;">Mask<br /><input type="number" name="StaticMask0" value="24" min="0" max="32" size="4"></td>
+                  <td style="Border: none; padding: 10px;">Gateway<br /><input type="text" name="StaticGateway0"></td>
+                </tr>
+              </Table>
+              <input type="button" value="Add Route" onclick="AddStaticRoute()" Style="margin-left: 50px;">
+              <input type="button" value="Delete Last Route" onclick="RemoveStaticRoute()" Style="margin-left: 50px;">
+            </div>
+            <br />
+            <br />
             How do you want to enter your IP Addresses?<br />
             <input type="radio" id="IPList" name="IPList" value="Manual" Checked oninput="IPListShow('ManualIP')">
             <label>Manual Entry</label><br />
@@ -83,10 +107,12 @@
               Common Settings:<br />
               <Table style="Border: none; margin-left: 50px;">
                 <tr>
-                  <td style="Border: none; padding: 10px;">ESXi Hostname Prefix<br /><input type="text" name="HOSTPREFIX" id="HOSTPREFIX" oninput="UpdateESXiHostName()">
-                  <br /><div style="font-size: smaller;">Optional</div></td>
-                  <td style="Border: none; padding: 10px;">ESXi Hostname Suffix<br /><input type="text" name="HOSTSUFFIX" id="HOSTSUFFIX" oninput="UpdateESXiHostName()">
-                  <br /><div style="font-size: smaller;">Optional</div></td></td>
+                  <td style="Border: none; padding: 10px;">ESXi Hostname Prefix<br />
+                    <input type="text" name="HOSTPREFIX" id="HOSTPREFIX" oninput="UpdateESXiHostName()"><br />
+                    <div style="font-size: smaller;">Optional</div></td>
+                  <td style="Border: none; padding: 10px;">ESXi Hostname Suffix<br />
+                    <input type="text" name="HOSTSUFFIX" id="HOSTSUFFIX" oninput="UpdateESXiHostName()"><br />
+                    <div style="font-size: smaller;">Optional</div></td>
                   <td style="Border: none; padding: 10px;">IP Subnet<br /><input type="text" name="SUBNET"></td>
                   <td style="Border: none; padding: 10px;">Netmask<br /><input type="text" name="NETMASK"></td>
                   <td style="Border: none; padding: 10px;">Gateway<br /><input type="text" name="GATEWAY"></td>
@@ -249,6 +275,52 @@
         for (i = 1; i < document.getElementById('ManualIPTable').rows.length; i++)  {
           document.getElementById('HOSTPREFIXStr' + i).innerText = prefix;
           document.getElementById('HOSTSUFFIXStr' + i).innerText = suffix;
+        }
+      }
+      function StaticRoutesShow(itemclickedon) {
+        // alert(itemclickedon);
+        if (itemclickedon == "True") {
+          StaticRoutes.style.display = "block";
+        } else {
+          StaticRoutes.style.display = "none";
+        }
+      }
+      function AddStaticRoute() {
+        var table = document.getElementById('StaticRouteTable');
+        var tablelength = table.rows.length
+        var tr = table.insertRow();
+        // Insert IP Subnet Address
+        td = tr.insertCell();
+        td.setAttribute('style','Border: none; padding: 0px');
+        var newelement = document.createElement('input');
+        newelement.setAttribute('type','text');
+        newelement.setAttribute('name','StaticSubnet' + tablelength);
+        td.appendChild(newelement);
+        td.innerHTML=(td.innerHTML + '/');
+        // Add Classless mask
+        td = tr.insertCell();
+        td.setAttribute('style','Border: none; padding: 0px');
+        var newelement = document.createElement('input');
+        newelement.setAttribute('type','number');
+        newelement.setAttribute('name','StaticMask' + tablelength);
+        newelement.setAttribute('value','24');
+        newelement.setAttribute('min','0');
+        newelement.setAttribute('max','32');
+        newelement.setAttribute('size','4');
+        td.appendChild(newelement);
+        // Add Gateway
+        td = tr.insertCell();
+        td.setAttribute('style','Border: none; padding: 10px');
+        var newelement = document.createElement('input');
+        newelement.setAttribute('type','text');
+        newelement.setAttribute('name','StaticGateway' + tablelength);
+        td.appendChild(newelement);
+      }
+      function RemoveStaticRoute() {
+        var table = document.getElementById('StaticRouteTable');
+        var tablelength = table.rows.length
+        if (tablelength > 1) {
+          document.getElementById('StaticRouteTable').deleteRow(-1);
         }
       }
       ServerCount = 0 // Find usage will increment to 1.
