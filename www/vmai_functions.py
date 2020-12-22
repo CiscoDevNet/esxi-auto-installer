@@ -2,31 +2,74 @@
 from config import *
 from os import system, path, listdir
 import re, json
+from jinja2 import Template
 
-def generate_kickstart(rootpw, hostname, ipaddr, subnet, netmask, gateway, vmnicid, kscfg, enablessh=False, clearpart=False):
-    # uses KSTEMPLATE to build custom kickstart config based on provided parameters
-    # custom kickstart is saved to KSDIR
-    kstemplate_file = open(KSTEMPLATE)
-    kstemplate = kstemplate_file.read()
-    # check if "Erase existing partition" has been set
+def generate_kickstart(rootpw, hostname, ipaddr, netmask, gateway, vmnicid, kscfg,
+                       firstdisk, firstdisktype, diskpath, pre_section, enablessh=False, clearpart=False):
+    # set installation disk
+    if firstdisk == 'firstdiskfound':
+        # first disk found
+        firstdisk_install = 'firstdisk'
+        cleardisk = 'firstdisk'
+    elif firstdisk == 'firstdisk':
+        # first disk: local, remote or usb
+        firstdisk_install = 'firstdisk=' + firstdisktype
+        cleardisk = 'firstdisk=' + firstdisktype
+    elif firstdisk == 'diskpath':
+        firstdisk_install = 'disk=' + diskpath
+        cleardisk = 'drives=' + diskpath
+
+    # customize install and (optionally) clearpart lines
+    install = 'install --' + firstdisk_install + ' --overwritevmfs'
     if clearpart:
-        kstemplate = kstemplate.replace('accepteula', 'accepteula\nclearpart --firstdisk --overwritevmfs')
-    kstemplate = kstemplate.replace('ROOTPW', rootpw)
-    kstemplate = kstemplate.replace('HOSTNAME', hostname)
-    kstemplate = kstemplate.replace('IPADDR', ipaddr)
-    kstemplate = kstemplate.replace('SUBNET', subnet)
-    kstemplate = kstemplate.replace('NETMASK', netmask)
-    kstemplate = kstemplate.replace('GATEWAY', gateway)
-    kstemplate = kstemplate.replace('VMNIC', 'vmnic' + vmnicid)
+        clearline = 'clearpart --' + cleardisk + ' --overwritevmfs\n'
+    else:
+        clearline = ''
 
+    # additional default route set when static route has been selected in %pre section
+    if pre_section:
+        set_def_gw = '# Set Default Gateway\nesxcli network ip route ipv4 add --gateway ' + gateway + ' --network 0.0.0.0\n'
+    else:
+        set_def_gw = ''
+
+    # enable ssh
+    if enablessh:
+        enable_ssh = '# enable & start remote ESXi Shell (SSH)\nvim-cmd hostsvc/enable_ssh\nvim-cmd hostsvc/start_ssh\n'
+    else:
+        enable_ssh = ''
+
+    # in this version we enforce disable IPv6
+    disableipv6 = False
+    if disableipv6:
+        disable_ipv6 = '# disable IPv6\nesxcli network ip set --ipv6-enabled=false\n'
+    else:
+        disable_ipv6 = ''
+
+    # tead jinja template from file and render using read variables
+    with open(KSTEMPLATE, 'r') as kstemplate_file:
+        kstemplate = Template(kstemplate_file.read())
+    kickstart = kstemplate.render(clearpart=clearline, install=install, rootpw=rootpw, vmnicid='vmnic' + vmnicid,
+                                  ipaddr=ipaddr,
+                                  netmask=netmask, gateway=gateway, hostname=hostname, pre_section=pre_section,
+                                  set_def_gw=set_def_gw, enable_ssh=enable_ssh, disable_ipv6=disable_ipv6)
+    print(kickstart)
     with open(KSDIR + kscfg, 'w+') as ksfile:
-        ksfile.write(kstemplate)
-        # check if "Enable SSH" has been set
-        if enablessh:
-            ksfile.write(SSHTXT)
-        else:
-            ksfile.write(NOSSHTXT)
-    kstemplate_file.close()
+        ksfile.write(kickstart)
+
+def generate_ks_pre_section(result):
+    # 'localcli network ip route ipv4 add -n NET_CIDR -g GATEWAY'
+    static_routes = ''
+    for key in result.keys():
+        if 'StaticSubnet' in key:
+            # generate seq number based on StaticSubnet#
+            seq = key.replace('StaticSubnet', '')
+            # generate 'localcli network ip route ipv4 add -n NET_CIDR -g GATEWAY' stanza for each entry
+            net_cidr = result['StaticSubnet' + seq] + '/' + result['StaticMask' + seq]
+            gateway = result['StaticGateway' + seq]
+            static_routes += 'localcli network ip route ipv4 add -n ' + net_cidr + ' -g ' + gateway + '\n'
+    pre_section = '%pre --interpreter=busybox\n' + static_routes + '\n'
+    print('[DEBUG] generate_ks_pre_section(): \n' + pre_section)
+    return pre_section
 
 def generate_pxe(ksurl, isover, macaddr):
     # uses PXETEMPLATE to build custom PXE config based on provided parameters
@@ -42,7 +85,6 @@ def generate_pxe(ksurl, isover, macaddr):
 
     with open(pxecfg, 'w+') as pxefile:
         pxefile.write(pxetemplate)
-    # return ISOVER
 
 def generate_dhcp(hostname, subnet, netmask, ipaddr, gateway, macaddr):
     dhcptemplate_file = open(DHCPTEMPLATE)
@@ -81,48 +123,32 @@ def save_install_data_to_db(hostname, mac, ipaddr, subnet, netmask, gateway, vla
                             enablessh, clearpart, rootpw, isover, status):
     if path.isfile(VMAI_DB):
         print('[INFO] ' + VMAI_DB + ' file exists - importing data and adding new entry:')
-
         with open(VMAI_DB, 'r') as vmaidb_file:
             vmaidb_dict = json.load(vmaidb_file)
-            # need to add checking of 'hostname' already exists ion VMAI_DB
-            vmaidb_dict[hostname] = {}
-            vmaidb_dict[hostname]['MAC'] = mac
-            vmaidb_dict[hostname]['IPADDR'] = ipaddr
-            vmaidb_dict[hostname]['SUBNET'] = subnet
-            vmaidb_dict[hostname]['NETMASK'] = netmask
-            vmaidb_dict[hostname]['GATEWAY'] = gateway
-            vmaidb_dict[hostname]['VLAN'] = vlan
-            vmaidb_dict[hostname]['VMNIC'] = vmnic
-            vmaidb_dict[hostname]['SSH'] = enablessh
-            vmaidb_dict[hostname]['CLEARPART'] = clearpart
-            vmaidb_dict[hostname]['ROOTPW'] = rootpw
-            vmaidb_dict[hostname]['ISO'] = isover
-            vmaidb_dict[hostname]['STATUS'] = status
-            print(vmaidb_dict)
-            vmaidb_file.close()
-        with open(VMAI_DB, 'w+') as vmaidb_file:
-            json.dump(vmaidb_dict, vmaidb_file, ensure_ascii=False, indent=2)
-            vmaidb_file.close()
     else:
+        # this should not ever happen, but covering this 'just in case'
         print('[INFO] ' + VMAI_DB + ' file DOES NOT exist - creating file and adding new entry')
         vmaidb_dict = {}
-        vmaidb_dict[hostname] = {}
-        vmaidb_dict[hostname]['MAC'] = mac
-        vmaidb_dict[hostname]['IPADDR'] = ipaddr
-        vmaidb_dict[hostname]['SUBNET'] = subnet
-        vmaidb_dict[hostname]['NETMASK'] = netmask
-        vmaidb_dict[hostname]['GATEWAY'] = gateway
-        vmaidb_dict[hostname]['VLAN'] = vlan
-        vmaidb_dict[hostname]['VMNIC'] = vmnic
-        vmaidb_dict[hostname]['SSH'] = enablessh
-        vmaidb_dict[hostname]['CLEARPART'] = clearpart
-        vmaidb_dict[hostname]['ROOTPW'] = rootpw
-        vmaidb_dict[hostname]['ISO'] = isover
-        vmaidb_dict[hostname]['STATUS'] = status
-        print(vmaidb_dict)
-        with open(VMAI_DB, 'w+') as vmaidb_file:
-            json.dump(vmaidb_dict, vmaidb_file, ensure_ascii=False, indent=2)
-            vmaidb_file.close()
+
+    # need to add checking of 'hostname' already exists ion VMAI_DB
+    vmaidb_dict[hostname] = {}
+    vmaidb_dict[hostname]['MAC'] = mac
+    vmaidb_dict[hostname]['IPADDR'] = ipaddr
+    vmaidb_dict[hostname]['SUBNET'] = subnet
+    vmaidb_dict[hostname]['NETMASK'] = netmask
+    vmaidb_dict[hostname]['GATEWAY'] = gateway
+    vmaidb_dict[hostname]['VLAN'] = vlan
+    vmaidb_dict[hostname]['VMNIC'] = vmnic
+    vmaidb_dict[hostname]['SSH'] = enablessh
+    vmaidb_dict[hostname]['CLEARPART'] = clearpart
+    vmaidb_dict[hostname]['ROOTPW'] = rootpw
+    vmaidb_dict[hostname]['ISO'] = isover
+    vmaidb_dict[hostname]['STATUS'] = status
+    print(vmaidb_dict)
+
+    with open(VMAI_DB, 'w+') as vmaidb_file:
+        json.dump(vmaidb_dict, vmaidb_file, ensure_ascii=False, indent=2)
+        vmaidb_file.close()
 
 def print_vmai_db():
     # print VMAI_DB summary to stdout for debugging purposes
