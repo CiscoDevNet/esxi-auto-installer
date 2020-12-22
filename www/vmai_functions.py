@@ -49,8 +49,7 @@ def generate_kickstart(rootpw, hostname, ipaddr, netmask, gateway, vmnicid, kscf
     with open(KSTEMPLATE, 'r') as kstemplate_file:
         kstemplate = Template(kstemplate_file.read())
     kickstart = kstemplate.render(clearpart=clearline, install=install, rootpw=rootpw, vmnicid='vmnic' + vmnicid,
-                                  ipaddr=ipaddr,
-                                  netmask=netmask, gateway=gateway, hostname=hostname, pre_section=pre_section,
+                                  ipaddr=ipaddr, netmask=netmask, gateway=gateway, hostname=hostname, pre_section=pre_section,
                                   set_def_gw=set_def_gw, enable_ssh=enable_ssh, disable_ipv6=disable_ipv6)
     with open(KSDIR + kscfg, 'w+') as ksfile:
         ksfile.write(kickstart)
