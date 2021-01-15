@@ -9,12 +9,13 @@
   <body>
     <div class="main_page">
       <div class="logo"><img src="{{ url_for('static', filename='cisco-logo.png') }}" alt="Cisco Logo"/></div>
-      <div class="page_header">Welcome to Cisco Learning Labs <br />VMware Auto-Installer<br />(v0.9alpha 2020-12-18)</div>
+      <div class="page_header">Welcome to Cisco Learning Labs <br />VMware Auto-Installer<br />(v0.10demo 2021-01-13)</div>
       <div id="navbar" class="menu">
         <a href="{{ url_for('autoinstaller_gui') }}">Home</a>
         <a href="{{ url_for('show') }}">Status</a>
         <a href="{{ url_for('upload_iso') }}">Upload ISO</a>
         <a href="{{ url_for('services') }}">Show services</a>
+        <a href="{{ url_for('admin') }}">Admin</a>
       </div>
       {% block content %}{% endblock %}
     </div>
