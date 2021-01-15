@@ -100,7 +100,8 @@ def send_ks(filename):
 def show():
     with open(VMAI_DB, 'r') as vmaidb_file:
         vmaidb = json.load(vmaidb_file)
-    return render_template('show-vmai-db.html', vmaidb=vmaidb)
+    sorteddb = dict(sorted(vmaidb.items(), key=lambda x: x[0].lower()))
+    return render_template('show-vmai-db.html', vmaidb=sorteddb)
 
 # upload and extract ISO
 @app.route('/upload', methods=['GET', 'POST'])
@@ -154,7 +155,6 @@ def service_details(service_name):
 def admin():
     output = ''
     if request.method == 'POST':
-        print('posted!')
         if request.form['submit_button'] == 'reset configuration':
             print('[DEBUG] Running /opt/vmai/scripts/vmai_cleanup.sh - reset to initial state.')
             system('sudo /opt/vmai/scripts/vmai_cleanup.sh')
