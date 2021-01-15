@@ -66,7 +66,6 @@ def generate_ks_pre_section(result):
             gateway = result['StaticGateway' + seq]
             static_routes += 'localcli network ip route ipv4 add -n ' + net_cidr + ' -g ' + gateway + '\n'
     pre_section = '%pre --interpreter=busybox\n' + static_routes + '\n'
-    print('[DEBUG] generate_ks_pre_section(): \n' + pre_section)
     return pre_section
 
 def generate_pxe(ksurl, isover, macaddr):
@@ -146,7 +145,6 @@ def save_install_data_to_db(hostname, mac, ipaddr, subnet, netmask, gateway, vla
 
     with open(VMAI_DB, 'w+') as vmaidb_file:
         json.dump(vmaidb_dict, vmaidb_file, ensure_ascii=False, indent=2)
-        vmaidb_file.close()
 
 def print_vmai_db():
     # print VMAI_DB summary to stdout for debugging purposes
