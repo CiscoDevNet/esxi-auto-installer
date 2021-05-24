@@ -100,7 +100,8 @@ def send_ks(filename):
 def show():
     with open(VMAI_DB, 'r') as vmaidb_file:
         vmaidb = json.load(vmaidb_file)
-    return render_template('show-vmai-db.html', vmaidb=vmaidb)
+    sorteddb = dict(sorted(vmaidb.items(), key=lambda x: x[0].lower()))
+    return render_template('show-vmai-db.html', vmaidb=sorteddb)
 
 # upload and extract ISO
 @app.route('/upload', methods=['GET', 'POST'])
@@ -148,6 +149,28 @@ def service_details(service_name):
     with open(status_file, 'r') as output_file:
         output = output_file.read()
     return render_template('service-detailed-status.html', service=service_name, details=output)
+
+# admin panel
+@app.route('/admin', methods=['GET', 'POST'])
+def admin():
+    output = ''
+    if request.method == 'POST':
+        if request.form['submit_button'] == 'reset configuration':
+            print('[DEBUG] Running /opt/vmai/scripts/vmai_cleanup.sh - reset to initial state.')
+            system('sudo /opt/vmai/scripts/vmai_cleanup.sh')
+        elif request.form['submit_button'] == 'restart dhcpd':
+            print('[DEBUG] Restarting dhcpd service')
+            system('sudo /usr/bin/systemctl restart dhcpd')
+        # capture current auto-installer status
+        print('[DEBUG] Check current Auto-installer status')
+        system('sudo /opt/vmai/scripts/vmai_status_bw.sh >/tmp/vmai_status.out')
+    elif request.method == 'GET':
+        # on GET only display admin page with details on current status
+        print('[DEBUG] Check current Auto-installer status')
+        system('sudo /opt/vmai/scripts/vmai_status_bw.sh >/tmp/vmai_status.out')
+    with open('/tmp/vmai_status.out', 'r') as output_file:
+        output = output_file.read()
+    return render_template('admin.html', details=output)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=80, debug=True)

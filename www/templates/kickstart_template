@@ -1,6 +1,0 @@
-accepteula
-install --firstdisk --overwritevmfs
-rootpw ROOTPW
-network --bootproto=static --addvmportgroup=true --device=VMNIC --ip=IPADDR --netmask=NETMASK --gateway=GATEWAY --hostname=HOSTNAME --nameserver=208.67.222.222,208.67.220.220
-reboot
-
