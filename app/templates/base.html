@@ -5,17 +5,19 @@
     {% block metarefresh %}{% endblock %}
     <title>Cisco Learning Labs VMware Auto-Installer</title>
     <link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
   </head>
   <body>
     <div class="main_page">
       <div class="logo"><img src="{{ url_for('static', filename='cisco-logo.png') }}" alt="Cisco Logo"/></div>
-      <div class="page_header">Welcome to Cisco Learning Labs <br />VMware Auto-Installer<br />(v0.10demo 2021-01-13)</div>
+      <div class="page_header">
+        <div>ESXi Auto-Installer</div>
+        <div class="version">(v1.0 2021-07-30 (alpha))</div>
+      </div>
       <div id="navbar" class="menu">
         <a href="{{ url_for('autoinstaller_gui') }}">Home</a>
         <a href="{{ url_for('show') }}">Status</a>
         <a href="{{ url_for('upload_iso') }}">Upload ISO</a>
-        <a href="{{ url_for('services') }}">Show services</a>
-        <a href="{{ url_for('admin') }}">Admin</a>
       </div>
       {% block content %}{% endblock %}
     </div>
