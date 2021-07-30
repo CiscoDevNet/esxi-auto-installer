@@ -1,0 +1,345 @@
+{% extends 'base.html' %}
+
+{% block content %}
+      <div class="content_section">
+        <h1>Step 1</h1>
+        <div class="content_section_text">
+          Set your ESXi Installation Options
+        </div>
+
+        <form action="" method="POST">
+            <table>
+                <tr>
+                    <td>Select your ISO Image: </td>
+                    <td>
+                      <select name="ISOFile" id="ISOFile">
+                        {% for isover in isodirs %}
+                          <option value="{{isover}}" checked>{{isover}}</option>
+                        {% endfor %}
+                      </select>
+                    </td>
+                    <td>Specify which image your ESXi server will boot from. If the image you need is not listed, you can <a href="{{ url_for('upload_iso') }}">upload your own ISO</a>.</td>
+                </tr>
+                <tr>
+                    <td>ESXi root password: </td>
+                    <td><input type="text" name="ROOTPW" required value=""></td>
+                    <td>Enter the password for the root account.</td>
+                </tr>
+                <tr>
+                    <td>Mgmt VLAN ID: </td><td><input type="number" name="VLAN" value='0' max=4094><br /><div style="font-size: smaller;">Optional</div></td>
+                    <td>If your mgmt interface requires a VLAN tag add it here. Otherwise set to 0 for no VLAN.</td>
+                </tr>
+                <tr>
+                    <td>Mgmt VMNic: </td>
+                    <td><input type="number" name="VMNIC" required value='0' max=99></td>
+                    <td>Select which VMNic is going to be the Mgmt Nic.<br />
+                      Normally this is set to 0 for VMNic0, but you can specify a different VMNic here.</td>
+                </tr>
+                <tr>
+                    <td>Install Disk: </td>
+                    <td>
+                        <input type="radio" id="FirstDisk" name="FirstDisk" value="firstdiskfound" checked oninput="InstallDiskShow('')">
+                        <label for="FirstDiskType">First Disk Found (Default)</label><br />
+                        <input type="radio" id="FirstDisk" name="FirstDisk" value="firstdisk" oninput="InstallDiskShow('firstdisk')">
+                        <label for="FirstDiskType">First Disk of a certain type</label><br />
+                        <div id="FistDiskTypeControls" style="display:none">
+                            - - <select name="FirstDiskType" id="FirstDiskType">
+                                <option value="local">Locally attached storage</option>
+                                <option value="remote">Network storage</option>
+                                <option value="usb" checked>USB Disks</option>
+                            </select><br />
+                          </div>
+                        <input type="radio" id="FirstDisk" name="FirstDisk" value="diskpath" oninput="InstallDiskShow('disk')">
+                        <label for="FirstDisk">Use a specific disk</label><br />
+                        <div id="DiskPathTypeControls" style="display:none">
+                            - - <input type=text name='DiskPath' id='DiskPath' value=''><br />
+                              Enter disk path<br />
+                        </div>
+                    </td>
+                    <td>You can specify a particular disk to install ESXi into.</td>
+                </tr>
+                <tr>
+                  <td>Enable SSH? </td>
+                  <td><input type="checkbox" value="enablessh" name="SSH" checked></td>
+                  <td>If checked, SSH will be enabled on the ESXi.</td>
+                </tr>
+                <tr>
+                  <td>Erase existing partition? </td>
+                  <td><input type="checkbox" value="clearpart" name="clearpart"></td>
+                  <td>If checked, the disk will be erased before ESXi is installed.</td>
+                </tr>
+                <!--
+                <tr>
+                  <td>Overwrite existing VMFS partitions? </td><td><input type="checkbox" value="overwritevmfs" name="overwritevmfs"></td>
+                  <td>If checked, ESXi will install over a pre-existing ESXi installation. If "Erase existing partition?" is selected, it will also erase partitions even if there is a pre-existing VMFS partition.</td>
+                </tr>
+                -->
+            </table>
+            <h1>Step 2</h1>
+            <div class="content_section_text">
+              Enter network information for the ESXi hosts:<br /><br />
+            </div>
+            Does ESXi require static routes at boot time?
+            <input type="radio" id="StaticRoute" name="StaticRoute" value="True"  oninput="StaticRoutesShow('True')">Yes
+            <input type="radio" checked id="StaticRoute" name="StaticRoute" value="False" oninput="StaticRoutesShow('False')">No<br />
+            <div ID="StaticRoutes" style="display: none;margin-left: 50px">
+              <Table  id="StaticRouteTable" style="Border: none; margin-left: 50px;">
+                <tr>
+                  <td style="Border: none; padding: 0px;">Subnet Address<br /><input type="text" name="StaticSubnet0" id="StaticSubnet0">/</td>
+                  <td style="Border: none; padding: 0px;">Mask<br /><input type="number" name="StaticMask0" id="StaticMask0" value="24" min="0" max="32" size="4"></td>
+                  <td style="Border: none; padding: 10px;">Gateway<br /><input type="text" name="StaticGateway0" id="StaticGateway0"></td>
+                </tr>
+              </Table>
+              <input type="button" value="Add Route" onclick="AddStaticRoute()" Style="margin-left: 50px;">
+              <input type="button" value="Delete Last Route" onclick="RemoveStaticRoute()" Style="margin-left: 50px;">
+            </div>
+            <br />
+            <br />
+            How do you want to enter your IP Addresses?<br />
+            <input type="radio" id="IPList" name="IPList" value="Manual" Checked oninput="IPListShow('ManualIP')">
+            <label>Manual Entry</label><br />
+            <input type="radio" id="IPList" name="IPList" value="CSV" oninput="IPListShow('CSV')">
+            <label>CSV Spreadsheet</label><br />
+            <br />
+            <div ID="ManualIP" style="margin-left: 50px;">
+              Common Settings:<br />
+              <table class="custom">
+                <tr>
+                    <td class="custom">
+                        CIMC Account<br/>
+                        <input type="text" required name="CIMCUSR" id="CIMCUSR">
+                    </td>
+                    <td class="custom">
+                        CIMC Password<br/>
+                        <input type="text" required name="CIMCPWD" id="CIMCPWD">
+                    </td>
+                </tr>
+                <tr>
+                  <td class="custom">ESXi Hostname Prefix<br />
+                    <input type="text" name="HOSTPREFIX" id="HOSTPREFIX" oninput="UpdateESXiHostName()"><br />
+                    <div style="font-size: smaller;">Optional</div></td>
+                  <td class="custom">ESXi Hostname Suffix<br />
+                    <input type="text" name="HOSTSUFFIX" id="HOSTSUFFIX" oninput="UpdateESXiHostName()"><br />
+                    <div style="font-size: smaller;">Optional</div></td>
+                    <!--<td class="custom">IP Subnet<br /><input type="text" required name="SUBNET"></td>-->
+                  <td class="custom">Netmask<br /><input type="text" required name="NETMASK"></td>
+                  <td class="custom">Gateway<br /><input type="text" required name="GATEWAY"></td>
+                </tr>
+              </table>
+              <br />
+              Unique Settings:
+              <table id="ManualIPTable" Style="padding: 50px; margin-left: 50px">
+                <tr>
+                  <td Style="font-size: smaller;text-align: center;Border:none">Prefix</td>
+                  <td Style="text-align: center;Border:none">ESXi Hostname</td>
+                  <td Style="font-size: smaller;Border:none">Suffix</td>
+                  <td Style="text-align: center;Border: None">Desired ESXi IP</td>
+                  <td Style="text-align: center;border:None">CIMC IP Address</td>
+                </tr>
+              </table>
+              <input type="button" value="Add Row" onclick="AddManualIPRow()" Style="margin-left: 50px;">
+              <input type="button" value="Delete Last Row" onclick="RemoveManualIPRow()" Style="margin-left: 50px;">
+            </div>
+            <Div id='CSV' style="display: none;margin-left: 50px">
+              <div class="content_section_text">
+                Upload a CSV file
+              </div>
+              <div style="margin-left: 50px;">
+              <input type="text" value="c:\Documents\IPList.csv"> <input type="button" value="Browse"><br />
+              <a href="">Download Sample File</a>
+              <br /><br /><br /><br /><br /><br /><br /><br />
+              </div>
+            </Div>
+            <!--h1>Step 3 (optional)</!--h1>
+            <div class="content_section_text">
+              Run console commands on first boot:
+            </div>
+            <textarea id="firstbootscript" cols="82" rows="4"></textarea>
+            <div-- class="content_section_text_small">
+              If needed, you can enter commands that will be run on the ESXi server the first time it boots up.
+            </div-->
+            <!--<h1>Step 3</h1>-->
+            <div class="content_center">
+                <button class="button button3" type="submit" formaction="" formmethod="POST">START</button>
+            </div>
+          </form>
+        </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+      //create first row in Manual IP Address table
+      ServerCount = 0 // Find usage will increment to 1.
+      AddManualIPRow()
+
+      ///// CUSTOM FORM VALIDATION MESSAGES /////
+
+      //custom validation message for ROOTPW field
+      const input_root = document.querySelector('input[name="ROOTPW"]');
+      input_root.addEventListener('invalid', function (event) {
+        if (event.target.validity.valueMissing) {
+          event.target.setCustomValidity('Enter root password');
+        }
+      })
+      input_root.addEventListener('change', function (event) {
+        event.target.setCustomValidity('');
+      })
+
+      //custom validation message for VMNIC field
+      const input_vmnic = document.querySelector('input[name="VMNIC"]');
+      input_vmnic.addEventListener('invalid', function (event) {
+        if (event.target.validity.valueMissing) {
+          event.target.setCustomValidity('Enter VMNIC ID');
+        }
+      })
+      input_vmnic.addEventListener('change', function (event) {
+        event.target.setCustomValidity('');
+      })
+
+      //custom validation message for DiskPath field
+      // var naa_field = document.getElementById("DiskPathTypeControls");
+      // console.log(window.getComputedStyle(naa_field).display)
+      // console.log(document.activeElement)
+      // if (window.getComputedStyle(naa_field).display === "none") {
+      //   console.log('DiskPathTypeControls NOT visible')
+      // }
+      // else {
+      //   console.log('DiskPathTypeControls is visible')
+      // }
+
+      const input_naa = document.querySelector('input[name="DiskPath"]');
+      input_naa.addEventListener('invalid', function (event) {
+        if (event.target.validity.valueMissing) {
+          event.target.setCustomValidity('Enter disk path, eg. naa.500a6ca3de6ed1bd');
+        }
+      })
+      input_naa.addEventListener('change', function (event) {
+        event.target.setCustomValidity('');
+      })
+
+
+      //custom validation message for StaticSubnet field
+      var input_statsub = document.querySelector('input[name^="StaticSubnet"]');
+      console.log(input_statsub.length)
+      input_statsub.addEventListener('invalid', function (event) {
+        if (event.target.validity.valueMissing) {
+          event.target.setCustomValidity('Enter static route subnet, eg. 10.10.10.0');
+        }
+      })
+      input_statsub.addEventListener('change', function (event) {
+        event.target.setCustomValidity('');
+      })
+
+      //custom validation message for StaticMask field
+      const input_statmask = document.querySelector('input[name^="StaticMask"]');
+      input_statmask.addEventListener('invalid', function (event) {
+        if (event.target.validity.valueMissing) {
+          event.target.setCustomValidity('Enter static route network CIDR mask, eg. 24');
+        }
+      })
+      input_statmask.addEventListener('change', function (event) {
+        event.target.setCustomValidity('');
+      })
+
+      //custom validation message for StaticGateway field
+      const input_statgw = document.querySelector('input[name^="StaticGateway"]');
+      input_statgw.addEventListener('invalid', function (event) {
+        if (event.target.validity.valueMissing) {
+          event.target.setCustomValidity('Enter static route gateway, eg. 10.10.10.254');
+        }
+      })
+      input_statgw.addEventListener('change', function (event) {
+        event.target.setCustomValidity('');
+      })
+
+
+      //custom validation message for CIMCUSR field
+      const input_usr = document.querySelector('input[name="CIMCUSR"]');
+      input_usr.addEventListener('invalid', function (event) {
+        if (event.target.validity.valueMissing) {
+          event.target.setCustomValidity('Enter CIMC Username');
+        }
+      })
+      input_usr.addEventListener('change', function (event) {
+        event.target.setCustomValidity('');
+      })
+
+      //custom validation message for CIMCPWD field
+      const input_pass = document.querySelector('input[name="CIMCPWD"]');
+      input_pass.addEventListener('invalid', function (event) {
+        if (event.target.validity.valueMissing) {
+          event.target.setCustomValidity('Enter CIMC Password');
+        }
+      })
+      input_pass.addEventListener('change', function (event) {
+        event.target.setCustomValidity('');
+      })
+
+
+      //custom validation message for SUBNET field
+      const input_subnet = document.querySelector('input[name="SUBNET"]');
+      input_subnet.addEventListener('invalid', function (event) {
+        if (event.target.validity.valueMissing) {
+          event.target.setCustomValidity('Enter ESXi management subnet, eg. 192.168.1.0');
+        }
+      })
+      input_subnet.addEventListener('change', function (event) {
+        event.target.setCustomValidity('');
+      })
+
+      //custom validation message for NETMASK field
+      const input_netmask = document.querySelector('input[name="NETMASK"]');
+      input_netmask.addEventListener('invalid', function (event) {
+        if (event.target.validity.valueMissing) {
+          event.target.setCustomValidity('Enter ESXi management network mask, eg. 255.255.255.0');
+        }
+      })
+      input_netmask.addEventListener('change', function (event) {
+        event.target.setCustomValidity('');
+      })
+
+      //custom validation message for GATEWAY field
+      const input_gateway = document.querySelector('input[name="GATEWAY"]');
+      input_gateway.addEventListener('invalid', function (event) {
+        if (event.target.validity.valueMissing) {
+          event.target.setCustomValidity('Enter ESXi management network gateway, eg. 192.168.1.254');
+        }
+      })
+      input_gateway.addEventListener('change', function (event) {
+        event.target.setCustomValidity('');
+      })
+
+      //custom validation message for HOSTNAME field
+      const input_hostname = document.querySelector('input[name^="HOSTNAME"]');
+      input_hostname.addEventListener('invalid', function (event) {
+        if (event.target.validity.valueMissing) {
+          event.target.setCustomValidity('Enter ESXi hostname');
+        }
+      })
+      input_hostname.addEventListener('change', function (event) {
+        event.target.setCustomValidity('');
+      })
+
+      // custom validation message for IPADDR field
+      const input_ipaddr = document.querySelector('input[name^="IPADDR"]');
+      input_ipaddr.addEventListener('invalid', function (event) {
+        if (event.target.validity.valueMissing) {
+          event.target.setCustomValidity('Enter ESXi host management IP address, eg. 192.168.1.10');
+        }
+      })
+      input_ipaddr.addEventListener('change', function (event) {
+        event.target.setCustomValidity('');
+      })
+
+      //custom validation message for CIMCIP field
+      const input_cimcip = document.querySelector('input[name^="CIMCIP"]');
+      input_cimcip.addEventListener('invalid', function (event) {
+        if (event.target.validity.valueMissing) {
+          event.target.setCustomValidity('Enter server CIMC IP address, eg. 172.172.1.10');
+        }
+      })
+      input_cimcip.addEventListener('change', function (event) {
+        event.target.setCustomValidity('');
+      })
+      </script>
+{% endblock %}
