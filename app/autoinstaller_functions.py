@@ -257,6 +257,10 @@ def generate_custom_iso(jobid, logger, mainlog, hostname, iso_image, kscfg_path,
         with open(bootcfg_path, 'w+') as bootcfg_file:
             bootcfg_file.write(bootcfg)
 
+        # copy boot.cfg for EFI boot
+        bootcfg_efi_path = path.join(tmpisodir, 'efi/boot/boot.cfg')
+        system(f'cp -f {bootcfg_path} {bootcfg_efi_path}')
+
         # generate custom iso
         system(f'genisoimage -relaxed-filenames -J -R -o {path.join(tmpisodir + ".iso")} -b isolinux.bin -c boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -e efiboot.img -no-emul-boot {tmpisodir}')
 
