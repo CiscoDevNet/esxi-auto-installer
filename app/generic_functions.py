@@ -15,6 +15,9 @@ def generate_jobid(cimcip='no_ip_address_provided'):
     :param cimcip: (str)
     :return: jobid (str)
     """
+    # check if custom port has been provided and remove if yes
+    if ':' in cimcip:
+        cimcip = cimcip.split(':')[0]
     return cimcip + '_' + str(time.time())
 
 

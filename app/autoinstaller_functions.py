@@ -273,14 +273,22 @@ def generate_custom_iso(jobid, logger, mainlog, hostname, iso_image, kscfg_path,
         mainlog.info(f'[DRYRUN] Running generate_custom_iso({jobid}, {logger}, {mainlog}, {hostname}, {iso_image})')
 
 
-def cimc_login(logger, cimcip, cimcusr, cimcpwd, dryrun=DRYRUN):
-    logger.info(f'Connecting to CIMC IP: {cimcip} using account: {cimcusr}')
+def cimc_login(logger, cimcaddr, cimcusr, cimcpwd, dryrun=DRYRUN):
+    logger.info(f'Connecting to CIMC IP: {cimcaddr} using account: {cimcusr}')
     if not dryrun:
+        # check if custom port has been provided
+        if ':' in cimcaddr:
+            cimcip = cimcaddr.split(':')[0]
+            cimcport = int(cimcaddr.split(':')[1])
+        else:
+            cimcip = cimcaddr
+            cimcport = 443
+
         # Create a connection handle
-        cimchandle = ImcHandle(cimcip, cimcusr, cimcpwd)
+        cimchandle = ImcHandle(cimcip, cimcusr, cimcpwd, cimcport)
         # Login to CIMC
         cimchandle.login()
-        logger.info(f'Connected to CIMC: {cimcip}')
+        logger.info(f'Connected to CIMC: {cimcaddr}')
         return cimchandle
     else:
         return 'dummy_handle'
@@ -306,8 +314,6 @@ def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, ea
             cimchandle = cimc_login(logger, cimcip, cimcusr, cimcpwd)
         except Exception as e:
             mainlog.error(f'{jobid} Error when trying to login to CIMC: {str(e)}')
-            # remove '<' and '>' from string as it renders issues when displayed in web browser
-            # error_msg = str(e).replace('<', '"').replace('>', '"')
             logger.error(f'Error when trying to login to CIMC: {format_message_for_web(e)}\n')
             # if cimc_login failed - run cleanup tasks, update EAIDB with error message and abort
             job_cleanup(jobid, logger, mainlog)
@@ -333,7 +339,6 @@ def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, ea
 
             mainlog.info(f'{jobid} Reboot the machine...')
             logger.info(f'Rebooting the server to start the installation')
-            # TODO: remmed-out only for testing logging
             server_power_cycle(cimchandle)
             pwrstate = server_power_state_get(cimchandle)
             mainlog.info(f'{jobid} Server power state: {pwrstate}')
@@ -451,6 +456,7 @@ def cimc_unmount_iso(jobid, logger, mainlog):
     try:
         mainlog.info(f'{jobid} Unmounting installation ISO (vmedia_mount_remove_image) on CIMC {cimcip}')
         logger.info(f'Unmounting installation ISO on CIMC {cimcip}')
+        # TODO: consider removing specific image instead of 'iso' type - check method vmedia_mount_delete(handle, volume_name)
         vmedia_mount_remove_image(cimchandle, image_type='iso')
         cimc_logout(logger, cimchandle, cimcip)
     except Exception as e:
