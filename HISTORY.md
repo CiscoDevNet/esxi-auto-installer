@@ -1,6 +1,9 @@
 History
 =====================
 
+1.0alpha3 (2021-08-30)
+---------------------
+* CIMC address allowing custom port (ip[:port])
 
 1.0alpha (2021-07-30)
 ---------------------

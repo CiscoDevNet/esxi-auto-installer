@@ -76,6 +76,7 @@ function AddManualIPRow() {
   newelement.setAttribute('type','text');
   newelement.setAttribute('name','IPADDR' + ServerCount);
   newelement.setAttribute('required', '');
+  newelement.setAttribute('placeholder',"192.168.100.10");
   if (ServerCount > 1) {
     prevIP = ManualIPTable.rows[ServerCount-1].children[CellCount].childNodes[0].value.split('.')
     //console.log(prevIP)
@@ -93,6 +94,7 @@ function AddManualIPRow() {
   newelement.setAttribute('type','text');
   newelement.setAttribute('name','CIMCIP' + ServerCount);
   newelement.setAttribute('required', '');
+  newelement.setAttribute('placeholder',"192.168.200.10[:port #]");
   if (ServerCount > 1) {
     prevCIMCIP = ManualIPTable.rows[ServerCount-1].children[CellCount].childNodes[0].value.split('.')
     //console.log(prevCIMCIP)
