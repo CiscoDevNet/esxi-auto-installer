@@ -116,12 +116,13 @@ def generate_kickstart(jobid, form_data, index, logger, mainlog, eai_host_ip=EAI
     else:
         enable_ssh = ''
 
-    # in this version we enforce disable IPv6
-    disableipv6 = False
-    if disableipv6:
-        disable_ipv6 = '# disable IPv6\nesxcli network ip set --ipv6-enabled=false\n'
-    else:
-        disable_ipv6 = ''
+    # in this version we don't disable IPv6 (default is enabled) and no reboot after %firstboot is required
+    disable_ipv6 = False
+    # disableipv6 = False
+    # if disableipv6:
+    #     disable_ipv6 = '# disable IPv6\nesxcli network ip set --ipv6-enabled=false\n'
+    # else:
+    #     disable_ipv6 = ''
 
     # remaining host data
     rootpw = form_data['rootpw']

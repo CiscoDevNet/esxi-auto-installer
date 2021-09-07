@@ -1,6 +1,10 @@
 History
 =====================
 
+1.0alpha4 (2021-09-07)
+---------------------
+* removed disabling IPv6 and final reboot from kickstart template
+
 1.0alpha3 (2021-08-30)
 ---------------------
 * CIMC address allowing custom port (ip[:port])
@@ -15,4 +19,4 @@ History
 * PXE booted installation with kickstart config
 * requires Native VLAN and 'ip helper' / 'dhcp relay' set on switch
 * dhcpd.conf update not validated in demo version
-* configuration resdet on VM reboot
+* configuration reset on VM reboot
