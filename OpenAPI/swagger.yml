@@ -1,0 +1,186 @@
+openapi: 3.0.1
+info:
+  title: ESXi AutoInstaller
+  description: 'This tools helps you install multiple ESXi hosts automatically.'
+  license:
+    name: CISCO SAMPLE CODE LICENSE
+    url: https://github.com/CiscoDevNet/esxi-auto-installer/blob/main/LICENSE
+  version: 1.0.0
+externalDocs:
+  description: GitHub repository
+  url: https://github.com/CiscoDevNet/esxi-auto-installer
+servers:
+- url: http://localhost/api/v1
+- url: http://172.17.20.72/api/v1
+tags:
+- name: jobs
+- name: logs
+- name: iso
+paths:
+  /jobs:
+    get:
+      tags:
+      - jobs
+      summary: Returns a list of jobs.
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Jobs'
+    post:
+      tags:
+      - jobs
+      summary: Creates a new ESXi Installation job.
+      requestBody:
+        description: Pet object that needs to be added to the store
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Job'
+#          application/xml:
+#            schema:
+#              $ref: '#/components/schemas/Job'
+        required: true
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+  /jobs/{jobId}:
+    get:
+      tags:
+      - jobs
+      summary: Returns details on a specific job.
+      parameters:
+      - name: jobId
+        in: path
+        description: ID of job.
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+    put:
+      tags:
+      - jobs
+      summary: Updates a job entry.
+      parameters:
+      - name: jobId
+        in: path
+        description: ID of job.
+        required: true
+        schema:
+          type: string
+      - name: statusId
+        in: query
+        description: New job status
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: array
+          items:
+            type: integer
+            enum:
+            - 10
+            - 19
+            - 20
+            - 39
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Jobs'
+  /logs/{jobId}:
+    get:
+      tags:
+      - logs
+      summary: View job logs
+      parameters:
+      - name: jobId
+        in: path
+        description: ID of job.
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  2022-01-01 07:07:07 GMT [INFO] Processing job ID: 172.17.20.79_1631556521.7252097, server Prefix-01-Suffix
+
+                  2022-01-01 07:07:07 GMT [INFO] Generating kickstart file for server
+                  2022-01-01 07:07:07 GMT [INFO] Generated kickstart configuration:
+  /upload:
+    post:
+      tags:
+      - iso
+      summary: Upload an ESXi Installation ISO
+components:
+  schemas:
+    Job:
+      required:
+      - rootpw
+      - cimcIp
+      - cimcUser
+      - cimcPass
+      - esxiIp
+      type: object
+      properties:
+        rootpw:
+          type: string
+        cimcIp:
+          type: string
+          example: 172.16.0.2
+        cimcUser:
+          type: string
+        cimcPass:
+          type: string
+        esxiIp:
+          type: string
+    JobResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+    Jobs:
+      type: "object"
+      additionalProperties:
+        $ref: '#/components/schemas/JobStatus'
+
+    JobStatus:
+      type: object
+      properties:
+        cimcip:
+          type: "string"
+          example: "192.168.0.1"
+        finish_time:
+          type: "string"
+          example: "2022-01-01 08:08:08 GMT"
+        hostname:
+          type: "string"
+          example: Prefix-01-Suffix
+        ipaddr:
+          type: "string"
+          example: "192.168.0.2"
+        start_time:
+          type: "string"
+          example: "2022-01-01 07:07:07 GMT"
+        status:
+          type: "string"
+          example: "Installation in progress"
