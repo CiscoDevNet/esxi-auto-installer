@@ -140,7 +140,8 @@ def generate_kickstart(jobid, form_data, index, logger, mainlog, eai_host_ip=EAI
                                   ipaddr=ipaddr, netmask=netmask, gateway=gateway, hostname=hostname, pre_section=pre_section,
                                   set_def_gw=set_def_gw, enable_ssh=enable_ssh, disable_ipv6=disable_ipv6,
                                   eai_host_ip=eai_host_ip, jobid=jobid)
-    logger.info(f'Generated kickstart configuration:\n{kickstart}\n')
+    # remove password before saving kickstart to log file
+    logger.info(f"Generated kickstart configuration:\n{re.sub(r'rootpw.*', 'rootpw ***********', kickstart)}\n")
     if not dryrun:
         kspath = path.join(ksdir, jobid + '_ks.cfg')
         with open(kspath, 'w+') as ksfile:

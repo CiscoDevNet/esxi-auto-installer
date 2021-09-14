@@ -95,19 +95,19 @@
             </div>
             <br />
             <br />
-            How do you want to enter your IP Addresses?<br />
+            <!--How do you want to enter your IP Addresses?<br />
             <input type="radio" id="IPList" name="IPList" value="Manual" Checked oninput="IPListShow('ManualIP')">
             <label>Manual Entry</label><br />
             <input type="radio" id="IPList" name="IPList" value="CSV" oninput="IPListShow('CSV')">
             <label>CSV Spreadsheet</label><br />
-            <br />
+            <br />-->
             <div ID="ManualIP" style="margin-left: 50px;">
               Common Settings:<br />
               <table class="custom">
                 <tr>
                     <td class="custom">
                         CIMC Account<br/>
-                        <input type="text" required name="CIMCUSR" id="CIMCUSR">
+                        <input type="text" required name="CIMCUSR" id="CIMCUSR" value="admin">
                     </td>
                     <td class="custom">
                         CIMC Password<br/>
@@ -133,14 +133,14 @@
                   <td Style="font-size: smaller;text-align: center;Border:none">Prefix</td>
                   <td Style="text-align: center;Border:none">ESXi Hostname</td>
                   <td Style="font-size: smaller;Border:none">Suffix</td>
-                  <td Style="text-align: center;Border: None">Desired ESXi IP</td>
+                  <td Style="text-align: center;Border: None">Mgmt ESXi IP</td>
                   <td Style="text-align: center;border:None">CIMC IP Address</td>
                 </tr>
               </table>
               <input type="button" value="Add Row" onclick="AddManualIPRow()" Style="margin-left: 50px;">
               <input type="button" value="Delete Last Row" onclick="RemoveManualIPRow()" Style="margin-left: 50px;">
             </div>
-            <Div id='CSV' style="display: none;margin-left: 50px">
+            <!--<Div id='CSV' style="display: none;margin-left: 50px">
               <div class="content_section_text">
                 Upload a CSV file
               </div>
@@ -149,7 +149,7 @@
               <a href="">Download Sample File</a>
               <br /><br /><br /><br /><br /><br /><br /><br />
               </div>
-            </Div>
+            </Div>-->
             <!--h1>Step 3 (optional)</!--h1>
             <div class="content_section_text">
               Run console commands on first boot:
