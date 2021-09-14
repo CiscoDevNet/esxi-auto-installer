@@ -11,9 +11,10 @@ Additionaly it has the following dependencies:
 - implements most kickstart parameters described in https://docs.vmware.com/en/VMware-vSphere/6.7/com.vmware.esxi.upgrade.doc/GUID-61A14EBB-5CF3-43EE-87EF-DB8EC6D83698.html
 - upload and select VMware ESXi installation ISO
 - start deployment on multiple servers (using same CIMC credentials) in parallel
-
-## Support team
-cll-auto-installer-support@cisco.com
+- supports custom installation ISO
+- supports iSCSI boot installs
+- API for automation pipelines
+- future: PXE installation (platform independent, including viretual machines) 
 
 
 # Setup guide

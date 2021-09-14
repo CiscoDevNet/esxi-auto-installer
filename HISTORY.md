@@ -1,6 +1,12 @@
 History
 =====================
 
+1.0alpha5 (2021-09-13)
+---------------------
+* removed root password when saving kickstart to job log
+* removed Cisco logo
+* removed 'Upload a CSV file' option (not implemented yet)
+
 1.0alpha4 (2021-09-07)
 ---------------------
 * removed disabling IPv6 and final reboot from kickstart template
