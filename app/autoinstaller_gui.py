@@ -60,12 +60,10 @@ def autoinstaller_gui():
             mainlog.info(f'{jobid} Generating custom installation ISO for server {hostname}')
             generate_custom_iso(jobid, logger, mainlog, hostname, form_data['iso_image'], kscfg)
 
-            # srvip = request.host.split(':')[0]
             # start ESXi hypervisor installation
             Process(target=install_esxi, args=(jobid, logger, mainlog, cimcip, form_data['cimc_usr'],
                                                form_data['cimc_pwd'], jobid + '.iso')).start()
 
-        # print(eaidb_get_status())
         return redirect(url_for('show'))
     return render_template('index.html', form=form, isodirs=dirs)
 
@@ -107,7 +105,7 @@ def show():
 @app.route('/logs/<jobid>')
 def logs(jobid):
     # get job log using GET /logs endpoint function and display on web page
-    return render_template('display_file.jinja', log_file_text=api_logs_get(jobid))
+    return render_template('display_file.jinja', log_file_text=api_logs_get(jobid)[0])
 
 
 # upload and extract ISO
@@ -139,7 +137,8 @@ def upload_iso(mainlog=get_main_logger()):
 def api_jobs_get():
     return eaidb_get_status()
 
-# api endpoint for getting details for specific jobs
+
+# api endpoint for getting details for specific job
 @app.route('/api/v1/jobs/<jobid>', methods=['GET'])
 def api_jobs_get_jobid(jobid):
     try:
@@ -147,6 +146,7 @@ def api_jobs_get_jobid(jobid):
         return eaidb_dict[jobid]
     except KeyError:
         return f'Job ID {jobid} not found.', 404
+
 
 # api endpoint for starting new job(s)
 @app.route('/api/v1/jobs', methods=['POST'])
@@ -218,7 +218,7 @@ def api_logs_get(jobid, basedir=LOGDIR):
     # Check if path is a file and serve
     if os.path.isfile(abs_path):
         with open(abs_path, 'r') as log_file:
-            return log_file.read()
+            return log_file.read(), 200, {'Content-Type': 'text/plain; charset=utf-8'}
 
 
 # api endpoint for uploading installation ISO
