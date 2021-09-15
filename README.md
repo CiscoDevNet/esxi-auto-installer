@@ -5,7 +5,7 @@ ESXi Auto-Installer automates bare-metal ESXi hypervisor deployment, providing 1
 ## Features
 - Start deployment on multiple servers in parallel (using same CIMC credentials)
 - Supports custom ESXi installation ISO
-- Implements most kickstart parameters described in https://docs.vmware.com/en/VMware-vSphere/6.7/com.vmware.esxi.upgrade.doc/GUID-61A14EBB-5CF3-43EE-87EF-DB8EC6D83698.html
+- Implements most kickstart parameters described in [VMWare's documentation](https://docs.vmware.com/en/VMware-vSphere/6.7/com.vmware.esxi.upgrade.doc/GUID-61A14EBB-5CF3-43EE-87EF-DB8EC6D83698.html).
 - Supports iSCSI boot installs
 - API for automation pipelines
 - Future: Platform agnostic installations (including virtual machines) using PXE instead of CIMC
@@ -14,10 +14,10 @@ ESXi Auto-Installer automates bare-metal ESXi hypervisor deployment, providing 1
 
 ## Pre-requisites
 
-ESXi Auto-Installer requires Linux or “Unix-like” system with few additional components installed and 'eaiusr' account created (with full sudo rights). 
-Development is done on vanilla Ubuntu 20.04.2 LTS.
+ESXi Auto-Installer requires Linux or “Unix-like” system with few additional components installed and 'eaiusr' account created (with full sudo rights).\
+Development is done on vanilla Ubuntu Server.
 
-### Inital Setup
+## Inital Setup
 
 ``` bash
 sudo git clone https://github.com/CiscoDevNet/esxi-auto-installer /opt/eai
@@ -29,9 +29,11 @@ systemctl enable apache
 ```
 
 If you want to use a custom directory, see [Custom install directory](#Custom-install-directory)
-### Start the application
+## Start the application
 
+``` bash
 systemctl start apache
+```
 
 # Usage
 
@@ -39,32 +41,32 @@ Point a web browser at the system where Auto-Installer running.
 
 ## First task: Upload ISO
 
-Auto-Installer does not come bundled with an ESXi Installation ISO file. Before you can use Auto-Installer you must upload an ESXi Installation ISO file.
-From the main page click on "Upload ISO" in the top menu bar.
-Click Browse to locate an ISO on your local machine.
+Auto-Installer does not come bundled with an ESXi Installation ISO file. Before you can use Auto-Installer you must upload an ESXi Installation ISO file.\
+From the main page click on "Upload ISO" in the top menu bar.\
+Click Browse to locate an ISO on your local machine.\
 After selecting a a valid ESXi Installation ISO file, click Submit.
 
 Now that an ISO is uploaded, you can go back to the "Home Page".
 
 ## Home page
 
-The Home page is where you start your ESXi Installations.
-In 'Step 1' is where you setup your basic installation settings.
+The Home page is where you start your ESXi Installations.\
+In 'Step 1' is where you setup your basic installation settings.\
 In 'Step 2' you configure the IP settings for the ESXi hosts.
 
-One all the correct settings have been entered, click the "START" button on the bottom to begin the installation process.
+One all the correct settings have been entered, click the "START" button on the bottom to begin the installation process.\
 Once you click Start, you will be sent to the "Status Page".
 
 ## Status page
 
-You can navigate to the Status Page at any time by clicking "Status" on the top menu bar.
-The status page shows a history of all the installs.
-You can quickly see a servers current install status in the "Status" column.
+You can navigate to the Status Page at any time by clicking "Status" on the top menu bar.\
+The status page shows a history of all the installs.\
+You can quickly see a servers current install status in the "Status" column.\
 If you want to see the logs for a particular install, you can click on the link in the "Hostname" column.
 
 ## Upload ISO
 
-You can use the Upload ISO page to upload ESXi Installation ISOs. This is useful if you need a praticular version of ESXi, or a particular installation that contains custom drivers.
+You can use the Upload ISO page to upload ESXi Installation ISOs. This is useful if you need a praticular version of ESXi, or a particular installation that contains custom drivers.\
 Once you upload an ISO, you can select it as part of the install process on the Home Page.
 
 ## APIs
