@@ -1,16 +1,11 @@
 # ESXi Auto-Installer
 
-ESXi Auto-Installer automates bare-metal ESXi hypervisor deployment, providing 100% hands-off installation on Cisco UCS physical servers ("Custom ISO" mode).
-
-Auto-Installer is a Flask based application written in Python running behind Apache web server through mod_wsgi.
-Additionaly it has the following dependencies:
-- uses IMC SDK (imcsdk Python module: https://github.com/CiscoUcs/imcsdk) for running tasks on Cisco UCS IMC
-- uses DHCP server and tftpd (PXE boot mode)
+ESXi Auto-Installer automates bare-metal ESXi hypervisor deployment, providing 100% hands-off installation on Cisco UCS physical servers.
 
 ## Features
-- Implements most kickstart parameters described in https://docs.vmware.com/en/VMware-vSphere/6.7/com.vmware.esxi.upgrade.doc/GUID-61A14EBB-5CF3-43EE-87EF-DB8EC6D83698.html
 - Start deployment on multiple servers in parallel (using same CIMC credentials)
 - Supports custom ESXi installation ISO
+- Implements most kickstart parameters described in https://docs.vmware.com/en/VMware-vSphere/6.7/com.vmware.esxi.upgrade.doc/GUID-61A14EBB-5CF3-43EE-87EF-DB8EC6D83698.html
 - Supports iSCSI boot installs
 - API for automation pipelines
 - Future: Platform agnostic installations (including virtual machines) using PXE instead of CIMC
@@ -98,3 +93,12 @@ All Auto-Installer configuration is stored in `config.py` file, where the follow
 - Temporary directories used during ISO upload or for storing custom installation ISO
 - Toggle "dry-run", i.e. do not run any CIMC action and installation but simulate application flow
 - Application status codes dictionary
+
+## Module details
+
+Auto-Installer is a Flask based application written in Python running behind Apache web server through mod_wsgi.
+Additionaly it has the following dependencies:
+- Uses Cisco IMC SDK (imcsdk Python module: https://github.com/CiscoUcs/imcsdk) for running tasks on Cisco UCS IMC
+- Apache Web Server
+- mod_wsgi
+- Flask
