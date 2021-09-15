@@ -14,6 +14,7 @@ import sys
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'cll-vmware-auto-installer'
 app.config['UPLOAD_EXTENSIONS'] = ['.iso']
+app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
 # app.config['UPLOAD_PATH'] = UPLOADDIR
 
 
@@ -112,11 +113,6 @@ def logs(jobid):
 # upload and extract ISO
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_iso(mainlog=get_main_logger()):
-    # print('[DEBUG] Listing ' + TFTPISODIR + ' content:')
-    # dirs = [f for f in listdir(TFTPISODIR) if path.isdir(path.join(TFTPISODIR, f))]
-    # print(dirs)
-    # system('ls -la ' + TFTPISODIR + ' 1>&2')
-
     if request.method == 'POST':
         # read file name
         uploaded_iso = request.files['file']
@@ -150,12 +146,13 @@ def api_jobs_get_jobid(jobid):
         eaidb_dict = eaidb_get_status()
         return eaidb_dict[jobid]
     except KeyError:
-        return f'Job ID {jobid} not found.'
+        return f'Job ID {jobid} not found.', 404
 
 # api endpoint for starting new job(s)
 @app.route('/api/v1/jobs', methods=['POST'])
 def api_jobs_post(mainlog=get_main_logger()):
     query_parameters = request.args
+    jobid = generate_jobid()
     mainlog.debug(f'{jobid} API endpoint called with args: {query_parameters}')
     return 'API jobs POST endpoint placeholder'
 
@@ -203,9 +200,9 @@ def api_jobs_put(jobid, mainlog=get_main_logger(), status_dict=STATUS_CODES):
             eaidb_dict = eaidb_get_status()
             return eaidb_dict[jobid]
         else:
-            return f'Job ID {jobid} not found.'
+            return f'Job ID {jobid} not found.', 404
     except Exception:
-        return f'Job ID {jobid} not found.'
+        return f'Job ID {jobid} not found.', 404
 
 
 # api endpoint for updating job status
@@ -216,7 +213,7 @@ def api_logs_get(jobid, basedir=LOGDIR):
 
     # Return 404 if path doesn't exist
     if not os.path.exists(abs_path):
-        return 'File does not exist!'
+        return 'File does not exist!', 404
 
     # Check if path is a file and serve
     if os.path.isfile(abs_path):

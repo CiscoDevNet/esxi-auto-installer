@@ -14,7 +14,7 @@ Additionaly it has the following dependencies:
 - supports custom installation ISO
 - supports iSCSI boot installs
 - API for automation pipelines
-- future: PXE installation (platform independent, including viretual machines) 
+- future: PXE installation (platform independent, including virtual machines) 
 
 
 # Setup guide
