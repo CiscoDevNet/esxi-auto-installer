@@ -3,7 +3,7 @@
 ESXi Auto-Installer automates bare-metal ESXi hypervisor deployment, providing 100% hands-off installation on Cisco UCS physical servers.
 
 ESXi Auto-Installer will:
-- Install the ESXi Operating System.
+- Install the ESXi Operating System on a Cisco Server.
 - Configure the ESXi Management interface with an IP address.
 - Enable SSH
 
