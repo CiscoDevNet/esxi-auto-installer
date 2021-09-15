@@ -5,7 +5,7 @@ ESXi Auto-Installer automates bare-metal ESXi hypervisor deployment, providing 1
 ## Features
 - Start deployment on multiple servers in parallel (using same CIMC credentials)
 - Supports custom ESXi installation ISO
-- Implements most kickstart parameters described in [VMWare's documentation](https://docs.vmware.com/en/VMware-vSphere/6.7/com.vmware.esxi.upgrade.doc/GUID-61A14EBB-5CF3-43EE-87EF-DB8EC6D83698.html).
+- Implements most kickstart parameters described in [VMWare's documentation](https://docs.vmware.com/en/VMware-vSphere/7.0/com.vmware.esxi.upgrade.doc/GUID-61A14EBB-5CF3-43EE-87EF-DB8EC6D83698.html).
 - Supports iSCSI boot installs
 - API for automation pipelines
 - Future: Platform agnostic installations (including virtual machines) using PXE instead of CIMC
