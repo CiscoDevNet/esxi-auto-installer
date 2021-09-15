@@ -1,6 +1,6 @@
 # ESXi Auto-Installer
 
-ESXi Auto-Installer automates bare-metal ESXi hypervisor deployment, providing 100% hands-off installation on Cisco UCS physical servers ("Custom ISO" mode). Alternative deployment method - "PXE boot" mode - is platform agnostic, allowing installation on any "PXE boot capable" physical or virtual server system, however has some configuration pre-requisites on network infrastructure side. The latter is yet to be implemented.
+ESXi Auto-Installer automates bare-metal ESXi hypervisor deployment, providing 100% hands-off installation on Cisco UCS physical servers ("Custom ISO" mode).
 
 Auto-Installer is a Flask based application written in Python running behind Apache web server through mod_wsgi.
 Additionaly it has the following dependencies:
@@ -8,93 +8,75 @@ Additionaly it has the following dependencies:
 - uses DHCP server and tftpd (PXE boot mode)
 
 ## Features
-- implements most kickstart parameters described in https://docs.vmware.com/en/VMware-vSphere/6.7/com.vmware.esxi.upgrade.doc/GUID-61A14EBB-5CF3-43EE-87EF-DB8EC6D83698.html
-- upload and select VMware ESXi installation ISO
-- start deployment on multiple servers (using same CIMC credentials) in parallel
-- supports custom installation ISO
-- supports iSCSI boot installs
+- Implements most kickstart parameters described in https://docs.vmware.com/en/VMware-vSphere/6.7/com.vmware.esxi.upgrade.doc/GUID-61A14EBB-5CF3-43EE-87EF-DB8EC6D83698.html
+- Start deployment on multiple servers in parallel (using same CIMC credentials)
+- Supports custom ESXi installation ISO
+- Supports iSCSI boot installs
 - API for automation pipelines
-- future: PXE installation (platform independent, including virtual machines) 
-
+- Future: Platform agnostic installations (including virtual machines) using PXE instead of CIMC
 
 # Setup guide
 
 ## Pre-requisites
 
-ESXi Auto-Installer requires Linux or “Unix-like” system with few additional components installed and 'eaiusr' account created (with full sudo rights). Ready-to-use VM appliance (OVF template available on >>link to box folder here<<) is based on minimal installation of vanilla Ubuntu 20.04.2 LTS. To make the OVF possibly lightweight is has been installed with no X-windows system and ssh server, however default installation of Ubuntu Desktop will work as well.
+ESXi Auto-Installer requires Linux or “Unix-like” system with few additional components installed and 'eaiusr' account created (with full sudo rights). 
+Development is done on vanilla Ubuntu 20.04.2 LTS.
 
-### Install Auto-Installer host system pre-requisites
-```
-DRAFT - needs updating after clean appliance setup:
-- install Apache web server
-- install Python and required libraries (Flask, Flask-WTF, lxml, Jinja2, mod-wsgi, Werkzeug, ipaddress, email-validator?)
-- for PXE mode there are additional system packages: dhcp-server, tftp-server
-- configure sudoers for apache user:
-apache ALL=NOPASSWD:/usr/bin/systemctl restart dhcpd, /usr/bin/mount, /usr/bin/umount, /usr/bin/mkdir, /usr/bin/chown, /usr/bin/rmdir
-```
+### Inital Setup
 
-### Apache Virtual Host configuration
-```
-[root@auto-installer ~]# cat /etc/httpd/conf.d/autoinstaller.conf
-<VirtualHost *:80>
-     WSGIScriptAlias / /opt/eai/app/eai_flask_app.wsgi
-     DocumentRoot /opt/eai
-     <Directory /opt/eai/app>
-            Options FollowSymLinks
-            AllowOverride None
-            Require all granted
-     </Directory>
-</VirtualHost>
+``` bash
+sudo git clone https://github.com/CiscoDevNet/esxi-auto-installer /opt/eai
+cd /opt/eai
+sudo pip install -r requirements.txt
+sudo cp autoinstaller.conf /etc/httpd/config.d/
+sudo echo "apache ALL=NOPASSWD:/usr/bin/mount, /usr/bin/umount, /usr/bin/mkdir, /usr/bin/chown, /usr/bin/rmdir" > /etc/sudoers.d/apache
+systemctl enable apache
 ```
 
-## Prepare application environment
+If you want to use a custom directory, see [Custom install directory](#Custom-install-directory)
+### Start the application
 
-### Clone git repo
-
-```
-[ -d vmware-auto-installer ] && rm -rf vmware-auto-installer
-git clone https://wwwin-github.cisco.com/DevCXTechEdLabTeam/vmware-auto-installer.git
-```
-
-### Copy application code to WORKDIR
-
-Note: default `WORKDIR` path is `/opt/eai` - in case you need to change this modify `config.py` accordingly.
-```
-mv vmware-auto-installer /opt/eai
-```
-
+systemctl start apache
 
 # Usage
 
-## Configuration
+Point a web browser at the system where Auto-Installer running.
 
-All Auto-Installer configuration is stored in `config.py` file, where the following defaults can be customized:
-- Main Auto-Installer directory (`WORKDIR`) and essential subdirectories
-- ESXi ISO directory
-- TFTPBOOT ISO directory
-- Temporary directories used during ISO upload or for storing custom installation ISO
-- Temporary directory for kickstart configuration files
-- Kickstart and PXE configuration files templates
-- Toggle "dry-run", i.e. do not run any CIMC action and installation but simulate application flow
-- Application status codes dictionary
+## First task: Upload ISO
 
+Auto-Installer does not come bundled with an ESXi Installation ISO file. Before you can use Auto-Installer you must upload an ESXi Installation ISO file.
+From the main page click on "Upload ISO" in the top menu bar.
+Click Browse to locate an ISO on your local machine.
+After selecting a a valid ESXi Installation ISO file, click Submit.
 
-## Running the application
+Now that an ISO is uploaded, you can go back to the "Home Page".
 
-Once the Apache web server is started it presents Auto-Installer GUI on port :80
+## Home page
 
+The Home page is where you start your ESXi Installations.
+In 'Step 1' is where you setup your basic installation settings.
+In 'Step 2' you configure the IP settings for the ESXi hosts.
 
-## Main page
-
-Once the application is started - i.e. web server is running and presenting the application through mod_wsgi - navigate to host system IP address in web browser, port 80.
-
-Main application page is presented, with two sections sections. 'Step 1' allows selecting hypervisor version and providing details such as ESXi root account password, management vmnic ID and VLAN, etc. 'Step 2' is split to Common Settings for all installations triggered with current run (CIMC credentials, netmask, gateway, etc.) and Unique Settings for each ESXi host (hostname, management and CIMC IP address).
-
+One all the correct settings have been entered, click the "START" button on the bottom to begin the installation process.
+Once you click Start, you will be sent to the "Status Page".
 
 ## Status page
 
-Once 'START' button is hit application redirects to 'Status' page, where all entries from Auto-Installer database are shown  reflecting current job status.
+You can navigate to the Status Page at any time by clicking "Status" on the top menu bar.
+The status page shows a history of all the installs.
+You can quickly see a servers current install status in the "Status" column.
+If you want to see the logs for a particular install, you can click on the link in the "Hostname" column.
 
+## Upload ISO
+
+You can use the Upload ISO page to upload ESXi Installation ISOs. This is useful if you need a praticular version of ESXi, or a particular installation that contains custom drivers.
+Once you upload an ISO, you can select it as part of the install process on the Home Page.
+
+## APIs
+
+For more information on API's, see the Swagger document.
+
+# Application Details
 
 ## Log files
 
@@ -102,16 +84,17 @@ Main Auto-Installer log file `eai.log` is stored under `EAILOG` and provides ove
 
 'Per job ID' log files are stored in `LOGDIR` and available via web GUI ('Status' tab) or from the host system. These logs provide detailed output from all tasks executed per given job ID.
 
+## Custom install directory
 
-# API
+`/opt/eai` is the default directory. If you use a different directory you need to update some config files.
+- the `WORKDIR` path located in the `config.py` file.
+- All `/opt/eai` entries in `/etc/httpd/conf.d/autoinstaller.conf`
 
-For details on Auto-Installer API please refer to API documentation.
+## Optional Configuration
 
-
-# TO-DO
-
-- PXE boot mode
-- API `POST /jobs` endpoint
-- backend web form validation
-- provide server data in CSV file
-- custom kickstart text form
+All Auto-Installer configuration is stored in `config.py` file, where the following defaults can be customized:
+- Main Auto-Installer directory (`WORKDIR`) and essential subdirectories
+- ESXi ISO directory
+- Temporary directories used during ISO upload or for storing custom installation ISO
+- Toggle "dry-run", i.e. do not run any CIMC action and installation but simulate application flow
+- Application status codes dictionary
