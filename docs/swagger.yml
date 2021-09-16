@@ -10,7 +10,7 @@ externalDocs:
   description: GitHub repository
   url: https://github.com/CiscoDevNet/esxi-auto-installer
 servers:
-- url: http://localhost/api/v1
+- url: /api/v1
 tags:
 - name: jobs
 - name: logs
@@ -21,9 +21,10 @@ paths:
       tags:
       - jobs
       summary: Returns a list of jobs.
+      description: Returns a list of all the jobs and their status.
       responses:
-        "200":
-          description: "OK"
+        '200':
+          description: 'OK'
           content:
             application/json:
               schema:
@@ -31,29 +32,16 @@ paths:
     post:
       tags:
       - jobs
-      summary: Creates a new ESXi Installation job.
-      requestBody:
-        description: Pet object that needs to be added to the store
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Job'
-#          application/xml:
-#            schema:
-#              $ref: '#/components/schemas/Job'
-        required: true
+      summary: 'NOT IMPLEMENTED: Creates a new ESXi Installation job.'
+      description: '**NOT IMPLEMENTED:** This endpoint has not yet been implemented.'
       responses:
-        200:
+        '200':
           description: successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/JobResponse'
   /jobs/{jobId}:
     get:
       tags:
       - jobs
-      summary: Returns details on a specific job.
+      summary: Returns a specific job.
       parameters:
       - name: jobId
         in: path
@@ -62,8 +50,8 @@ paths:
         schema:
           type: string
       responses:
-        "200":
-          description: "OK"
+        '200':
+          description: 'OK'
           content:
             application/json:
               schema:
@@ -72,6 +60,19 @@ paths:
       tags:
       - jobs
       summary: Updates a job entry.
+      description: | 
+        Updates the status of a particular job.<BR>
+        ```
+         0: Ready to deploy
+        10: Connecting to CIMC
+        11: Mounting installation ISO
+        15: Installation in progress
+        18: Running cleanup tasks
+        20: Finished
+        30: Error
+        31: Error: Failed to login to CIMC
+        32: Error: Failed to mount installation ISO
+        ```
       parameters:
       - name: jobId
         in: path
@@ -79,28 +80,22 @@ paths:
         required: true
         schema:
           type: string
-      - name: statusId
+      - name: state
         in: query
         description: New job status
         required: true
         style: form
         explode: true
         schema:
-          type: array
-          items:
-            type: integer
-            enum:
-            - 10
-            - 19
-            - 20
-            - 39
+          type: integer
+          maximum: 32
       responses:
-        "200":
-          description: "OK"
+        '200':
+          description: 'OK'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Jobs'
+                $ref: '#/components/schemas/JobStatus'
   /logs/{jobId}:
     get:
       tags:
@@ -114,7 +109,7 @@ paths:
         schema:
           type: string
       responses:
-        "200":
+        '200':
           description: OK
           content:
             text/plain:
@@ -129,34 +124,13 @@ paths:
     post:
       tags:
       - iso
-      summary: Upload an ESXi Installation ISO
+      summary: 'NOT IMPLEMENTED: Upload an ESXi Installation ISO'
+      description: '**NOT IMPLEMENTED:** This endpoint has not yet been implemented.'
+      responses:
+        '200':
+          description: OK
 components:
   schemas:
-    Job:
-      required:
-      - rootpw
-      - cimcIp
-      - cimcUser
-      - cimcPass
-      - esxiIp
-      type: object
-      properties:
-        rootpw:
-          type: string
-        cimcIp:
-          type: string
-          example: 172.16.0.2
-        cimcUser:
-          type: string
-        cimcPass:
-          type: string
-        esxiIp:
-          type: string
-    JobResponse:
-      type: object
-      properties:
-        jobId:
-          type: string
     Jobs:
       type: "object"
       additionalProperties:
