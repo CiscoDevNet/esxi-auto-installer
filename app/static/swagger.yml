@@ -37,13 +37,13 @@ paths:
       responses:
         '200':
           description: successful operation
-  /jobs/{jobId}:
+  /jobs/{jobID}:
     get:
       tags:
       - jobs
-      summary: Returns a specific job.
+      summary: Returns details for a specific job.
       parameters:
-      - name: jobId
+      - name: jobID
         in: path
         description: ID of job.
         required: true
@@ -60,7 +60,7 @@ paths:
       tags:
       - jobs
       summary: Updates a job entry.
-      description: | 
+      description: |
         Updates the status of a particular job.<BR>
         ```
          0: Ready to deploy
@@ -74,7 +74,7 @@ paths:
         32: Error: Failed to mount installation ISO
         ```
       parameters:
-      - name: jobId
+      - name: jobID
         in: path
         description: ID of job.
         required: true
@@ -96,13 +96,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/JobStatus'
-  /logs/{jobId}:
+  /logs/{jobID}:
     get:
       tags:
       - logs
       summary: View job logs
       parameters:
-      - name: jobId
+      - name: jobID
         in: path
         description: ID of job.
         required: true
@@ -132,10 +132,11 @@ paths:
 components:
   schemas:
     Jobs:
-      type: "object"
-      additionalProperties:
-        $ref: '#/components/schemas/JobStatus'
-
+      description: "jobID is a unique string, default: {cimcip}_{timestamp}, eg. '192.168.0.1_1628871425.1136827'"
+      type: object
+      properties:
+        jobID:
+          $ref: '#/components/schemas/JobStatus'
     JobStatus:
       type: object
       properties:
