@@ -137,6 +137,11 @@ def upload_iso(mainlog=get_main_logger()):
     return render_template('upload.html')
 
 
+# api swagger document
+@app.route('/api', methods=['GET', 'POST', 'PUT'])
+def api_swagger():
+    return render_template('api_swagger.html')
+
 # API endpoints #
 # api endpoint for getting details for all jobs
 @app.route('/api/v1/jobs', methods=['GET'])
