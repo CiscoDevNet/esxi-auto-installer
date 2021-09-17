@@ -24,7 +24,7 @@ After Auto-Installer is complete, you can use your traditional automation method
 ESXi Auto-Installer requires Linux or “Unix-like” system with few additional components installed and 'eaiusr' account created (with full sudo rights).\
 The install instructions were created using Ubuntu Linux.
 
-## Inital Setup
+## Initial Setup
 
 ``` bash
 sudo git clone https://github.com/CiscoDevNet/esxi-auto-installer /opt/eai
@@ -113,3 +113,13 @@ Additionaly it has the following dependencies:
 - Apache Web Server
 - mod_wsgi
 - Flask
+
+## Common issues
+
+### No ESXi ISO when you first install
+The Auto-Installer does not come pre-packaged with an ESXi Installation ISO. You must upload one using the Upload ISO Page before you can install ESXi hosts.
+### ESXi hosts status does not change to finished
+The kickstart file instructs the host to contact the Auto-Installer via the /api/v1/jobs PUT API to update it's status to "Finished".\
+If the ESXi host installed successfully, but the status on Auto-Installer did not update to "Fininished", it could be because the ESXi host was unable to contact the Auto-Installer during the initial ESXi boot.\
+Common reasons are wrong IP Address, Gateway, VLAN or VMNIC settings. Or the ESXi host may require a static route.
+If the ESXi host is in an isolated network and there is no way for it to contact the Auto-Installer, then it cannot update the status to finished.
