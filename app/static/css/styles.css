@@ -31,6 +31,7 @@ div.page_header {
     font-size: 180%;
     font-weight: bold;
     background-color: #F5F6F7;
+    text-align: center;
 }
 div.version {
     font-size: 65%;
