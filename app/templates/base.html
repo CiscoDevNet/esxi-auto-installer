@@ -4,7 +4,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     {% block metarefresh %}{% endblock %}
     <title>ESXi Auto-Installer</title>
-    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/styles.css') }}">
+    {% block stylesheet %}{% endblock %}
     <script src="{{ url_for('static', filename='scripts.js') }}"></script>
   </head>
   <body>
@@ -12,12 +12,13 @@
       <!--<div class="logo"><img src="{{ url_for('static', filename='cisco-logo.png') }}" alt="Cisco Logo"/></div>-->
       <div class="page_header">
         <div>ESXi Auto-Installer</div>
-        <div class="version">(v1.0 2021-09-13)</div>
+        <div class="version">(v1.0 2021-09-20)</div>
       </div>
       <div id="navbar" class="menu">
         <a href="{{ url_for('autoinstaller_gui') }}">Home</a>
         <a href="{{ url_for('show') }}">Status</a>
         <a href="{{ url_for('upload_iso') }}">Upload ISO</a>
+        <a href="{{ url_for('api_swagger') }}">API</a>
       </div>
       {% block content %}{% endblock %}
     </div>

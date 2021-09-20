@@ -1,6 +1,16 @@
 History
 =====================
 
+1.0alpha7 (2021-09-20)
+---------------------
+* hide passwords in web form
+* styles cleanup
+* removed PXE boot related files
+
+1.0alpha6 (2021-09-17)
+---------------------
+* Included Swagger documentation.
+
 1.0alpha5 (2021-09-13)
 ---------------------
 * removed root password when saving kickstart to job log

@@ -1,9 +1,13 @@
 {% extends 'base.html' %}
 
+{% block stylesheet %}
+<link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/styles.css') }}">
+{% endblock stylesheet %}
+
 {% block content %}
 
   <div class="content_section">
-      <pre style="white-space: pre-wrap;">{{ log_file_text }} </pre>
+      <pre class="display_file">{{ log_file_text }} </pre>
   </div>
 
 {% endblock %}

@@ -1,5 +1,9 @@
 {% extends 'base.html' %}
 
+{% block stylesheet %}
+<link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/styles.css') }}">
+{% endblock stylesheet %}
+
 {% block content %}
       <div class="content_section">
         <h1>Step 1</h1>
@@ -22,11 +26,17 @@
                 </tr>
                 <tr>
                     <td>ESXi root password: </td>
-                    <td><input type="text" name="ROOTPW" required value=""></td>
+                    <td>
+                      <input type="password" name="ROOTPW" id="ROOTPW" required value="">
+                      <div class="content_section_text_small">
+                        <label for="show_root_pass">Show password</label>
+                        <input id="show_root_pass" name="show_root_pass" type="checkbox" value="y">
+                      </div>
+                    </td>
                     <td>Enter the password for the root account.</td>
                 </tr>
                 <tr>
-                    <td>Mgmt VLAN ID: </td><td><input type="number" name="VLAN" value='0' max=4094><br /><div style="font-size: smaller;">Optional</div></td>
+                    <td>Mgmt VLAN ID: </td><td><input type="number" name="VLAN" value='0' max=4094><br /><div class="content_section_text_small">Optional</div></td>
                     <td>If your mgmt interface requires a VLAN tag add it here. Otherwise set to 0 for no VLAN.</td>
                 </tr>
                 <tr>
@@ -42,7 +52,7 @@
                         <label for="FirstDiskType">First Disk Found (Default)</label><br />
                         <input type="radio" id="FirstDisk" name="FirstDisk" value="firstdisk" oninput="InstallDiskShow('firstdisk')">
                         <label for="FirstDiskType">First Disk of a certain type</label><br />
-                        <div id="FistDiskTypeControls" style="display:none">
+                        <div id="FistDiskTypeControls" class="hide">
                             - - <select name="FirstDiskType" id="FirstDiskType">
                                 <option value="local">Locally attached storage</option>
                                 <option value="remote">Network storage</option>
@@ -51,7 +61,7 @@
                           </div>
                         <input type="radio" id="FirstDisk" name="FirstDisk" value="diskpath" oninput="InstallDiskShow('disk')">
                         <label for="FirstDisk">Use a specific disk</label><br />
-                        <div id="DiskPathTypeControls" style="display:none">
+                        <div id="DiskPathTypeControls" class="hide">
                             - - <input type=text name='DiskPath' id='DiskPath' value=''><br />
                               Enter disk path<br />
                         </div>
@@ -82,16 +92,16 @@
             Does ESXi require static routes at boot time?
             <input type="radio" id="StaticRoute" name="StaticRoute" value="True"  oninput="StaticRoutesShow('True')">Yes
             <input type="radio" checked id="StaticRoute" name="StaticRoute" value="False" oninput="StaticRoutesShow('False')">No<br />
-            <div ID="StaticRoutes" style="display: none;margin-left: 50px">
-              <Table  id="StaticRouteTable" style="Border: none; margin-left: 50px;">
+            <div ID="StaticRoutes" class="hide50">
+              <Table  id="StaticRouteTable" class="custom">
                 <tr>
-                  <td style="Border: none; padding: 0px;">Subnet Address<br /><input type="text" name="StaticSubnet0" id="StaticSubnet0">/</td>
-                  <td style="Border: none; padding: 0px;">Mask<br /><input type="number" name="StaticMask0" id="StaticMask0" value="24" min="0" max="32" size="4"></td>
-                  <td style="Border: none; padding: 10px;">Gateway<br /><input type="text" name="StaticGateway0" id="StaticGateway0"></td>
+                  <td class="static_nopadding">Subnet Address<br /><input type="text" name="StaticSubnet0" id="StaticSubnet0">/</td>
+                  <td class="static_nopadding">Mask<br /><input type="number" name="StaticMask0" id="StaticMask0" value="24" min="0" max="32" size="4"></td>
+                  <td class="static_padding10">Gateway<br /><input type="text" name="StaticGateway0" id="StaticGateway0"></td>
                 </tr>
               </Table>
-              <input type="button" value="Add Route" onclick="AddStaticRoute()" Style="margin-left: 50px;">
-              <input type="button" value="Delete Last Route" onclick="RemoveStaticRoute()" Style="margin-left: 50px;">
+              <input type="button" value="Add Route" onclick="AddStaticRoute()" class="margin50">
+              <input type="button" value="Delete Last Route" onclick="RemoveStaticRoute()" class="margin50">
             </div>
             <br />
             <br />
@@ -101,50 +111,53 @@
             <input type="radio" id="IPList" name="IPList" value="CSV" oninput="IPListShow('CSV')">
             <label>CSV Spreadsheet</label><br />
             <br />-->
-            <div ID="ManualIP" style="margin-left: 50px;">
+            <div ID="ManualIP" class="margin50">
               Common Settings:<br />
               <table class="custom">
-                <tr>
+                <tr class="custom">
                     <td class="custom">
                         CIMC Account<br/>
                         <input type="text" required name="CIMCUSR" id="CIMCUSR" value="admin">
                     </td>
                     <td class="custom">
                         CIMC Password<br/>
-                        <input type="text" required name="CIMCPWD" id="CIMCPWD">
+                        <input type="password" required name="CIMCPWD" id="CIMCPWD">
+                        <div class="content_section_text_small">
+                          <label for="show_cimc_pass">Show password</label>
+                          <input id="show_cimc_pass" name="show_cimc_pass" type="checkbox" value="y">
+                        </div>
                     </td>
                 </tr>
                 <tr>
                   <td class="custom">ESXi Hostname Prefix<br />
                     <input type="text" name="HOSTPREFIX" id="HOSTPREFIX" oninput="UpdateESXiHostName()"><br />
-                    <div style="font-size: smaller;">Optional</div></td>
+                    <div class="content_section_text_small">Optional</div></td>
                   <td class="custom">ESXi Hostname Suffix<br />
                     <input type="text" name="HOSTSUFFIX" id="HOSTSUFFIX" oninput="UpdateESXiHostName()"><br />
-                    <div style="font-size: smaller;">Optional</div></td>
-                    <!--<td class="custom">IP Subnet<br /><input type="text" required name="SUBNET"></td>-->
+                    <div class="content_section_text_small">Optional</div></td>
                   <td class="custom">Netmask<br /><input type="text" required name="NETMASK" value="255.255.255.0"></td>
                   <td class="custom">Gateway<br /><input type="text" required name="GATEWAY"></td>
                 </tr>
               </table>
               <br />
               Unique Settings:
-              <table id="ManualIPTable" Style="padding: 50px; margin-left: 50px">
+              <table id="ManualIPTable" class="manual_ip">
                 <tr>
-                  <td Style="font-size: smaller;text-align: center;Border:none">Prefix</td>
-                  <td Style="text-align: center;Border:none">ESXi Hostname</td>
-                  <td Style="font-size: smaller;Border:none">Suffix</td>
-                  <td Style="text-align: center;Border: None">Mgmt ESXi IP</td>
-                  <td Style="text-align: center;border:None">CIMC IP Address</td>
+                  <td class="manual_ip_header_sm">Prefix</td>
+                  <td class="manual_ip_header">ESXi Hostname</td>
+                  <td class="manual_ip_header_sm">Suffix</td>
+                  <td class="manual_ip_header">Mgmt ESXi IP</td>
+                  <td class="manual_ip_header">CIMC IP Address</td>
                 </tr>
               </table>
-              <input type="button" value="Add Row" onclick="AddManualIPRow()" Style="margin-left: 50px;">
-              <input type="button" value="Delete Last Row" onclick="RemoveManualIPRow()" Style="margin-left: 50px;">
+              <input type="button" value="Add Row" onclick="AddManualIPRow()" class="margin50">
+              <input type="button" value="Delete Last Row" onclick="RemoveManualIPRow()" class="margin50">
             </div>
-            <!--<Div id='CSV' style="display: none;margin-left: 50px">
+            <!--<Div id='CSV' class="hide50">
               <div class="content_section_text">
                 Upload a CSV file
               </div>
-              <div style="margin-left: 50px;">
+              <div class="margin50">
               <input type="text" value="c:\Documents\IPList.csv"> <input type="button" value="Browse"><br />
               <a href="">Download Sample File</a>
               <br /><br /><br /><br /><br /><br /><br /><br />
@@ -275,18 +288,6 @@
         event.target.setCustomValidity('');
       })
 
-
-      //custom validation message for SUBNET field
-      const input_subnet = document.querySelector('input[name="SUBNET"]');
-      input_subnet.addEventListener('invalid', function (event) {
-        if (event.target.validity.valueMissing) {
-          event.target.setCustomValidity('Enter ESXi management subnet, eg. 192.168.1.0');
-        }
-      })
-      input_subnet.addEventListener('change', function (event) {
-        event.target.setCustomValidity('');
-      })
-
       //custom validation message for NETMASK field
       const input_netmask = document.querySelector('input[name="NETMASK"]');
       input_netmask.addEventListener('invalid', function (event) {
@@ -341,5 +342,31 @@
       input_cimcip.addEventListener('change', function (event) {
         event.target.setCustomValidity('');
       })
+
+      //toggle root password field preview
+      window.addEventListener("load", function(){
+            var checkbox  = document.getElementById('show_root_pass')
+            var x = document.getElementById('ROOTPW')
+            checkbox.addEventListener('change', function() {
+                if(this.checked) {
+                    x.type = 'text'
+                } else {
+                    x.type = 'password'
+                }
+            });
+        });
+
+      //toggle CIMC password field preview
+      window.addEventListener("load", function(){
+            var checkbox  = document.getElementById('show_cimc_pass')
+            var x = document.getElementById('CIMCPWD')
+            checkbox.addEventListener('change', function() {
+                if(this.checked) {
+                    x.type = 'text'
+                } else {
+                    x.type = 'password'
+                }
+            });
+        });
       </script>
 {% endblock %}

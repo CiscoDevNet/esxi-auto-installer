@@ -7,6 +7,7 @@ body, html {
     font-size: 11pt;
     text-align: center;
 }
+
 div.main_page {
     position: relative;
     display: table;
@@ -31,6 +32,7 @@ div.page_header {
     font-size: 180%;
     font-weight: bold;
     background-color: #F5F6F7;
+    text-align: center;
 }
 div.version {
     font-size: 65%;
@@ -85,9 +87,25 @@ div.menu a:hover {
     background: #ddd;
     color: black;
 }
+div.hide {
+    display: none;
+}
+div.hide50 {
+    display: none;
+    margin-left: 50px;
+}
+div.margin50 {
+    margin-left: 50px;
+}
+
 h1.error {
     color: red;
 }
+
+pre.display_file {
+    white-space: pre-wrap;
+}
+
 table, td {
     border: 1px solid black;
     border-collapse: collapse;
@@ -119,13 +137,40 @@ td.suffix {
     border-left: None;
     border-right: None;
 }
+table.manual_ip {
+    padding: 50px; 
+    margin-left: 50px;
+}
+td.manual_ip_header_sm {
+    font-size: smaller;
+    text-align: center;
+    border:none;
+}
+td.manual_ip_header {
+    text-align: center;
+    border:none;
+}
 table.custom {
     border: None;
     margin-left: 50px;
 }
 td.custom {
     border: None;
+    padding-left: 0px;
+    padding-right: 10px;
+    vertical-align: top;
+}
+td.static_nopadding {
+    border: None;
+    padding: 0px;
+}
+td.static_padding10 {
+    border: None;
     padding: 10px;
+}
+tr.status_header {
+    font-weight:bold;
+    background-color:#D8DBE2;
 }
 
 a:link,
@@ -137,12 +182,12 @@ a:hover {
     background-color: #000000;
     color: #DCDFE6;
 }
-div.content_section_text_small {
-    font-size: small;
-}
 
 input[type=file] {
     width: 600px
+}
+input.margin50 {
+    margin-left: 50px;
 }
 
 .button {
