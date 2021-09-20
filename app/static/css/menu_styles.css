@@ -47,3 +47,6 @@ div.menu a:hover {
     background: #ddd;
     color: black;
 }
+div.version {
+    font-size: 65%;
+}
