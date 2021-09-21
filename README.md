@@ -14,8 +14,8 @@ After Auto-Installer is complete, you can use your traditional automation method
 - Supports custom ESXi installation ISO
 - Implements most kickstart parameters described in [VMWare's documentation](https://docs.vmware.com/en/VMware-vSphere/7.0/com.vmware.esxi.upgrade.doc/GUID-61A14EBB-5CF3-43EE-87EF-DB8EC6D83698.html)
 - Supports iSCSI boot installs
-- [API for automation pipelines](ciscodevnet.github.io/esxi-auto-installer/)
-- Future: Platform agnostic installations (including virtual machines) using PXE instead of CIMC
+- [API for additional automation](https://ciscodevnet.github.io/esxi-auto-installer/)
+- Future: Platform agnostic installations (including virtual machines) using PXE instead of Cisco IMC
 
 # Setup guide
 
@@ -87,7 +87,7 @@ Once you upload an ISO, you can select it as part of the install process on the 
 
 The API page shows the Swagger documentation for the APIs. You do not have to authenticate to use the APIs.
 
-You can also view the [Swagger Document in on Git](ciscodevnet.github.io/esxi-auto-installer/).
+You can also view the [Swagger Document in on Git](https://ciscodevnet.github.io/esxi-auto-installer/).
 
 # Application Details
 
