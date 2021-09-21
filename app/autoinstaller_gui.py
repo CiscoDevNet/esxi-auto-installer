@@ -71,19 +71,19 @@ def autoinstaller_gui():
 # route for serving kickstart files from KSDIR directory
 @app.route('/ks/<path:filename>')
 def send_ks(filename):
-    return send_from_directory(directory=KSDIR, filename=filename)
+    return send_from_directory(KSDIR, filename)
 
 
 # route for serving files from CUSTOMISODIR directory
 @app.route('/custom-iso/<path:filename>')
 def send_customiso(filename):
-    return send_from_directory(directory=CUSTOMISODIR, filename=filename)
+    return send_from_directory(CUSTOMISODIR, filename)
 
 
 # route for files in ESXISODIR directory
 @app.route('/esxi-iso/<path:filename>')
 def send_esxi_iso(filename):
-    return send_from_directory(directory=ESXISODIR, filename=filename)
+    return send_from_directory(ESXISODIR, filename)
 
 
 # show EAIDB page
