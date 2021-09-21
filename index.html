@@ -9,6 +9,19 @@
         <div id="swagger-ui"></div> <!-- Div to hold the UI component -->
         <script>
             window.onload = function () {
+                // Extra const to hind TryItOut button when rendered from GitHub
+                // https://dev.to/liviasilvasantos/disabling-swagger-button-try-it-out-4e7j
+                const DisableTryItOutPlugin = function() {
+                    return {
+                        statePlugins: {
+                            spec: {
+                                wrapSelectors: {
+                                    allowTryItOutFor: () => () => false
+                                }
+                            }
+                        }
+                    }
+                }
                 // Begin Swagger UI call region
                 const ui = SwaggerUIBundle({
                     url: "app/static/swagger.yml", //Location of Open API spec in the repo
@@ -19,7 +32,8 @@
                         SwaggerUIBundle.SwaggerUIStandalonePreset
                     ],
                     plugins: [
-                        SwaggerUIBundle.plugins.DownloadUrl
+                        SwaggerUIBundle.plugins.DownloadUrl,
+                        DisableTryItOutPlugin
                     ],
                 })
                 window.ui = ui
