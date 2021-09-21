@@ -126,7 +126,7 @@ def upload_iso(mainlog=get_main_logger()):
                 # extract ISO to ESXISODIR
                 iso_extract(mainlog, uploaded_iso)
                 # copy extracted ISO and prepare it for tftpboot
-                iso_prepare_tftp(mainlog, uploaded_iso)
+                # iso_prepare_tftp(mainlog, uploaded_iso)
         return redirect(url_for('autoinstaller_gui'))
     return render_template('upload.html')
 
