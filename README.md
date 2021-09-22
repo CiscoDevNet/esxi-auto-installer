@@ -15,7 +15,7 @@ After Auto-Installer is complete, you can use your traditional automation method
 - Implements most kickstart parameters described in [VMWare's documentation](https://docs.vmware.com/en/VMware-vSphere/7.0/com.vmware.esxi.upgrade.doc/GUID-61A14EBB-5CF3-43EE-87EF-DB8EC6D83698.html)
 - Supports iSCSI boot installs
 - [API for additional automation](https://ciscodevnet.github.io/esxi-auto-installer/)
-- Future: Platform agnostic installations (including virtual machines) using PXE instead of Cisco IMC
+- Future: Platform agnostic installations (including virtual machines) using PXE boot
 
 # Setup guide
 
@@ -64,8 +64,8 @@ The Home page is where you start your ESXi Installations.\
 In 'Step 1' is where you setup your basic installation settings.\
 In 'Step 2' you configure the IP settings for the ESXi hosts.
 
-One all the correct settings have been entered, click the "START" button on the bottom to begin the installation process.\
-Once you click Start, you will be sent to the "Status Page".
+Once all the correct settings have been entered, click the "START" button on the bottom to begin the installation process.\
+Once you click Start, you will be sent to the "Status Page". Please note this may take a while if several jobs are being run in parrallel - do not navigate off the main page untill this process is finished and "Status Page" is presented.
 
 ## Status page
 
@@ -94,7 +94,7 @@ You can also view the [Swagger Document in on Git](https://ciscodevnet.github.io
 
 Main Auto-Installer log file `eai.log` is stored under `EAILOG` and provides overview on application run and launched jobs.
 
-'Per job ID' log files are stored in `LOGDIR` and available via web GUI ('Status' tab) or from the host system. These logs provide detailed output from all tasks executed per given job ID.
+'Per job ID' log files are stored in `LOGDIR` directory and available via web GUI ('Status' tab) or from the host system. These logs provide detailed output from all tasks executed per given job ID.
 
 ## Custom install directory
 
