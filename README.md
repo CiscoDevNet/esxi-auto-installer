@@ -97,7 +97,6 @@ Main Auto-Installer log file `eai.log` is stored under `EAILOG` and provides ove
 'Per job ID' log files are stored in `LOGDIR` directory and available via web GUI ('Status' tab) or from the host system. These logs provide detailed output from all tasks executed per given job ID.
 
 ## Custom install directory
-
 `/opt/eai` is the default directory. If you use a different directory, you need to update some config files.
 - the `WORKDIR` path located in the `config.py` file.
 - All `/opt/eai` entries in `/etc/httpd/conf.d/autoinstaller.conf`
@@ -124,5 +123,6 @@ The Auto-Installer does not come pre-packaged with an ESXi Installation ISO. You
 ### ESXi hosts status does not change to finished
 The kickstart file instructs the host to contact the Auto-Installer via the /api/v1/jobs PUT API to update its status to "Finished".\
 If the ESXi host installed successfully, but the status on Auto-Installer did not update to "Finished", it could be because the ESXi host was unable to contact the Auto-Installer during the initial ESXi boot.\
+
 Common reasons are wrong IP Address, Gateway, VLAN or VMNIC settings. Or the ESXi host may require a static route.
 If the ESXi host is in an isolated network and there is no way for it to contact the Auto-Installer, then it cannot update the status to finished.
