@@ -11,7 +11,7 @@ from jinja2 import Template
 import re
 import time
 from ipaddress import ip_network
-
+from multiprocessing import Process
 
 def get_form_data(mainlog, form_result):
     """
@@ -485,3 +485,31 @@ def remove_custom_iso(jobid, logger, mainlog, customisodir=CUSTOMISODIR):
     except Exception as e:
         mainlog.error(f'{jobid} : Failed to remove {iso_path}: {str(e)}')
         logger.error(f'Failed to remove {iso_path}: {format_message_for_web(e)}')
+
+def process_submission(jobid_list, logger_list, mainlog, form_data):
+    """
+    Generates installation data and starts install process.
+
+    :param jobid_list: (list) List of (str) job ID
+    :param logger: (list) List of (logging.Handler) logger handler for jobid
+    :param mainlog: (logging.Handler) main Auto-Installer logger handler
+    :param form_data: (dict) dictionary with IP address(es) and task(s) as list items
+    :return: n/a
+    """
+
+    for index in range(len(form_data['hosts'])):
+        jobid = jobid_list[index]
+        logger = logger_list[index]
+        hostname = form_data['hosts'][index]['hostname']
+
+        # customize kickstart config
+        mainlog.info(f'{jobid} Generating kickstart file for server {hostname}')
+        kscfg = generate_kickstart(jobid, form_data, index, logger, mainlog)
+
+        # generate custom installation ISO
+        mainlog.info(f'{jobid} Generating custom installation ISO for server {hostname}')
+        generate_custom_iso(jobid, logger, mainlog, hostname, form_data['iso_image'], kscfg)
+
+        # start ESXi hypervisor installation
+        Process(target=install_esxi, args=(jobid, logger, mainlog, form_data['hosts'][index]['cimcip'], form_data['cimc_usr'],
+                                            form_data['cimc_pwd'], jobid + '.iso')).start()
