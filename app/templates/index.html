@@ -129,14 +129,24 @@
                     </td>
                 </tr>
                 <tr>
-                  <td class="custom">ESXi Hostname Prefix<br />
+                  <td class="custom">Netmask<br />
+                    <input type="text" required name="NETMASK" value="255.255.255.0"></td>
+                  <td class="custom">Gateway<br />
+                    <input type="text" required name="GATEWAY"></td>
+                  <td class="custom">DNS 1<br />
+                    <input type="text" name="DNS1" id="DNS1" placeholder="208.67.222.222"><br />
+                    <div class="content_section_text_small">Optional</div></td>
+                  <td class="custom">DNS 2<br />
+                    <input type="text" name="DNS2" id="DNS2" placeholder="208.67.220.220"><br />
+                    <div class="content_section_text_small">Optional</div></td>
+                </tr>
+                <tr>
+                  <td class="custom">Hostname Prefix<br />
                     <input type="text" name="HOSTPREFIX" id="HOSTPREFIX" oninput="UpdateESXiHostName()"><br />
                     <div class="content_section_text_small">Optional</div></td>
-                  <td class="custom">ESXi Hostname Suffix<br />
+                  <td class="custom">Hostname Suffix<br />
                     <input type="text" name="HOSTSUFFIX" id="HOSTSUFFIX" oninput="UpdateESXiHostName()"><br />
                     <div class="content_section_text_small">Optional</div></td>
-                  <td class="custom">Netmask<br /><input type="text" required name="NETMASK" value="255.255.255.0"></td>
-                  <td class="custom">Gateway<br /><input type="text" required name="GATEWAY"></td>
                 </tr>
               </table>
               <br />

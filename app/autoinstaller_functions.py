@@ -56,6 +56,8 @@ def get_form_data(mainlog, form_result):
     form_data['host_subnet'] = ip_network(form_result['GATEWAY'] + '/' + form_result['NETMASK'], strict=False).network_address
     form_data['host_netmask'] = form_result['NETMASK']
     form_data['host_gateway'] = form_result['GATEWAY']
+    form_data['dns1'] = form_result['DNS1']
+    form_data['dns2'] = form_result['DNS2']
 
     # get ESXi host and CIMC IP address(es)
     form_data['hosts'] = []
@@ -124,6 +126,16 @@ def generate_kickstart(jobid, form_data, index, logger, mainlog, eai_host_ip=EAI
     # else:
     #     disable_ipv6 = ''
 
+    # process DNS
+    if form_data['dns1'] != '':
+        if form_data['dns2'] != '':
+            dnsservers = form_data['dns1'] + ',' + form_data['dns2']
+        else:
+            dnsservers = form_data['dns1']
+    else:
+        dnsservers = ''
+
+
     # remaining host data
     rootpw = form_data['rootpw']
     vmnicid = form_data['vmnic']
@@ -137,7 +149,7 @@ def generate_kickstart(jobid, form_data, index, logger, mainlog, eai_host_ip=EAI
     with open(ksjinja, 'r') as kstemplate_file:
         kstemplate = Template(kstemplate_file.read())
     kickstart = kstemplate.render(clearpart=clearline, install=install, rootpw=rootpw, vmnicid='vmnic' + vmnicid, vlan=vlan,
-                                  ipaddr=ipaddr, netmask=netmask, gateway=gateway, hostname=hostname, pre_section=pre_section,
+                                  ipaddr=ipaddr, netmask=netmask, gateway=gateway, hostname=hostname, pre_section=pre_section, dnsservers=dnsservers,
                                   set_def_gw=set_def_gw, enable_ssh=enable_ssh, disable_ipv6=disable_ipv6,
                                   eai_host_ip=eai_host_ip, jobid=jobid)
     # remove password before saving kickstart to log file
