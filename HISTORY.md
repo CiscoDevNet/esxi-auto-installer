@@ -1,6 +1,10 @@
 History
 =====================
 
+1.0alpha8 (2021-09-24)
+---------------------
+* moved KickStart and ISO generation into it's own subprocess
+
 1.0alpha7 (2021-09-20)
 ---------------------
 * hide passwords in web form
