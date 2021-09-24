@@ -4,6 +4,7 @@ History
 1.0alpha8 (2021-09-24)
 ---------------------
 * moved KickStart and ISO generation into it's own subprocess
+* added DNS fields to home page
 
 1.0alpha7 (2021-09-20)
 ---------------------
