@@ -34,13 +34,14 @@ def autoinstaller_gui():
         form_data = get_form_data(mainlog, result)
 
         # interate over the list of ESXi hosts and run corresponding actions for each host
+        jobid_list  = []
+        logger_list = []
         for index in range(len(form_data['hosts'])):
             hostname = form_data['hosts'][index]['hostname']
-            ipaddr = form_data['hosts'][index]['ipaddr']
             cimcip = form_data['hosts'][index]['cimcip']
 
             # generate jobid based on CIMC IP and current timestamp
-            jobid = generate_jobid(form_data['hosts'][index]['cimcip'])
+            jobid = generate_jobid(cimcip)
 
             # create logger handler
             logger = get_jobid_logger(jobid)
@@ -49,20 +50,13 @@ def autoinstaller_gui():
 
             # create entry in Auto-Installer DB
             mainlog.info(f'{jobid} Saving installation data for server {hostname}')
-            eaidb_create_job_entry(jobid, time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime()), hostname, ipaddr,
+            eaidb_create_job_entry(jobid, time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime()), hostname, form_data['hosts'][index]['ipaddr'],
                                    cimcip, form_data['cimc_usr'], form_data['cimc_pwd'])
 
-            # customize kickstart config
-            mainlog.info(f'{jobid} Generating kickstart file for server {hostname}')
-            kscfg = generate_kickstart(jobid, form_data, index, logger, mainlog)
-
-            # generate custom installation ISO
-            mainlog.info(f'{jobid} Generating custom installation ISO for server {hostname}')
-            generate_custom_iso(jobid, logger, mainlog, hostname, form_data['iso_image'], kscfg)
-
-            # start ESXi hypervisor installation
-            Process(target=install_esxi, args=(jobid, logger, mainlog, cimcip, form_data['cimc_usr'],
-                                               form_data['cimc_pwd'], jobid + '.iso')).start()
+            jobid_list.append(jobid)
+            logger_list.append(logger)
+        # Process data on seperate thread
+        Process(target=process_submission, args=(jobid_list, logger_list, mainlog, form_data)).start()
 
         return redirect(url_for('show'))
     return render_template('index.html', form=form, isodirs=dirs)

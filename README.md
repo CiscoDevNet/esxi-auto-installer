@@ -65,7 +65,7 @@ In 'Step 1' is where you setup your basic installation settings.\
 In 'Step 2' you configure the IP settings for the ESXi hosts.
 
 Once all the correct settings have been entered, click the "START" button on the bottom to begin the installation process.\
-Once you click Start, you will be sent to the "Status Page". Please note this may take a while if several jobs are being run in parrallel - do not navigate off the main page until this process is finished and "Status Page" is presented.
+Once you click Start, you will be sent to the "Status Page".
 
 ## Status page
 
