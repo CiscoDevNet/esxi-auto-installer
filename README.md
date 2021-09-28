@@ -27,18 +27,18 @@ The install instructions were created using Ubuntu 20.04.2 LTS.
 ## Initial Setup
 
 ``` bash
-sudo apt update
-sudo apt install python3-pip git apache2 apache2-dev libapache2-mod-wsgi-py3 genisoimage -y
-sudo a2enmod wsgi
-sudo git clone https://github.com/CiscoDevNet/esxi-auto-installer /opt/eai
-sudo chown -R www-data.www-data /opt/eai
-cd /opt/eai
-sudo pip install -r requirements.txt
-sudo cp autoinstaller.conf /etc/apache2/sites-available/
-sudo ln -s /etc/apache2/sites-available/autoinstaller.conf /etc/apache2/sites-enabled/autoinstaller.conf
-sudo unlink /etc/apache2/sites-enabled/000-default.conf 
-sudo /bin/sh -c 'echo "www-data ALL=NOPASSWD:/usr/bin/mount, /usr/bin/umount, /usr/bin/mkdir, /usr/bin/chown, /usr/bin/rmdir" > /etc/sudoers.d/apache'
-sudo systemctl enable apache2
+sudo apt update && \
+sudo apt install python3-pip git apache2 apache2-dev libapache2-mod-wsgi-py3 genisoimage -y && \
+sudo a2enmod wsgi && \
+sudo git clone https://github.com/CiscoDevNet/esxi-auto-installer /opt/eai && \
+sudo chown -R www-data.www-data /opt/eai && \
+cd /opt/eai && \
+sudo pip install -r requirements.txt && \
+sudo cp autoinstaller.conf /etc/apache2/sites-available/ && \
+sudo ln -s /etc/apache2/sites-available/autoinstaller.conf /etc/apache2/sites-enabled/autoinstaller.conf && \
+sudo unlink /etc/apache2/sites-enabled/000-default.conf && \
+sudo /bin/sh -c 'echo "www-data ALL=NOPASSWD:/usr/bin/mount, /usr/bin/umount, /usr/bin/mkdir, /usr/bin/chown, /usr/bin/rmdir" > /etc/sudoers.d/apache' && \
+sudo systemctl enable apache2 && \
 sudo systemctl restart apache2
 ```
 
