@@ -498,6 +498,7 @@ def remove_custom_iso(jobid, logger, mainlog, customisodir=CUSTOMISODIR):
         mainlog.error(f'{jobid} : Failed to remove {iso_path}: {str(e)}')
         logger.error(f'Failed to remove {iso_path}: {format_message_for_web(e)}')
 
+
 def process_submission(jobid_list, logger_list, mainlog, form_data):
     """
     Generates installation data and starts install process.
@@ -525,3 +526,60 @@ def process_submission(jobid_list, logger_list, mainlog, form_data):
         # start ESXi hypervisor installation
         Process(target=install_esxi, args=(jobid, logger, mainlog, form_data['hosts'][index]['cimcip'], form_data['cimc_usr'],
                                             form_data['cimc_pwd'], jobid + '.iso')).start()
+
+
+def create_jobs(form_data, mainlog=get_main_logger()):
+    """
+    Create installation for each server in form_data['hosts'] list.
+
+    :param form_data: (dict) installatiomn data as returned by get_form_data() function
+    :param mainlog: (logging.Handler) main Auto-Installer logger handler
+    :return: (list) list of job IDs
+    """
+    
+    # interate over the list of ESXi hosts and run corresponding actions for each host
+    jobid_list  = []
+    logger_list = []
+    for index in range(len(form_data['hosts'])):
+        hostname = form_data['hosts'][index]['hostname']
+        cimcip = form_data['hosts'][index]['cimcip']
+
+        # generate jobid based on CIMC IP and current timestamp
+        jobid = generate_jobid(cimcip)
+
+        # create logger handler
+        logger = get_jobid_logger(jobid)
+        logger.info(f'Processing job ID: {jobid}, server {hostname}\n')
+        mainlog.info(f'{jobid} - processing job ID, server {hostname}')
+
+        # create entry in Auto-Installer DB
+        mainlog.info(f'{jobid} Saving installation data for server {hostname}')
+        eaidb_create_job_entry(jobid, time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime()), hostname, form_data['hosts'][index]['ipaddr'],
+                                cimcip, form_data['cimc_usr'], form_data['cimc_pwd'])
+
+        jobid_list.append(jobid)
+        logger_list.append(logger)
+    # Process data on seperate thread
+    Process(target=process_submission, args=(jobid_list, logger_list, mainlog, form_data)).start()
+    return jobid_list
+
+
+def get_logs(jobid, basedir=LOGDIR):
+    """
+    Get log file from basedir for specific job ID
+
+    :param jobid: (str) job ID
+    :param basedir: (str) path to jobs logs directory
+    :return: n/a    
+    """
+    # Joining the base and the requested path
+    abs_path = os.path.join(basedir, jobid)
+
+    # Return 404 if path doesn't exist
+    if not os.path.exists(abs_path):
+        return 'File does not exist!', 404
+
+    # Check if path is a file and serve
+    if os.path.isfile(abs_path):
+        with open(abs_path, 'r') as log_file:
+            return log_file.read(), 200, {'Content-Type': 'text/plain; charset=utf-8'}

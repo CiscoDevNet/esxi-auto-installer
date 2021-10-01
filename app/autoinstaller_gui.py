@@ -2,20 +2,22 @@ from flask import Flask, render_template, request, send_from_directory, redirect
 from flask_wtf import FlaskForm
 from os import system, path, listdir
 from multiprocessing import Process
+from flask_restful import Api
+import sys
 from generic_functions import *
 from autoinstaller_functions import *
+from autoinstaller_api import *
 from config import *
 
 # from wtforms.validators import (DataRequired, Email, EqualTo, Length, URL)
 # from forms import GatherInput
-# import logging
-import sys
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'cll-vmware-auto-installer'
 app.config['UPLOAD_EXTENSIONS'] = ['.iso']
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
 # app.config['UPLOAD_PATH'] = UPLOADDIR
+api = Api(app)
 
 
 @app.route("/", methods=['GET', 'POST'])
@@ -31,33 +33,8 @@ def autoinstaller_gui():
     if request.method == 'POST' and form.is_submitted():
         mainlog = get_main_logger()
         mainlog.debug(result)
-        form_data = get_form_data(mainlog, result)
-
         # interate over the list of ESXi hosts and run corresponding actions for each host
-        jobid_list  = []
-        logger_list = []
-        for index in range(len(form_data['hosts'])):
-            hostname = form_data['hosts'][index]['hostname']
-            cimcip = form_data['hosts'][index]['cimcip']
-
-            # generate jobid based on CIMC IP and current timestamp
-            jobid = generate_jobid(cimcip)
-
-            # create logger handler
-            logger = get_jobid_logger(jobid)
-            logger.info(f'Processing job ID: {jobid}, server {hostname}\n')
-            mainlog.info(f'{jobid} - processing job ID, server {hostname}')
-
-            # create entry in Auto-Installer DB
-            mainlog.info(f'{jobid} Saving installation data for server {hostname}')
-            eaidb_create_job_entry(jobid, time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime()), hostname, form_data['hosts'][index]['ipaddr'],
-                                   cimcip, form_data['cimc_usr'], form_data['cimc_pwd'])
-
-            jobid_list.append(jobid)
-            logger_list.append(logger)
-        # Process data on seperate thread
-        Process(target=process_submission, args=(jobid_list, logger_list, mainlog, form_data)).start()
-
+        create_jobs(get_form_data(mainlog, result))
         return redirect(url_for('show'))
     return render_template('index.html', form=form, isodirs=dirs)
 
@@ -84,7 +61,7 @@ def send_esxi_iso(filename):
 @app.route('/show')
 def show():
     # get all jobs details from EAIDB using GET /jobs endpoint function
-    eaidb_dict = api_jobs_get()
+    eaidb_dict = eaidb_get_status()
     # convert dictionary result to list with selected jobs' fields and sort by start_date
     eaidb_list = []
     for job_entry in eaidb_dict.items():
@@ -98,8 +75,8 @@ def show():
 
 @app.route('/logs/<jobid>')
 def logs(jobid):
-    # get job log using GET /logs endpoint function and display on web page
-    return render_template('display_file.jinja', log_file_text=api_logs_get(jobid)[0])
+    # get job log and display on web page
+    return render_template('display_file.jinja', log_file_text=get_logs(jobid)[0])
 
 
 # upload and extract ISO
@@ -130,100 +107,12 @@ def upload_iso(mainlog=get_main_logger()):
 def api_swagger():
     return render_template('api_swagger.html')
 
+
 # API endpoints #
-# api endpoint for getting details for all jobs
-@app.route('/api/v1/jobs', methods=['GET'])
-def api_jobs_get():
-    return eaidb_get_status()
-
-
-# api endpoint for getting details for specific job
-@app.route('/api/v1/jobs/<jobid>', methods=['GET'])
-def api_jobs_get_jobid(jobid):
-    try:
-        eaidb_dict = eaidb_get_status()
-        return eaidb_dict[jobid]
-    except KeyError:
-        return f'Job ID {jobid} not found.', 404
-
-
-# api endpoint for starting new job(s)
-@app.route('/api/v1/jobs', methods=['POST'])
-def api_jobs_post(mainlog=get_main_logger()):
-    query_parameters = request.args
-    jobid = generate_jobid()
-    mainlog.debug(f'{jobid} API endpoint called with args: {query_parameters}')
-    return 'API jobs POST endpoint placeholder'
-
-
-# api endpoint for updating job status
-@app.route('/api/v1/jobs/<jobid>', methods=['PUT'])
-def api_jobs_put(jobid, mainlog=get_main_logger(), status_dict=STATUS_CODES):
-    try:
-        if eaidb_check_jobid_exists(jobid):
-            # only run cleanup tasks for existing job ID
-            query_parameters = request.args
-            status_code = int(query_parameters.get('state'))
-            mainlog.debug(f'{jobid} API endpoint called with args: {query_parameters}')
-
-            # TODO: move status code validation/translation to separate function?
-            if status_code not in status_dict:
-                # ignore invalid status codes
-                mainlog.error(f'State not valid: {status_code}')
-            else:
-                if status_code == 0:
-                    # this state should be only set when creating DB entry - not doing anything here
-                    eaidb_dict = eaidb_get_status()
-                    return eaidb_dict[jobid]
-                elif status_code in range(10,19):
-                    # status codes for installation phases
-                    status = status_dict[status_code]
-                    finish_time = ''
-                elif status_code in range(20,39):
-                    # status codes for finished or errors
-                    status = status_dict[status_code]
-                    finish_time = time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime())
-
-                    # for status codes from range Finished/Error - run cleanup and log status in job log
-                    # get job logger
-                    logger = get_jobid_logger(jobid)
-                    # run cleanup
-                    job_cleanup(jobid, logger, mainlog)
-                    # update job log
-                    logger.info(f'Installation job (ID: {jobid}) finished.')
-                    logger.info(f'Final status code: {status_dict[status_code]}\n')
-
-                # update status in EAIDB
-                eaidb_update_job_status(jobid, status, finish_time)
-
-            eaidb_dict = eaidb_get_status()
-            return eaidb_dict[jobid]
-        else:
-            return f'Job ID {jobid} not found.', 404
-    except Exception:
-        return f'Job ID {jobid} not found.', 404
-
-
-# api endpoint for updating job status
-@app.route('/api/v1/logs/<jobid>', methods=['GET'])
-def api_logs_get(jobid, basedir=LOGDIR):
-    # Joining the base and the requested path
-    abs_path = os.path.join(basedir, jobid)
-
-    # Return 404 if path doesn't exist
-    if not os.path.exists(abs_path):
-        return 'File does not exist!', 404
-
-    # Check if path is a file and serve
-    if os.path.isfile(abs_path):
-        with open(abs_path, 'r') as log_file:
-            return log_file.read(), 200, {'Content-Type': 'text/plain; charset=utf-8'}
-
-
-# api endpoint for uploading installation ISO
-@app.route('/api/v1/upload', methods=['POST'])
-def api_upload_iso():
-    return '/api/v1/upload endpoint placeholder'
+api.add_resource(EAIJobs, '/api/v1/jobs', methods=['GET', 'POST'])
+api.add_resource(EAIJob, '/api/v1/jobs/<jobid>', methods=['GET', 'PUT'])
+api.add_resource(EAILogs, '/api/v1/logs/<jobid>', methods=['GET'])
+api.add_resource(EAIISOs, '/api/v1/isos', methods=['GET'])
 
 
 if __name__ == "__main__":
