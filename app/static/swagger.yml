@@ -34,6 +34,13 @@ paths:
       - jobs
       summary: 'NOT IMPLEMENTED: Creates a new ESXi Installation job.'
       description: '**NOT IMPLEMENTED:** This endpoint has not yet been implemented.'
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/components/schemas/NewJob'
+
       responses:
         '200':
           description: successful operation
@@ -142,7 +149,7 @@ components:
       properties:
         cimcip:
           type: "string"
-          example: "192.168.0.1"
+          example: "192.168.0.111"
         finish_time:
           type: "string"
           example: "2022-01-01 08:08:08 GMT"
@@ -151,10 +158,112 @@ components:
           example: Prefix-01-Suffix
         ipaddr:
           type: "string"
-          example: "192.168.0.2"
+          example: "192.168.2.11"
         start_time:
           type: "string"
           example: "2022-01-01 07:07:07 GMT"
         status:
           type: "string"
           example: "Installation in progress"
+    NewJob:
+      description: Submit new job
+      type: object
+      required:
+      - iso_image
+      - rootpw
+      - cimc_usr
+      - cimc_pwd
+      - host_netmask
+      - host_gateway
+      - hosts
+      properties:
+        iso_image:
+          type: string
+          example: VMware-ESXi-7.0.0_U2-16324942-Custom
+        rootpw:
+          type: string
+          format: password
+        vlan:
+          type: integer
+          format: int32
+          maximum: 4096
+        vmnic:
+          type: integer
+          format: int32
+        firstdisk:
+          type: string
+          enum: ['firstdiskfound', 'firstdisk', 'diskpath']
+          default: 'firstdiskfound'
+        firstdisktype: 
+          type: string
+          enum: ['local', 'remote', 'usb']
+        diskpath:
+          type: string
+          example: naa.6d09466044143600247aee55ca2a6405
+          # examples:
+          #   scsi: 
+          #     value: naa.6d09466044143600247aee55ca2a6405
+          #   other:
+          #     value: /vmfs/devices/disks/mpx.vmhba1:C0:T0:L0
+        enablessh:
+          type: boolean
+          default: True
+        clearpart:
+          type: boolean
+          default: False
+        cimc_usr:
+          type: string
+        cimc_pwd:
+          type: string
+          format: password
+        host_netmask:
+          type: string
+          example: 255.255.255.0
+          default: 255.255.255.0
+        host_gateway:
+          type: string
+          example: 192.168.2.1
+        dns1:
+          type: string
+          example: 208.67.222.222
+        dns2:
+          type: string
+          example: 207.67.220.220
+        static_routes:
+          type: array
+          items:
+            type: object
+            required:
+            - subnet
+            - mask
+            - gateway
+            properties:
+              subnet:
+                type: string
+                example: 172.16.10.0
+              mask:
+                type: integer
+                example: 24
+                minimum: 3
+                maximum: 32
+              gateway:
+                type: string
+                example: 192.168.0.251
+        hosts:
+          type: array
+          items:
+            type: object
+            required:
+            - hostname
+            - ipaddr
+            - cimcip
+            properties:
+              hostname:
+                type: string
+                example: esxi-01-hostname
+              ipaddr:
+                type: string
+                example: 192.168.2.11
+              cimcip:
+                type: string
+                example: 192.168.0.111
