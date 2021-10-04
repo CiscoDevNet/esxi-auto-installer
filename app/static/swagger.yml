@@ -32,11 +32,33 @@ paths:
     post:
       tags:
       - jobs
-      summary: 'NOT IMPLEMENTED: Creates a new ESXi Installation job.'
-      description: '**NOT IMPLEMENTED:** This endpoint has not yet been implemented.'
+      summary: 'Creates a new ESXi Installation job.'
+      description: |
+        Take installation details as json payload and create installation job per each host in 'hosts' list.
+        ```
+        {
+          "iso_image": "VMware-ESXi-7.0.0_U2-16324942-Custom-Cisco-4.1.2a", 
+          "rootpw": "r00t5ecRet!", 
+          "cimc_usr": "admin", 
+          "cimc_pwd": "@dm1n5ecRet!", 
+          "vlan": "0", 
+          "host_netmask": "255.255.255.0", 
+          "host_gateway": "172.17.14.254", 
+          "hosts": 
+          [
+            {"hostname": "demo-server-01", "ipaddr": "10.10.10.111", "cimcip": "192.168.100.11"}, 
+            {"hostname": "demo-server-02", "ipaddr": "10.10.10.112", "cimcip": "192.168.100.12"}, 
+            {"hostname": "demo-server-03", "ipaddr": "10.10.10.113", "cimcip": "192.168.100.13"}
+          ]
+        }
+        ```
       responses:
         '200':
           description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobIDs'
   /jobs/{jobID}:
     get:
       tags:
@@ -120,15 +142,26 @@ paths:
 
                   2022-01-01 07:07:07 GMT [INFO] Generating kickstart file for server
                   2022-01-01 07:07:07 GMT [INFO] Generated kickstart configuration:
-  /upload:
-    post:
+  /isos:
+    get:
       tags:
       - iso
-      summary: 'NOT IMPLEMENTED: Upload an ESXi Installation ISO'
-      description: '**NOT IMPLEMENTED:** This endpoint has not yet been implemented.'
+      summary: Get a list of available ESXi Installation ISO(s)
+      description: |
+        List of available installation ISOs:<br>
+        ```
+        [
+          "VMware-ESXi-6.5.0_U3_Installer-13932383",
+          "VMware-ESXi-6.7.0_U3_Installer-14320388"
+        ]
+        ```
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IsoList'
 components:
   schemas:
     Jobs:
@@ -158,3 +191,17 @@ components:
         status:
           type: "string"
           example: "Installation in progress"
+    JobIDs:
+      description: "List of job IDs"
+      type: object
+      properties:
+        jobID:
+          type: "string"
+          example: "192.168.0.1_1628871425.1136827"      
+    IsoList:
+      description: "List of available ISO images"
+      type: object
+      properties:
+        ISO:
+          type: "string"
+          example: "VMware-ESXi-6.5.0_U3_Installer-13932383"
