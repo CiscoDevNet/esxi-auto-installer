@@ -16,7 +16,7 @@
                 <tr>
                     <td>Select your ISO Image: </td>
                     <td>
-                      <select name="ISOFile" id="ISOFile">
+                      <select name="iso_image" id="iso_image">
                         {% for isover in isodirs %}
                           <option value="{{isover}}" checked>{{isover}}</option>
                         {% endfor %}
@@ -27,7 +27,7 @@
                 <tr>
                     <td>ESXi root password: </td>
                     <td>
-                      <input type="password" name="ROOTPW" id="ROOTPW" required value="">
+                      <input type="password" name="root_pwd" id="root_pwd" required value="">
                       <div class="content_section_text_small">
                         <label for="show_root_pass">Show password</label>
                         <input id="show_root_pass" name="show_root_pass" type="checkbox" value="y">
@@ -36,33 +36,33 @@
                     <td>Enter the password for the root account.</td>
                 </tr>
                 <tr>
-                    <td>Mgmt VLAN ID: </td><td><input type="number" name="VLAN" value='0' max=4094><br /><div class="content_section_text_small">Optional</div></td>
+                    <td>Mgmt VLAN ID: </td><td><input type="number" name="vlan" value='0' max=4094><br /><div class="content_section_text_small">Optional</div></td>
                     <td>If your mgmt interface requires a VLAN tag add it here. Otherwise set to 0 for no VLAN.</td>
                 </tr>
                 <tr>
                     <td>Mgmt VMNic: </td>
-                    <td><input type="number" name="VMNIC" required value='0' max=99></td>
+                    <td><input type="number" name="vmnic" required value='0' max=99></td>
                     <td>Select which VMNic is going to be the Mgmt Nic.<br />
                       Normally this is set to 0 for VMNic0, but you can specify a different VMNic here.</td>
                 </tr>
                 <tr>
                     <td>Install Disk: </td>
                     <td>
-                        <input type="radio" id="FirstDisk" name="FirstDisk" value="firstdiskfound" checked oninput="InstallDiskShow('')">
-                        <label for="FirstDiskType">First Disk Found (Default)</label><br />
-                        <input type="radio" id="FirstDisk" name="FirstDisk" value="firstdisk" oninput="InstallDiskShow('firstdisk')">
-                        <label for="FirstDiskType">First Disk of a certain type</label><br />
+                        <input type="radio" id="firstdisk" name="firstdisk" value="firstdiskfound" checked oninput="InstallDiskShow('')">
+                        <label for="firstdisktype">First Disk Found (Default)</label><br />
+                        <input type="radio" id="firstdisk" name="firstdisk" value="firstdisk" oninput="InstallDiskShow('firstdisk')">
+                        <label for="firstdisktype">First Disk of a certain type</label><br />
                         <div id="FistDiskTypeControls" class="hide">
-                            - - <select name="FirstDiskType" id="FirstDiskType">
+                            - - <select name="firstdisktype" id="firstdisktype">
                                 <option value="local">Locally attached storage</option>
                                 <option value="remote">Network storage</option>
                                 <option value="usb" checked>USB Disks</option>
                             </select><br />
                           </div>
-                        <input type="radio" id="FirstDisk" name="FirstDisk" value="diskpath" oninput="InstallDiskShow('disk')">
-                        <label for="FirstDisk">Use a specific disk</label><br />
+                        <input type="radio" id="firstdisk" name="firstdisk" value="diskpath" oninput="InstallDiskShow('disk')">
+                        <label for="firstdisk">Use a specific disk</label><br />
                         <div id="DiskPathTypeControls" class="hide">
-                            - - <input type=text name='DiskPath' id='DiskPath' value=''><br />
+                            - - <input type=text name='diskpath' id='diskpath' value=''><br />
                               Enter disk path<br />
                         </div>
                     </td>
@@ -70,12 +70,12 @@
                 </tr>
                 <tr>
                   <td>Enable SSH? </td>
-                  <td><input type="checkbox" value="enablessh" name="SSH" checked></td>
+                  <td><input type="checkbox" name="enablessh" checked></td>
                   <td>If checked, SSH will be enabled on the ESXi.</td>
                 </tr>
                 <tr>
                   <td>Erase existing partition? </td>
-                  <td><input type="checkbox" value="clearpart" name="clearpart"></td>
+                  <td><input type="checkbox" name="clearpart"></td>
                   <td>If checked, the disk will be erased before ESXi is installed.</td>
                 </tr>
                 <!--
@@ -90,14 +90,14 @@
               Enter network information for the ESXi hosts:<br /><br />
             </div>
             Does ESXi require static routes at boot time?
-            <input type="radio" id="StaticRoute" name="StaticRoute" value="True"  oninput="StaticRoutesShow('True')">Yes
-            <input type="radio" checked id="StaticRoute" name="StaticRoute" value="False" oninput="StaticRoutesShow('False')">No<br />
-            <div ID="StaticRoutes" class="hide50">
-              <Table  id="StaticRouteTable" class="custom">
+            <input type="radio" id="static_routes_set" name="static_routes_set" value="True"  oninput="StaticRoutesShow('True')">Yes
+            <input type="radio" checked id="static_routes_set" name="static_routes_set" value="False" oninput="StaticRoutesShow('False')">No<br />
+            <div id="static_routes" class="hide50">
+              <Table  id="static_route_table" class="custom">
                 <tr>
-                  <td class="static_nopadding">Subnet Address<br /><input type="text" name="StaticSubnet0" id="StaticSubnet0">/</td>
-                  <td class="static_nopadding">Mask<br /><input type="number" name="StaticMask0" id="StaticMask0" value="24" min="0" max="32" size="4"></td>
-                  <td class="static_padding10">Gateway<br /><input type="text" name="StaticGateway0" id="StaticGateway0"></td>
+                  <td class="static_nopadding">Subnet Address<br /><input type="text" name="subnet_ip0" id="subnet_ip0">/</td>
+                  <td class="static_nopadding">Mask<br /><input type="number" name="cidr0" id="cidr0" value="24" min="0" max="32" size="4"></td>
+                  <td class="static_padding10">Gateway<br /><input type="text" name="gateway0" id="gateway0"></td>
                 </tr>
               </Table>
               <input type="button" value="Add Route" onclick="AddStaticRoute()" class="margin50">
@@ -117,11 +117,11 @@
                 <tr class="custom">
                     <td class="custom">
                         CIMC Account<br/>
-                        <input type="text" required name="CIMCUSR" id="CIMCUSR" value="admin">
+                        <input type="text" required name="cimc_usr" id="cimc_usr" value="admin">
                     </td>
                     <td class="custom">
                         CIMC Password<br/>
-                        <input type="password" required name="CIMCPWD" id="CIMCPWD">
+                        <input type="password" required name="cimc_pwd" id="cimc_pwd">
                         <div class="content_section_text_small">
                           <label for="show_cimc_pass">Show password</label>
                           <input id="show_cimc_pass" name="show_cimc_pass" type="checkbox" value="y">
@@ -130,22 +130,22 @@
                 </tr>
                 <tr>
                   <td class="custom">Netmask<br />
-                    <input type="text" required name="NETMASK" value="255.255.255.0"></td>
+                    <input type="text" required name="host_netmask" value="255.255.255.0"></td>
                   <td class="custom">Gateway<br />
-                    <input type="text" required name="GATEWAY"></td>
+                    <input type="text" required name="host_gateway"></td>
                   <td class="custom">DNS 1<br />
-                    <input type="text" name="DNS1" id="DNS1" placeholder="208.67.222.222"><br />
+                    <input type="text" name="dns1" id="dns1" placeholder="208.67.222.222"><br />
                     <div class="content_section_text_small">Optional</div></td>
                   <td class="custom">DNS 2<br />
-                    <input type="text" name="DNS2" id="DNS2" placeholder="208.67.220.220"><br />
+                    <input type="text" name="dns2" id="dns2" placeholder="208.67.220.220"><br />
                     <div class="content_section_text_small">Optional</div></td>
                 </tr>
                 <tr>
                   <td class="custom">Hostname Prefix<br />
-                    <input type="text" name="HOSTPREFIX" id="HOSTPREFIX" oninput="UpdateESXiHostName()"><br />
+                    <input type="text" name="host_prefix" id="host_prefix" oninput="UpdateESXiHostName()"><br />
                     <div class="content_section_text_small">Optional</div></td>
                   <td class="custom">Hostname Suffix<br />
-                    <input type="text" name="HOSTSUFFIX" id="HOSTSUFFIX" oninput="UpdateESXiHostName()"><br />
+                    <input type="text" name="host_suffix" id="host_suffix" oninput="UpdateESXiHostName()"><br />
                     <div class="content_section_text_small">Optional</div></td>
                 </tr>
               </table>
@@ -198,7 +198,7 @@
       ///// CUSTOM FORM VALIDATION MESSAGES /////
 
       //custom validation message for ROOTPW field
-      const input_root = document.querySelector('input[name="ROOTPW"]');
+      const input_root = document.querySelector('input[name="root_pwd"]');
       input_root.addEventListener('invalid', function (event) {
         if (event.target.validity.valueMissing) {
           event.target.setCustomValidity('Enter root password');
@@ -209,7 +209,7 @@
       })
 
       //custom validation message for VMNIC field
-      const input_vmnic = document.querySelector('input[name="VMNIC"]');
+      const input_vmnic = document.querySelector('input[name="vmnic"]');
       input_vmnic.addEventListener('invalid', function (event) {
         if (event.target.validity.valueMissing) {
           event.target.setCustomValidity('Enter VMNIC ID');
@@ -230,7 +230,7 @@
       //   console.log('DiskPathTypeControls is visible')
       // }
 
-      const input_naa = document.querySelector('input[name="DiskPath"]');
+      const input_naa = document.querySelector('input[name="diskpath"]');
       input_naa.addEventListener('invalid', function (event) {
         if (event.target.validity.valueMissing) {
           event.target.setCustomValidity('Enter disk path, eg. naa.500a6ca3de6ed1bd');
@@ -242,7 +242,7 @@
 
 
       //custom validation message for StaticSubnet field
-      var input_statsub = document.querySelector('input[name^="StaticSubnet"]');
+      var input_statsub = document.querySelector('input[name^="subnet_ip"]');
       console.log(input_statsub.length)
       input_statsub.addEventListener('invalid', function (event) {
         if (event.target.validity.valueMissing) {
@@ -254,7 +254,7 @@
       })
 
       //custom validation message for StaticMask field
-      const input_statmask = document.querySelector('input[name^="StaticMask"]');
+      const input_statmask = document.querySelector('input[name^="cidr"]');
       input_statmask.addEventListener('invalid', function (event) {
         if (event.target.validity.valueMissing) {
           event.target.setCustomValidity('Enter static route network CIDR mask, eg. 24');
@@ -265,7 +265,7 @@
       })
 
       //custom validation message for StaticGateway field
-      const input_statgw = document.querySelector('input[name^="StaticGateway"]');
+      const input_statgw = document.querySelector('input[name^="gateway"]');
       input_statgw.addEventListener('invalid', function (event) {
         if (event.target.validity.valueMissing) {
           event.target.setCustomValidity('Enter static route gateway, eg. 10.10.10.254');
@@ -277,7 +277,7 @@
 
 
       //custom validation message for CIMCUSR field
-      const input_usr = document.querySelector('input[name="CIMCUSR"]');
+      const input_usr = document.querySelector('input[name="cimc_usr"]');
       input_usr.addEventListener('invalid', function (event) {
         if (event.target.validity.valueMissing) {
           event.target.setCustomValidity('Enter CIMC Username');
@@ -288,7 +288,7 @@
       })
 
       //custom validation message for CIMCPWD field
-      const input_pass = document.querySelector('input[name="CIMCPWD"]');
+      const input_pass = document.querySelector('input[name="cimc_pwd"]');
       input_pass.addEventListener('invalid', function (event) {
         if (event.target.validity.valueMissing) {
           event.target.setCustomValidity('Enter CIMC Password');
@@ -299,7 +299,7 @@
       })
 
       //custom validation message for NETMASK field
-      const input_netmask = document.querySelector('input[name="NETMASK"]');
+      const input_netmask = document.querySelector('input[name="host_netmask"]');
       input_netmask.addEventListener('invalid', function (event) {
         if (event.target.validity.valueMissing) {
           event.target.setCustomValidity('Enter ESXi management network mask, eg. 255.255.255.0');
@@ -310,7 +310,7 @@
       })
 
       //custom validation message for GATEWAY field
-      const input_gateway = document.querySelector('input[name="GATEWAY"]');
+      const input_gateway = document.querySelector('input[name="host_gateway"]');
       input_gateway.addEventListener('invalid', function (event) {
         if (event.target.validity.valueMissing) {
           event.target.setCustomValidity('Enter ESXi management network gateway, eg. 192.168.1.254');
@@ -321,7 +321,7 @@
       })
 
       //custom validation message for HOSTNAME field
-      const input_hostname = document.querySelector('input[name^="HOSTNAME"]');
+      const input_hostname = document.querySelector('input[name^="hostname"]');
       input_hostname.addEventListener('invalid', function (event) {
         if (event.target.validity.valueMissing) {
           event.target.setCustomValidity('Enter ESXi hostname');
@@ -332,7 +332,7 @@
       })
 
       // custom validation message for IPADDR field
-      const input_ipaddr = document.querySelector('input[name^="IPADDR"]');
+      const input_ipaddr = document.querySelector('input[name^="host_ip"]');
       input_ipaddr.addEventListener('invalid', function (event) {
         if (event.target.validity.valueMissing) {
           event.target.setCustomValidity('Enter ESXi host management IP address, eg. 192.168.1.10');
@@ -343,7 +343,7 @@
       })
 
       //custom validation message for CIMCIP field
-      const input_cimcip = document.querySelector('input[name^="CIMCIP"]');
+      const input_cimcip = document.querySelector('input[name^="cimc_ip"]');
       input_cimcip.addEventListener('invalid', function (event) {
         if (event.target.validity.valueMissing) {
           event.target.setCustomValidity('Enter server CIMC IP address, eg. 172.172.1.10');
@@ -356,7 +356,7 @@
       //toggle root password field preview
       window.addEventListener("load", function(){
             var checkbox  = document.getElementById('show_root_pass')
-            var x = document.getElementById('ROOTPW')
+            var x = document.getElementById('root_pwd')
             checkbox.addEventListener('change', function() {
                 if(this.checked) {
                     x.type = 'text'
@@ -369,7 +369,7 @@
       //toggle CIMC password field preview
       window.addEventListener("load", function(){
             var checkbox  = document.getElementById('show_cimc_pass')
-            var x = document.getElementById('CIMCPWD')
+            var x = document.getElementById('cimc_pwd')
             checkbox.addEventListener('change', function() {
                 if(this.checked) {
                     x.type = 'text'

@@ -9,25 +9,25 @@ class EAIJobs(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser()
         self.reqparse.add_argument('iso_image', type = str, required = True, help = 'No ISO name provided', location = 'json')
-        self.reqparse.add_argument('rootpw', type = str, required = True, help = 'No root password provided', location = 'json')
+        self.reqparse.add_argument('root_pwd', type = str, required = True, help = 'No root password provided', location = 'json')
         self.reqparse.add_argument('cimc_pwd', type = str, required = True, help = 'No CIMC password provided', location = 'json')
         self.reqparse.add_argument('host_netmask', type = str, required = True, help = 'No Netmask provided', location = 'json')
         self.reqparse.add_argument('host_gateway', type = str, required = True, help = 'No Gateway provided', location = 'json')
         self.reqparse.add_argument('hosts', type = list, required = True, help = 'No host list provided', location = 'json')
-        # add hosts list validation (hostname, ipaddr, cimcip) ?
+        # TODO: add hosts list validation (hostname, host_ip, cimc_ip) ?
         self.reqparse.add_argument('vlan', type = str, default='0', help = 'No VLAN ID provided', location = 'json')
         self.reqparse.add_argument('vmnic', type = str, default='0', help = 'No VMNIC provided', location = 'json')
         self.reqparse.add_argument('cimc_usr', type = str, default='admin', help = 'No CIMC account provided', location = 'json')
         self.reqparse.add_argument('firstdisk', type = str, default='firstdiskfound', help = 'No Install Disk provided', location = 'json')
         self.reqparse.add_argument('firstdisktype', type = str, default='local', help = 'No Disk Type provided', location = 'json')
-        self.reqparse.add_argument('enable_ssh', type = str, default='enablessh', location = 'json')
+        # TODO: if firstdisk == diskpath: diskpath required
+        self.reqparse.add_argument('enablessh', type = bool, default=True, location = 'json')
         self.reqparse.add_argument('clearpart', type = bool, default=False, location = 'json')
-        self.reqparse.add_argument('static_routes_set', type = bool, default=False, location = 'json')
         self.reqparse.add_argument('dns1', type = str, default='', location = 'json')
         self.reqparse.add_argument('dns2', type = str, default='', location = 'json')
-        self.reqparse.add_argument('static_routes_set', type = bool, default=False, location = 'json')
-        # add static_routes list validation (subnet, mask, gateway) ?
+        # self.reqparse.add_argument('static_routes_set', type = bool, default=False, location = 'json')
         self.reqparse.add_argument('static_routes', type = list, location = 'json')
+        # TODO: add static_routes list validation (subnet_ip, cidr, gateway) ?
         super(EAIJobs, self).__init__()
 
     def get(self):
@@ -35,19 +35,23 @@ class EAIJobs(Resource):
         return eaidb_get_status(), 200
 
     def post(self, mainlog=get_main_logger()):
-        install_data = {}
-        args = self.reqparse.parse_args()
-        print(args)
-        for k, v in args.items():
-            if v != None:
-                install_data[k] = v
+        try:
+            jobid_list = []
+            install_data = {}
+            args = self.reqparse.parse_args()
+            print(args)
+            for k, v in args.items():
+                if v != None:
+                    install_data[k] = v
 
-        install_data['host_subnet'] = str(ip_network(install_data['host_gateway'] + '/' + install_data['host_netmask'], strict=False).network_address)
-        mainlog.debug(f'API /jobs endpoint called with args: {args}')
+            install_data['host_subnet'] = str(ip_network(install_data['host_gateway'] + '/' + install_data['host_netmask'], strict=False).network_address)
+            mainlog.debug(f'API /jobs endpoint called with args: {args}')
 
-        # interate over the list of ESXi hosts and run corresponding actions for each host
-        jobid_list = create_jobs(install_data)
-        return jobid_list
+            # interate over the list of ESXi hosts and run corresponding actions for each host
+            jobid_list = create_jobs(install_data)
+            return jobid_list
+        except KeyError as e:
+            return f'Incorrect key when trying to create a new job. Expected key: {str(e)}', 400
 
 
 class EAIJob(Resource):
@@ -101,7 +105,7 @@ class EAIJob(Resource):
             else:
                 return f'Job ID {jobid} not found.', 404
         except Exception:
-            return f'Job ID {jobid} not found.', 404                
+            return f'Job ID {jobid} not found.', 404
 
 
 class EAILogs(Resource):
