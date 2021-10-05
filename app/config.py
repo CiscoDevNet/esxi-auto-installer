@@ -1,7 +1,7 @@
 # VMware Auto-Installer config
 import os
 
-DRYRUN=True
+DRYRUN=False
 WORKDIR = '/opt/eai'
 APPDIR = os.path.join(WORKDIR, 'app')
 ESXISODIR = os.path.join(WORKDIR, 'esxi-iso')
