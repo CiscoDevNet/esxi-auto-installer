@@ -26,7 +26,7 @@ class EAIJobs(Resource):
         self.reqparse.add_argument('dns1', type = str, default='', location = 'json')
         self.reqparse.add_argument('dns2', type = str, default='', location = 'json')
         # self.reqparse.add_argument('static_routes_set', type = bool, default=False, location = 'json')
-        self.reqparse.add_argument('static_routes', type = list, location = 'json')
+        self.reqparse.add_argument('static_routes', type = list, default=[], location = 'json')
         # TODO: add static_routes list validation (subnet_ip, cidr, gateway) ?
         super(EAIJobs, self).__init__()
 

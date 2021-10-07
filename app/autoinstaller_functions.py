@@ -37,11 +37,8 @@ def get_form_data(mainlog, form_result):
     form_data['clearpart'] = form_result.get('clearpart')
 
     # get static routes (if provided)
-    # form_data['static_routes_set'] = form_result['StaticRoute']
-    # form_data['static_routes'] = []
-    # if form_data['static_routes_set']:
-    if form_result['static_routes_set']:
-        form_data['static_routes'] = []
+    form_data['static_routes'] = []
+    if form_result['static_routes_set'] == 'True':
         for key, value in form_result.items():
             if 'subnet_ip' in key:
                 seq = key.replace('subnet_ip', '')
@@ -54,7 +51,6 @@ def get_form_data(mainlog, form_result):
     form_data['cimc_pwd'] = form_result['cimc_pwd']
     form_data['host_prefix'] = form_result['host_prefix']
     form_data['host_suffix'] = form_result['host_suffix']
-    # form_data['host_subnet'] = form_result['SUBNET']
     # calculate subnet based on gateway IP address and netmask (needed for PXE booted installation)
     form_data['host_subnet'] = ip_network(form_result['host_gateway'] + '/' + form_result['host_netmask'], strict=False).network_address
     form_data['host_netmask'] = form_result['host_netmask']
