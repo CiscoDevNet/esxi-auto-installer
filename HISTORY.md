@@ -1,6 +1,11 @@
 History
 =====================
 
+1.0alpha9 (2021-10-01)
+---------------------
+* rebuilt API with flask_restful
+* added API POST /jobs and GET /isos
+
 1.0alpha8 (2021-09-24)
 ---------------------
 * moved KickStart and ISO generation into it's own subprocess

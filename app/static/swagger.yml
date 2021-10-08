@@ -32,11 +32,38 @@ paths:
     post:
       tags:
       - jobs
-      summary: 'NOT IMPLEMENTED: Creates a new ESXi Installation job.'
-      description: '**NOT IMPLEMENTED:** This endpoint has not yet been implemented.'
+      summary: 'Create a new ESXi Installation job.'
+      description: |
+        Take installation details as json payload and create installation job per each host in 'hosts' list.<br>
+        Mandatory (minimal) input data parameters:
+          - iso_image
+          - root_pwd
+          - cimc_pwd
+          - host_netmask
+          - host_gateway
+          - hosts list (at least one entry with {hostname, ipaddr, cimcip})
+
+        Refer to schema definition for all parameters and default values.
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/components/schemas/JobsNew'
       responses:
         '200':
-          description: successful operation
+          description: Successful operation - return list of job IDs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobIDs'
+        '400':
+          description: Failed operation, check returned error message for details
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "Incorrect key when trying to create a new job. Expected key: 'host_ip'"
   /jobs/{jobID}:
     get:
       tags:
@@ -59,9 +86,9 @@ paths:
     put:
       tags:
       - jobs
-      summary: Updates a job entry.
+      summary: Update a job entry.
       description: |
-        Updates the status of a particular job.<BR>
+        Updates the status of a particular job.<br>
         ```
          0: Ready to deploy
         10: Connecting to CIMC
@@ -120,15 +147,20 @@ paths:
 
                   2022-01-01 07:07:07 GMT [INFO] Generating kickstart file for server
                   2022-01-01 07:07:07 GMT [INFO] Generated kickstart configuration:
-  /upload:
-    post:
+  /isos:
+    get:
       tags:
       - iso
-      summary: 'NOT IMPLEMENTED: Upload an ESXi Installation ISO'
-      description: '**NOT IMPLEMENTED:** This endpoint has not yet been implemented.'
+      summary: Get a list of available ESXi Installation ISO(s)
+      description: |
+        Returns a list of available installation ISOs
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IsoList'
 components:
   schemas:
     Jobs:
@@ -137,12 +169,116 @@ components:
       properties:
         jobID:
           $ref: '#/components/schemas/JobStatus'
+    JobsNew:
+      description: Submit new job
+      type: object
+      required:
+      - iso_image
+      - root_pwd
+      - cimc_pwd
+      - host_netmask
+      - host_gateway
+      - hosts
+      properties:
+        iso_image:
+          type: string
+          example: VMware-ESXi-7.0.0_U2-16324942-Custom
+        root_pwd:
+          type: string
+          format: password
+        vlan:
+          type: integer
+          format: int32
+          maximum: 4096
+          default: 0
+        vmnic:
+          type: integer
+          format: int32
+        firstdisk:
+          type: string
+          enum: ['firstdiskfound', 'firstdisk', 'diskpath']
+          default: 'firstdiskfound'
+        firstdisktype:
+          type: string
+          enum: ['local', 'remote', 'usb']
+          default: 'local'
+        diskpath:
+          type: string
+          example: naa.6d09466044143600247aee55ca2a6405
+          # examples:
+          #   scsi:
+          #     value: naa.6d09466044143600247aee55ca2a6405
+          #   other:
+          #     value: /vmfs/devices/disks/mpx.vmhba1:C0:T0:L0
+        enablessh:
+          type: boolean
+          default: True
+        clearpart:
+          type: boolean
+          default: False
+        cimc_usr:
+          type: string
+          default: 'admin'
+        cimc_pwd:
+          type: string
+          format: password
+        host_netmask:
+          type: string
+          example: 255.255.255.0
+          default: 255.255.255.0
+        host_gateway:
+          type: string
+          example: 192.168.2.1
+        dns1:
+          type: string
+          example: 208.67.222.222
+        dns2:
+          type: string
+          example: 207.67.220.220
+        static_routes:
+          type: array
+          items:
+            type: object
+            required:
+            - subnet
+            - cidr
+            - gateway
+            properties:
+              subnet:
+                type: string
+                example: 172.16.10.0
+              cidr:
+                type: integer
+                example: 24
+                minimum: 3
+                maximum: 32
+              gateway:
+                type: string
+                example: 192.168.0.251
+        hosts:
+          type: array
+          items:
+            type: object
+            required:
+            - hostname
+            - ipaddr
+            - cimcip
+            properties:
+              hostname:
+                type: string
+                example: esxi-01-hostname
+              host_ip:
+                type: string
+                example: 192.168.2.11
+              cimc_ip:
+                type: string
+                example: 192.168.0.111
     JobStatus:
       type: object
       properties:
         cimcip:
           type: "string"
-          example: "192.168.0.1"
+          example: "192.168.0.111"
         finish_time:
           type: "string"
           example: "2022-01-01 08:08:08 GMT"
@@ -151,10 +287,22 @@ components:
           example: Prefix-01-Suffix
         ipaddr:
           type: "string"
-          example: "192.168.0.2"
+          example: "192.168.2.11"
         start_time:
           type: "string"
           example: "2022-01-01 07:07:07 GMT"
         status:
           type: "string"
           example: "Installation in progress"
+    JobIDs:
+      description: "List of job IDs"
+      type: array
+      items:
+        type: string
+      example: [ "192.168.0.1_1628871425.1136827", "192.168.0.2_1633093658.6881468" ]                
+    IsoList:
+      description: "List of available ISO images"
+      type: array
+      items:
+        type: string
+      example: [ "VMware-ESXi-6.5.0_U3_Installer-13932383", "VMware-ESXi-7.0.0_U2_Installer-16324942" ]

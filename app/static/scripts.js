@@ -7,10 +7,10 @@ function InstallDiskShow(itemclickedon) {
   }
   if (itemclickedon == "disk") {
     DiskPathTypeControls.style.display = "block";
-    DiskPath.required = true
+    diskpath.required = true
   } else {
     DiskPathTypeControls.style.display = "none";
-    DiskPath.required = false
+    diskpath.required = false
   }
 }
 function IPListShow(itemclickedon) {
@@ -40,14 +40,14 @@ function AddManualIPRow() {
   td = tr.insertCell(CellCount);
   td.setAttribute('class','prefix');
   td.setAttribute('id','HOSTPREFIXStr' + ServerCount);
-  td.innerHTML = document.getElementById('HOSTPREFIX').value;
+  td.innerHTML = document.getElementById('host_prefix').value;
   CellCount++
   //Unique hostname
   td = tr.insertCell(CellCount);
   td.setAttribute('class','hostname');
   var newelement = document.createElement('input');
   newelement.setAttribute('type','text');
-  newelement.setAttribute('name','HOSTNAME' + ServerCount);
+  newelement.setAttribute('name','hostname' + ServerCount);
   newelement.setAttribute('required', '');
   if (ServerCount > 1) {
     prevValue = ManualIPTable.rows[ServerCount-1].children[CellCount].childNodes[0].value;
@@ -67,14 +67,14 @@ function AddManualIPRow() {
   td = tr.insertCell(CellCount);
   td.setAttribute('class','suffix');
   td.setAttribute('id','HOSTSUFFIXStr' + ServerCount);
-  td.innerHTML = document.getElementById('HOSTSUFFIX').value;
+  td.innerHTML = document.getElementById('host_suffix').value;
   CellCount++
   //Unique IP Address
   td = tr.insertCell(CellCount);
   td.setAttribute('class','ipaddr');
   var newelement = document.createElement('input');
   newelement.setAttribute('type','text');
-  newelement.setAttribute('name','IPADDR' + ServerCount);
+  newelement.setAttribute('name','host_ip' + ServerCount);
   newelement.setAttribute('required', '');
   newelement.setAttribute('placeholder',"192.168.100.10");
   if (ServerCount > 1) {
@@ -92,7 +92,7 @@ function AddManualIPRow() {
   td.setAttribute('class','ipaddr');
   var newelement = document.createElement('input');
   newelement.setAttribute('type','text');
-  newelement.setAttribute('name','CIMCIP' + ServerCount);
+  newelement.setAttribute('name','cimc_ip' + ServerCount);
   newelement.setAttribute('required', '');
   newelement.setAttribute('placeholder',"192.168.200.10[:port]");
   if (ServerCount > 1) {
@@ -115,8 +115,8 @@ function RemoveManualIPRow() {
 }
 
 function UpdateESXiHostName() {
-  var prefix = document.getElementById("HOSTPREFIX").value;
-  var suffix = document.getElementById("HOSTSUFFIX").value;
+  var prefix = document.getElementById("host_prefix").value;
+  var suffix = document.getElementById("host_suffix").value;
   var table = document.getElementById('ManualIPTable');
   var i;
   for (i = 1; i < document.getElementById('ManualIPTable').rows.length; i++)  {
@@ -127,25 +127,25 @@ function UpdateESXiHostName() {
 
 function StaticRoutesShow(itemclickedon) {
   // alert(itemclickedon);
-  var table = document.getElementById('StaticRouteTable');
+  var table = document.getElementById('static_route_table');
   var i;
   if (itemclickedon == "True") {
-    StaticRoutes.style.display = "block";
+    static_routes.style.display = "block";
     console.log('Adding required for static routes: ' + table.rows.length)
     for (i = 0; i < table.rows.length; i++)  {
-      console.log('StaticSubnet' + i)
-      document.getElementById('StaticSubnet' + i).setAttribute('required','');
-      document.getElementById('StaticMask' + i).setAttribute('required','');
-      document.getElementById('StaticGateway' + i).setAttribute('required','');
+      console.log('subnet_ip' + i)
+      document.getElementById('subnet_ip' + i).setAttribute('required','');
+      document.getElementById('cidr' + i).setAttribute('required','');
+      document.getElementById('gateway' + i).setAttribute('required','');
     }
   } else {
-    StaticRoutes.style.display = "none";
+    static_routes.style.display = "none";
     console.log('Removing required for static routes: ' + table.rows.length)
     for (i = 0; i < table.rows.length; i++)  {
-      console.log('StaticSubnet' + i)
-      document.getElementById('StaticSubnet' + i).removeAttribute('required','');
-      document.getElementById('StaticMask' + i).removeAttribute('required','');
-      document.getElementById('StaticGateway' + i).removeAttribute('required','');
+      console.log('subnet_ip' + i)
+      document.getElementById('subnet_ip' + i).removeAttribute('required','');
+      document.getElementById('cidr' + i).removeAttribute('required','');
+      document.getElementById('gateway' + i).removeAttribute('required','');
     }
     // StaticSubnet0.required = false
     // StaticMask0.required = false
@@ -154,7 +154,7 @@ function StaticRoutesShow(itemclickedon) {
 }
 
 function AddStaticRoute() {
-  var table = document.getElementById('StaticRouteTable');
+  var table = document.getElementById('static_route_table');
   var tablelength = table.rows.length
   var tr = table.insertRow();
   // Insert IP Subnet Address
@@ -162,8 +162,8 @@ function AddStaticRoute() {
   td.setAttribute('style','Border: none; padding: 0px');
   var newelement = document.createElement('input');
   newelement.setAttribute('type','text');
-  newelement.setAttribute('name','StaticSubnet' + tablelength);
-  newelement.setAttribute('id','StaticSubnet' + tablelength);
+  newelement.setAttribute('name','subnet_ip' + tablelength);
+  newelement.setAttribute('id','subnet_ip' + tablelength);
   newelement.setAttribute('required', '');
   td.appendChild(newelement);
   td.innerHTML=(td.innerHTML + '/');
@@ -173,8 +173,8 @@ function AddStaticRoute() {
   var newelement = document.createElement('input');
   newelement.setAttribute('required', '');
   newelement.setAttribute('type','number');
-  newelement.setAttribute('name','StaticMask' + tablelength);
-  newelement.setAttribute('id','StaticMask' + tablelength);
+  newelement.setAttribute('name','cidr' + tablelength);
+  newelement.setAttribute('id','cidr' + tablelength);
   newelement.setAttribute('value','24');
   newelement.setAttribute('min','0');
   newelement.setAttribute('max','32');
@@ -185,16 +185,16 @@ function AddStaticRoute() {
   td.setAttribute('style','Border: none; padding: 10px');
   var newelement = document.createElement('input');
   newelement.setAttribute('type','text');
-  newelement.setAttribute('name','StaticGateway' + tablelength);
-  newelement.setAttribute('id','StaticGateway' + tablelength);
+  newelement.setAttribute('name','gateway' + tablelength);
+  newelement.setAttribute('id','gateway' + tablelength);
   newelement.setAttribute('required', '');
   td.appendChild(newelement);
 }
 
 function RemoveStaticRoute() {
-  var table = document.getElementById('StaticRouteTable');
+  var table = document.getElementById('static_route_table');
   var tablelength = table.rows.length
   if (tablelength > 1) {
-    document.getElementById('StaticRouteTable').deleteRow(-1);
+    document.getElementById('static_route_table').deleteRow(-1);
   }
 }

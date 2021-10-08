@@ -26,48 +26,47 @@ def get_form_data(mainlog, form_result):
     mainlog.info(f'Reading data from web form:')
 
     form_data = {}
-    form_data['iso_image'] = form_result['ISOFile']
-    form_data['rootpw'] = form_result['ROOTPW']
-    form_data['vmnic'] = form_result['VMNIC']
-    form_data['vlan'] = form_result['VLAN']
-    form_data['firstdisk'] = form_result['FirstDisk']
-    form_data['firstdisktype'] = form_result['FirstDiskType']
-    form_data['enable_ssh'] = form_result.get('SSH')
+    form_data['iso_image'] = form_result['iso_image']
+    form_data['root_pwd'] = form_result['root_pwd']
+    form_data['vmnic'] = form_result['vmnic']
+    form_data['vlan'] = form_result['vlan']
+    form_data['firstdisk'] = form_result['firstdisk']
+    form_data['firstdisktype'] = form_result['firstdisktype']
+    form_data['diskpath'] = form_result['diskpath']
+    form_data['enablessh'] = form_result.get('enablessh')
     form_data['clearpart'] = form_result.get('clearpart')
 
     # get static routes (if provided)
-    form_data['static_routes_set'] = form_result['StaticRoute']
     form_data['static_routes'] = []
-    if form_data['static_routes_set']:
+    if form_result['static_routes_set'] == 'True':
         for key, value in form_result.items():
-            if 'StaticSubnet' in key:
-                seq = key.replace('StaticSubnet', '')
-                form_data['static_routes'].append({'subnet': form_result[key],
-                                                   'mask': form_result['StaticMask' + seq],
-                                                   'gateway': form_result['StaticGateway' + seq]})
+            if 'subnet_ip' in key:
+                seq = key.replace('subnet_ip', '')
+                form_data['static_routes'].append({'subnet_ip': form_result[key],
+                                                   'cidr': form_result['cidr' + seq],
+                                                   'gateway': form_result['gateway' + seq]})
 
     # get common settings - CIMC credentials and subnet/gateway
-    form_data['cimc_usr'] = form_result['CIMCUSR']
-    form_data['cimc_pwd'] = form_result['CIMCPWD']
-    form_data['host_prefix'] = form_result['HOSTPREFIX']
-    form_data['host_suffix'] = form_result['HOSTSUFFIX']
-    # form_data['host_subnet'] = form_result['SUBNET']
+    form_data['cimc_usr'] = form_result['cimc_usr']
+    form_data['cimc_pwd'] = form_result['cimc_pwd']
+    form_data['host_prefix'] = form_result['host_prefix']
+    form_data['host_suffix'] = form_result['host_suffix']
     # calculate subnet based on gateway IP address and netmask (needed for PXE booted installation)
-    form_data['host_subnet'] = ip_network(form_result['GATEWAY'] + '/' + form_result['NETMASK'], strict=False).network_address
-    form_data['host_netmask'] = form_result['NETMASK']
-    form_data['host_gateway'] = form_result['GATEWAY']
-    form_data['dns1'] = form_result['DNS1']
-    form_data['dns2'] = form_result['DNS2']
+    form_data['host_subnet'] = ip_network(form_result['host_gateway'] + '/' + form_result['host_netmask'], strict=False).network_address
+    form_data['host_netmask'] = form_result['host_netmask']
+    form_data['host_gateway'] = form_result['host_gateway']
+    form_data['dns1'] = form_result['dns1']
+    form_data['dns2'] = form_result['dns2']
 
     # get ESXi host and CIMC IP address(es)
     form_data['hosts'] = []
     for key, value in form_result.items():
-        if 'HOSTNAME' in key:
-            seq = key.replace('HOSTNAME', '')
-            hostname = form_result['HOSTPREFIX'] + form_result[key] + form_result['HOSTSUFFIX']
+        if 'hostname' in key:
+            seq = key.replace('hostname', '')
+            hostname = form_result['host_prefix'] + form_result[key] + form_result['host_suffix']
             form_data['hosts'].append({'hostname': hostname,
-                                       'ipaddr': form_result['IPADDR' + seq],
-                                       'cimcip': form_result['CIMCIP' + seq]})
+                                       'host_ip': form_result['host_ip' + seq],
+                                       'cimc_ip': form_result['cimc_ip' + seq]})
     mainlog.debug(form_data)
     return form_data
 
@@ -98,9 +97,10 @@ def generate_kickstart(jobid, form_data, index, logger, mainlog, eai_host_ip=EAI
     # generate pre-section if static routes have been provided
     # i.e. 'localcli network ip route ipv4 add -n NET_CIDR -g GATEWAY'
     static_routes = ''
-    if form_data['static_routes_set'] == 'True':
+    # if form_data['static_routes_set'] == 'True':
+    if form_data['static_routes']:
         for route in form_data['static_routes']:
-            net_cidr = route['subnet'] + '/' + route['mask']
+            net_cidr = route['subnet_ip'] + '/' + route['cidr']
             static_routes += 'localcli network ip route ipv4 add -n ' + net_cidr + ' -g ' + route['gateway'] + '\n'
         pre_section = '%pre --interpreter=busybox\n' + static_routes + '\n'
     else:
@@ -113,7 +113,7 @@ def generate_kickstart(jobid, form_data, index, logger, mainlog, eai_host_ip=EAI
         set_def_gw = ''
 
     # enable ssh
-    if form_data['enable_ssh']:
+    if form_data['enablessh']:
         enable_ssh = '# enable & start remote ESXi Shell (SSH)\nvim-cmd hostsvc/enable_ssh\nvim-cmd hostsvc/start_ssh\n'
     else:
         enable_ssh = ''
@@ -137,13 +137,13 @@ def generate_kickstart(jobid, form_data, index, logger, mainlog, eai_host_ip=EAI
 
 
     # remaining host data
-    rootpw = form_data['rootpw']
+    rootpw = form_data['root_pwd']
     vmnicid = form_data['vmnic']
     vlan = form_data['vlan']
     netmask = form_data['host_netmask']
     gateway = form_data['host_gateway']
     hostname = form_data['hosts'][index]['hostname']
-    ipaddr = form_data['hosts'][index]['ipaddr']
+    ipaddr = form_data['hosts'][index]['host_ip']
 
     # read jinja template from file and render using read variables
     with open(ksjinja, 'r') as kstemplate_file:
@@ -498,6 +498,7 @@ def remove_custom_iso(jobid, logger, mainlog, customisodir=CUSTOMISODIR):
         mainlog.error(f'{jobid} : Failed to remove {iso_path}: {str(e)}')
         logger.error(f'Failed to remove {iso_path}: {format_message_for_web(e)}')
 
+
 def process_submission(jobid_list, logger_list, mainlog, form_data):
     """
     Generates installation data and starts install process.
@@ -523,5 +524,61 @@ def process_submission(jobid_list, logger_list, mainlog, form_data):
         generate_custom_iso(jobid, logger, mainlog, hostname, form_data['iso_image'], kscfg)
 
         # start ESXi hypervisor installation
-        Process(target=install_esxi, args=(jobid, logger, mainlog, form_data['hosts'][index]['cimcip'], form_data['cimc_usr'],
-                                            form_data['cimc_pwd'], jobid + '.iso')).start()
+        Process(target=install_esxi, args=(jobid, logger, mainlog, form_data['hosts'][index]['cimc_ip'], form_data['cimc_usr'], form_data['cimc_pwd'], jobid + '.iso')).start()
+
+
+def create_jobs(form_data, mainlog=get_main_logger()):
+    """
+    Create installation job for each server in form_data['hosts'] list.
+
+    :param form_data: (dict) installatiomn data as returned by get_form_data() function
+    :param mainlog: (logging.Handler) main Auto-Installer logger handler
+    :return: (list) list of job IDs
+    """
+
+    # interate over the list of ESXi hosts and run corresponding actions for each host
+    jobid_list  = []
+    logger_list = []
+    for index in range(len(form_data['hosts'])):
+        hostname = form_data['hosts'][index]['hostname']
+        cimcip = form_data['hosts'][index]['cimc_ip']
+
+        # generate jobid based on CIMC IP and current timestamp
+        jobid = generate_jobid(cimcip)
+
+        # create logger handler
+        logger = get_jobid_logger(jobid)
+        logger.info(f'Processing job ID: {jobid}, server {hostname}\n')
+        mainlog.info(f'{jobid} - processing job ID, server {hostname}')
+
+        # create entry in Auto-Installer DB
+        mainlog.info(f'{jobid} Saving installation data for server {hostname}')
+        eaidb_create_job_entry(jobid, time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime()), hostname, form_data['hosts'][index]['host_ip'],
+                                cimcip, form_data['cimc_usr'], form_data['cimc_pwd'])
+
+        jobid_list.append(jobid)
+        logger_list.append(logger)
+    # Process data on seperate thread
+    Process(target=process_submission, args=(jobid_list, logger_list, mainlog, form_data)).start()
+    return jobid_list
+
+
+def get_logs(jobid, basedir=LOGDIR):
+    """
+    Get log file from basedir for specific job ID
+
+    :param jobid: (str) job ID
+    :param basedir: (str) path to jobs logs directory
+    :return: n/a
+    """
+    # Joining the base and the requested path
+    abs_path = os.path.join(basedir, jobid)
+
+    # Return 404 if path doesn't exist
+    if not os.path.exists(abs_path):
+        return 'File does not exist!', 404
+
+    # Check if path is a file and serve
+    if os.path.isfile(abs_path):
+        with open(abs_path, 'r') as log_file:
+            return log_file.read(), 200, {'Content-Type': 'text/plain; charset=utf-8'}
