@@ -46,9 +46,6 @@ def get_jobid_logger(jobid=generate_jobid(), logdir=LOGDIR):
 
     # Get/create a logger
     logger = logging.getLogger(jobid.replace('.','_'))
-    # TODO: remove debugging code
-    # print(f'[DEBUG] Configuring job logger: {logger}, PID: {os.getpid()}')
-
     if not logger.hasHandlers():
         # set log level
         logger.setLevel(logging.DEBUG)
@@ -72,8 +69,6 @@ def get_main_logger(log_file=EAILOG):
 
     # Get/create main application logger
     main_logger = logging.getLogger('main')
-    # TODO: remove debugging code
-    # print(f'[DEBUG] Configuring main logger: {main_logger}, PID: {os.getpid()}')
     # set log level
     main_logger.setLevel(logging.DEBUG)
     # define formatter

@@ -34,7 +34,7 @@ def autoinstaller_gui():
         mainlog = get_main_logger()
         mainlog.debug(result)
         # interate over the list of ESXi hosts and run corresponding actions for each host
-        create_jobs(get_form_data(mainlog, result))
+        create_jobs(get_form_data(mainlog, result), mainlog)
         return redirect(url_for('show'))
     return render_template('index.html', form=form, isodirs=dirs)
 
@@ -81,7 +81,8 @@ def logs(jobid):
 
 # upload and extract ISO
 @app.route('/upload', methods=['GET', 'POST'])
-def upload_iso(mainlog=get_main_logger()):
+def upload_iso():
+    mainlog=get_main_logger()
     if request.method == 'POST':
         # read file name
         uploaded_iso = request.files['file']
