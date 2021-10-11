@@ -317,7 +317,7 @@ def cimc_logout(logger, cimchandle, cimcip, dryrun=DRYRUN):
 
 def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, eai_ip=EAIHOST, dryrun=DRYRUN):
 
-    isourl = 'http://' + eai_ip + '/custom-iso/' + iso_image
+    isourl = f'http://{eai_ip}/custom-iso/{iso_image}'
     mainlog.debug(f'{jobid} Starting ESXi hypervisor installation using custom ISO URL: {isourl}')
     logger.info(f'Starting ESXi hypervisor installation using custom ISO URL: {isourl}')
 
@@ -329,8 +329,8 @@ def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, ea
         except Exception as e:
             mainlog.error(f'{jobid} Error when trying to login to CIMC: {str(e)}')
             logger.error(f'Error when trying to login to CIMC: {format_message_for_web(e)}\n')
-            # if cimc_login failed - run cleanup tasks, update EAIDB with error message and abort
-            job_cleanup(jobid, logger, mainlog)
+            # if cimc_login failed - run cleanup tasks (with unmount_iso=False), update EAIDB with error message and abort
+            job_cleanup(jobid, logger, mainlog, False)
             eaidb_update_job_status(jobid, 'Error: Failed to login to CIMC', time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime()))
             return 1
 
@@ -366,6 +366,9 @@ def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, ea
             mainlog.error(f'{jobid} : {str(e)}')
             logger.error('Failed to mount installation ISO')
             logger.error(format_message_for_web(e))
+            # if mounting ISO failed - run cleanup tasks, update EAIDB with error message and abort
+            job_cleanup(jobid, logger, mainlog)
+            cimc_logout(logger, cimchandle, cimcip)
             eaidb_update_job_status(jobid, 'Error: Failed to mount installation ISO', time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime()))
             return 2
 
@@ -400,7 +403,7 @@ def get_available_isos(isodir=ESXISODIR):
     return dirs
 
 
-def job_cleanup(jobid, logger, mainlog, dryrun=DRYRUN):
+def job_cleanup(jobid, logger, mainlog, unmount_iso=True, dryrun=DRYRUN):
     if not dryrun:
         eaidb_update_job_status(jobid, 'Running cleanup tasks', '')
 
@@ -412,8 +415,8 @@ def job_cleanup(jobid, logger, mainlog, dryrun=DRYRUN):
         remove_kickstart(jobid, logger, mainlog)
 
         logger.info(f'* custom installation ISO')
-        # TODO: skip cimc_unmount_iso if cleanup has been triggered due to CIMC login error
-        cimc_unmount_iso(jobid, logger, mainlog)
+        if unmount_iso:
+            cimc_unmount_iso(jobid, logger, mainlog)
         remove_custom_iso(jobid, logger, mainlog)
 
         # TODO: add PXE cleanup when method is implemented
@@ -468,10 +471,9 @@ def cimc_unmount_iso(jobid, logger, mainlog):
         return 2
 
     try:
-        mainlog.info(f'{jobid} Unmounting installation ISO (vmedia_mount_remove_image) on CIMC {cimcip}')
-        logger.info(f'Unmounting installation ISO on CIMC {cimcip}')
-        # TODO: consider removing specific image instead of 'iso' type - check method vmedia_mount_delete(handle, volume_name)
-        vmedia_mount_remove_image(cimchandle, image_type='iso')
+        mainlog.info(f'{jobid} Unmounting installation ISO (vmedia_mount_delete, {jobid}.iso) on CIMC {cimcip}')
+        logger.info(f'Unmounting installation ISO ({jobid}.iso) on CIMC {cimcip}')
+        vmedia_mount_delete(cimchandle, f'{jobid}.iso')
         cimc_logout(logger, cimchandle, cimcip)
     except Exception as e:
         mainlog.error(f'{jobid} Failed to unmount vmedia: {str(e)}')
@@ -527,7 +529,7 @@ def process_submission(jobid_list, logger_list, mainlog, form_data):
         Process(target=install_esxi, args=(jobid, logger, mainlog, form_data['hosts'][index]['cimc_ip'], form_data['cimc_usr'], form_data['cimc_pwd'], jobid + '.iso')).start()
 
 
-def create_jobs(form_data, mainlog=get_main_logger()):
+def create_jobs(form_data, mainlog):
     """
     Create installation job for each server in form_data['hosts'] list.
 

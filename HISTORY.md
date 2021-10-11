@@ -1,6 +1,12 @@
 History
 =====================
 
+1.0alpha10 (2021-10-11)
+---------------------
+* cimc_unmount_iso unmounts only the ISO related to specific job ID
+* job_cleanup - added unmount_iso boolean so that we can skip unmounting when we got CIMC authentiocation error
+* removed get_main_logger() call from function declarations
+
 1.0alpha9 (2021-10-01)
 ---------------------
 * rebuilt API with flask_restful

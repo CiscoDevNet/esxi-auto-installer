@@ -34,7 +34,8 @@ class EAIJobs(Resource):
         # api endpoint for getting details for all jobs
         return eaidb_get_status(), 200
 
-    def post(self, mainlog=get_main_logger()):
+    def post(self):
+        mainlog=get_main_logger()
         try:
             jobid_list = []
             install_data = {}
@@ -48,7 +49,7 @@ class EAIJobs(Resource):
             mainlog.debug(f'API /jobs endpoint called with args: {args}')
 
             # interate over the list of ESXi hosts and run corresponding actions for each host
-            jobid_list = create_jobs(install_data)
+            jobid_list = create_jobs(install_data, mainlog)
             return jobid_list
         except KeyError as e:
             return f'Incorrect key when trying to create a new job. Expected key: {str(e)}', 400
