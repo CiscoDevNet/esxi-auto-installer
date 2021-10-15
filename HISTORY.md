@@ -1,6 +1,10 @@
 History
 =====================
 
+1.0alpha11 (2021-10-15)
+---------------------
+* added eaidb_remove_cimc_password() to cleanup procedure
+
 1.0alpha10 (2021-10-11)
 ---------------------
 * cimc_unmount_iso unmounts only the ISO related to specific job ID

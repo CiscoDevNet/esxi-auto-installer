@@ -419,6 +419,9 @@ def job_cleanup(jobid, logger, mainlog, unmount_iso=True, dryrun=DRYRUN):
             cimc_unmount_iso(jobid, logger, mainlog)
         remove_custom_iso(jobid, logger, mainlog)
 
+        logger.info(f'* remove CIMC password from database')
+        eaidb_remove_cimc_password(jobid)
+
         # TODO: add PXE cleanup when method is implemented
         mainlog.info(f'{jobid} Cleanup finished.')
         logger.info(f'Cleanup finished.\n')
