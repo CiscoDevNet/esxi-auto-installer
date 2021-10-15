@@ -186,3 +186,12 @@ def eaidb_check_jobid_exists(jobid, eaidb=EAIDB):
             return True
         else:
             return False
+
+
+def eaidb_remove_cimc_password(jobid, eaidb=EAIDB):
+    con = sl.connect(eaidb)
+    with con:
+        # update cimcpwd to empty string for given job ID
+        sql = 'UPDATE EAISTATUS SET cimcpwd=? WHERE jobid=?'
+        data = ('', jobid)
+        con.execute(sql, data)
