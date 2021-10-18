@@ -1,7 +1,7 @@
 History
 =====================
 
-1.0alpha12 (2021-10-15)
+1.0alpha12 (2021-10-18)
 ---------------------
 * added Welcome Page when there is no installation ISO
 
