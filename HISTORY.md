@@ -1,6 +1,10 @@
 History
 =====================
 
+1.0alpha13 (2021-10-18)
+---------------------
+* changed how EAI_HOST_IP is set
+
 1.0alpha11 (2021-10-15)
 ---------------------
 * added eaidb_remove_cimc_password() to cleanup procedure
