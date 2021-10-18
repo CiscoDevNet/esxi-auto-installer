@@ -1,6 +1,10 @@
 History
 =====================
 
+1.0alpha12 (2021-10-15)
+---------------------
+* added Welcome Page when there is no installation ISO
+
 1.0alpha11 (2021-10-15)
 ---------------------
 * added eaidb_remove_cimc_password() to cleanup procedure

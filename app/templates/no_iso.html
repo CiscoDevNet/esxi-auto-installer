@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block stylesheet %}
+<link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/styles.css') }}">
+{% endblock stylesheet %}
+
+{% block content %}
+
+        <div class="content_center_margin50">
+          <h1>Welcome!</h1>
+          Please <a href="{{ url_for('upload_iso') }}">upload first ESXi Installation ISO</a>
+	    </div>
+
+{% endblock %}

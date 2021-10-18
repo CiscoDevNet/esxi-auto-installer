@@ -48,6 +48,10 @@ div.content_section_text {
 div.content_center {
     text-align: center;
 }
+div.content_center_margin50 {
+    margin: 50px 50px 50px 50px;
+    text-align: center;
+}
 div.content_section_text a {
     font-weight: bold;
 }
