@@ -23,6 +23,11 @@ api = Api(app)
 @app.route("/", methods=['GET', 'POST'])
 def autoinstaller_gui():
     dirs = get_available_isos()
+
+    if len(dirs) == 0:
+        # redirect to welcome page when no installation ISO is found
+        return render_template('no_iso.html')
+
     form = FlaskForm()
     # get data entered on main page
     result = request.form
