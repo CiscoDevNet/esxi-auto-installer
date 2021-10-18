@@ -7,7 +7,6 @@ import logging
 import sqlite3 as sl
 
 
-
 def generate_jobid(cimcip='no_ip_address_provided'):
     """
     Return jobid in format cimcp_timestamp, eg. 192.168.1.111_1617701465.718063
@@ -180,6 +179,13 @@ def eaidb_get_cimc_credentials(jobid, eaidb=EAIDB):
 
 
 def eaidb_check_jobid_exists(jobid, eaidb=EAIDB):
+    """
+    Check if job ID exists in EAIDB.
+
+    :param jobid: (str) job ID
+    :param eaidb: sqlite3 database filename
+    :return: (bool) True if job ID found in EAIDB
+    """
     con = sl.connect(eaidb)
     with con:
         if con.execute(f"SELECT * FROM EAISTATUS WHERE jobid='{jobid}';").fetchone() is not None:
@@ -189,6 +195,13 @@ def eaidb_check_jobid_exists(jobid, eaidb=EAIDB):
 
 
 def eaidb_remove_cimc_password(jobid, eaidb=EAIDB):
+    """
+    Remove (i.e. replace with empty string) CIMC password from EAIDB for specific job ID.
+
+    :param jobid: (str) job ID
+    :param eaidb: sqlite3 database filename
+    :return: n/a
+    """
     con = sl.connect(eaidb)
     with con:
         # update cimcpwd to empty string for given job ID

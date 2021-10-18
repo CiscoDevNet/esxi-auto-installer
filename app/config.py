@@ -1,5 +1,6 @@
 # VMware Auto-Installer config
 import os
+from helper_functions import get_host_ip_address
 
 DRYRUN=False
 WORKDIR = '/opt/eai'
@@ -11,8 +12,7 @@ EAILOG = os.path.join(WORKDIR, 'logs/eai.log')
 EAIDB = os.path.join(APPDIR, 'eaidb.sqlite3')
 
 # TODO: need to decide how to get/set EAI external IP address
-import socket
-EAI_HOST_IP = socket.gethostbyname(socket.gethostname())
+EAI_HOST_IP = get_host_ip_address()
 EAIHOST = EAI_HOST_IP
 # EAIHOST = os.environ.get('EAI_HOST_IP')
 

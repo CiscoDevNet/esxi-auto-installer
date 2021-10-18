@@ -1,9 +1,13 @@
 History
 =====================
 
-1.0alpha12 (2021-10-18)
+1.0alpha13 (2021-10-18)
 ---------------------
 * added Welcome Page when there is no installation ISO
+
+1.0alpha12 (2021-10-18)
+---------------------
+* changed how EAI_HOST_IP is set
 
 1.0alpha11 (2021-10-15)
 ---------------------
