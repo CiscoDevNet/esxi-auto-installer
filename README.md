@@ -117,19 +117,22 @@ Additionally, it uses [Python SDK for Cisco IMC](https://github.com/CiscoUcs/imc
 
 ## Common issues
 
-### No ESXi ISO when you first install
-The Auto-Installer does not come pre-packaged with an ESXi Installation ISO. You must upload one using the Upload ISO Page before you can install ESXi hosts.
+### My server reboots, but does not install ESXi
+ESXi Auto-Installer mounts the ESXi ISO to your Cisco Server via IMC. But after it reboots your server, it's up to the boot order to decide whether or not the server will boot off the Virtual DVD Drive.
+Your Cisco server Boot Order can be set to 'basic mode' or 'advanced mode'.\
+If your server is in 'advanced mode', Auto-Installer attempts to set the Virtual DVD drive as a One-Time Boot Device.\
+If your Cisco server Boot Order is set to 'basic mode', it does not support the One-Time Boot Device feature. In this case you need to ensure that CDROM boot option is near the top, usually before the HDD and PXE boot options.
 
 ### ESXi hosts status does not change to finished
 The kickstart file instructs the host to contact the Auto-Installer via the /api/v1/jobs PUT API to update its status to "Finished".\
-If the ESXi host installed successfully, but the status on Auto-Installer did not update to "Finished", it could be because the ESXi host was unable to contact the Auto-Installer during the initial ESXi boot.\
+If the ESXi host installed successfully, but the status on Auto-Installer did not update to "Finished", it could be because the ESXi host was unable to contact the Auto-Installer during the initial ESXi boot.
 
 Common reasons are wrong IP Address, Gateway, VLAN or VMNIC settings. Or the ESXi host may require a static route.
 If the ESXi host is in an isolated network and there is no way for it to contact the Auto-Installer, then it cannot update the status to finished.
 
 ### Using the Static Routes feature causes my installation to fail
 Currently, the static routes feature is not meant for routes related to the management IP address after the ESXi host is installed. It's designed to help with certain storage connectivity issues that can come up during the ESXi installation process.
-For now, "standard" IP Static Routing will need to apply those outside of the ESXi-Auto-Installer after your installation is complete.
+For now, "standard" IP Static Routing will need to apply those outside of the ESXi Auto-Installer after your installation is complete.
 
 Here is a more in-depth explanation:\
 The static routes are applied during the %pre phase of the kickstart process. This is before the Mgmt IP address is assigned. Thus, you cannot use a static route that references a gateway accessible only by the Mgmt IP address.
