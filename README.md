@@ -120,8 +120,8 @@ Additionally, it uses [Python SDK for Cisco IMC](https://github.com/CiscoUcs/imc
 ### My server reboots, but does not install ESXi
 ESXi Auto-Installer mounts the ESXi ISO to your Cisco Server via IMC. But after it reboots your server, it's up to the boot order to decide whether or not the server will boot off the Virtual DVD Drive.
 Your Cisco server Boot Order can be set to 'basic mode' or 'advanced mode'.\
-If your server is in 'advanced mode', Auto-Installer attempts to set the Virtual DVD drive as a One-Time Boot Device.\
-If your Cisco server Boot Order is set to 'basic mode', it does not support the One-Time Boot Device feature. In this case you need to ensure that CDROM boot option is near the top, usually before the HDD and PXE boot options.
+If your server is in 'advanced mode', you want VMEDIA to be near the top.\
+If your Cisco server Boot Order is set to 'basic mode', ensure that CDROM boot option is near the top, usually before the HDD and PXE boot options.
 
 ### ESXi hosts status does not change to finished
 The kickstart file instructs the host to contact the Auto-Installer via the /api/v1/jobs PUT API to update its status to "Finished".\
