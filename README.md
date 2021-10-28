@@ -117,20 +117,25 @@ Additionally, it uses [Python SDK for Cisco IMC](https://github.com/CiscoUcs/imc
 
 ## Common issues
 
-### My server reboots, but does not install ESXi
-ESXi Auto-Installer mounts the ESXi ISO to your Cisco Server via IMC. But after it reboots your server, it's up to the boot order to decide whether or not the server will boot off the Virtual DVD Drive.
+### My server reboots, but does not install ESXi.
+ESXi Auto-Installer mounts the ESXi ISO to your Cisco Server via IMC. But after it reboots your server, it's up to the server's boot order to decide whether or not the server will boot off the Virtual DVD Drive.
 Your Cisco server Boot Order can be set to 'basic mode' or 'advanced mode'.\
-If your server is in 'advanced mode', you want VMEDIA to be near the top.\
-If your Cisco server Boot Order is set to 'basic mode', ensure that CDROM boot option is near the top, usually before the HDD and PXE boot options.
+If the server is in 'basic mode', ensure that CDROM boot option is near the top, usually before the HDD and PXE boot options.\
+If the server is in 'advanced mode', you want VMEDIA to be near the top. You can also use the 'one time boot' option to boot to VMEDIA if it is not near the top.
 
-### ESXi hosts status does not change to finished
+### ESXi hosts status does not change to finished.
 The kickstart file instructs the host to contact the Auto-Installer via the /api/v1/jobs PUT API to update its status to "Finished".\
 If the ESXi host installed successfully, but the status on Auto-Installer did not update to "Finished", it could be because the ESXi host was unable to contact the Auto-Installer during the initial ESXi boot.
 
 Common reasons are wrong IP Address, Gateway, VLAN or VMNIC settings. Or the ESXi host may require a static route.
 If the ESXi host is in an isolated network and there is no way for it to contact the Auto-Installer, then it cannot update the status to finished.
 
-### Using the Static Routes feature causes my installation to fail
+### I saw warnings on the ESXi Console during the installation phase!
+It is normal to see warnings on the ESXi Console screen during the installation phase.\
+As long as they are **warnings** and not **errors**, the installation will continue.\
+There may also be prompts that say "Press ENTER to contiue". But it is recommended that you do not press any keys. Again, as there are no actual errors, the installation will continue and the warning/prompt will go away momentarially.
+
+### Using the Static Routes feature causes my installation to fail.
 Currently, the static routes feature is not meant for routes related to the management IP address after the ESXi host is installed. It's designed to help with certain storage connectivity issues that can come up during the ESXi installation process.
 For now, "standard" IP Static Routing will need to apply those outside of the ESXi Auto-Installer after your installation is complete.
 
