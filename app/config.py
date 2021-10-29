@@ -34,5 +34,6 @@ STATUS_CODES = {
     20: 'Finished',
     30: 'Error',
     31: 'Error: Failed to login to CIMC',
-    32: 'Error: Failed to mount installation ISO'
+    32: 'Error: Failed to mount installation ISO',
+    33: 'Error: UEFI Secure Boot Mode enabled'
 }

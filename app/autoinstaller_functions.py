@@ -1,6 +1,7 @@
 # VMware Auto-Installer functions
 from imcsdk.imchandle import ImcHandle
 from imcsdk.apis.server.vmedia import *
+from imcsdk.apis.server.boot import *
 from imcsdk.apis.server.serveractions import server_power_cycle, server_power_state_get
 
 from generic_functions import *
@@ -316,6 +317,20 @@ def cimc_logout(logger, cimchandle, cimcip, dryrun=DRYRUN):
 
 
 def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, eai_ip=EAIHOST, dryrun=DRYRUN):
+    """
+    Install ESXi hypervisor using custom installation ISO (iso_image):
+    - login to CIMC
+    - set VMEDIA (installation ISO) on Boot Order
+    - mount installation ISO on CIMC
+    - reboot the server
+    - logout from CIMC
+
+    :param jobid: (str) job ID
+    :param logger: (logging.Handler) logger handler for jobid
+    :param mainlog: (logging.Handler) main Auto-Installer logger handler
+    :param customisodir: (str) path to custom ISO directory
+    :return: n/a
+    """
 
     isourl = f'http://{eai_ip}/custom-iso/{iso_image}'
     mainlog.debug(f'{jobid} Starting ESXi hypervisor installation using custom ISO URL: {isourl}')
@@ -330,9 +345,21 @@ def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, ea
             mainlog.error(f'{jobid} Error when trying to login to CIMC: {str(e)}')
             logger.error(f'Error when trying to login to CIMC: {format_message_for_web(e)}\n')
             # if cimc_login failed - run cleanup tasks (with unmount_iso=False), update EAIDB with error message and abort
-            job_cleanup(jobid, logger, mainlog, False)
+            job_cleanup(jobid, logger, mainlog, unmount_iso=False)
             eaidb_update_job_status(jobid, 'Error: Failed to login to CIMC', time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime()))
             return 1
+
+        # set VMEDIA on Boot Order
+        try:
+            if cimc_vmedia_set(cimchandle, logger) == 33:
+                job_cleanup(jobid, logger, mainlog, unmount_iso=False)
+                cimc_logout(logger, cimchandle, cimcip)
+                eaidb_update_job_status(jobid, 'Error: UEFI Secure Boot Mode enabled', time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime()))
+                return 33
+        except Exception as e:
+            mainlog.error(f'{jobid} : {str(e)}')
+            logger.error('Failed to set VMEDIA on Boot Order')
+            logger.error(format_message_for_web(e))
 
         # mount custom ISO and reboot the server to start the installation
         try:
@@ -404,6 +431,18 @@ def get_available_isos(isodir=ESXISODIR):
 
 
 def job_cleanup(jobid, logger, mainlog, unmount_iso=True, dryrun=DRYRUN):
+    """
+    Run post-installation cleanup tasks:
+    - remove kickstart file
+    - remove custom installation ISO
+    - remove CIMC password from database
+
+    :param jobid: (str) job ID
+    :param logger: (logging.Handler) logger handler for jobid
+    :param mainlog: (logging.Handler) main Auto-Installer logger handler
+    :param customisodir: (str) path to custom ISO directory
+    :return: n/a
+    """
     if not dryrun:
         eaidb_update_job_status(jobid, 'Running cleanup tasks', '')
 
@@ -450,6 +489,14 @@ def remove_kickstart(jobid, logger, mainlog, ksdir=KSDIR):
 
 
 def cimc_unmount_iso(jobid, logger, mainlog):
+    """
+    Unmount installation ISO on target CIMC.
+
+    :param jobid: (str) job ID
+    :param logger: (logging.Handler) logger handler for jobid
+    :param mainlog: (logging.Handler) main Auto-Installer logger handler
+    :return: (int) Error code
+    """
     mainlog.info(f'{jobid} Unmounting installation ISO from CIMC')
     logger.info(f'Unmounting installation ISO from CIMC:')
     try:
@@ -587,3 +634,170 @@ def get_logs(jobid, basedir=LOGDIR):
     if os.path.isfile(abs_path):
         with open(abs_path, 'r') as log_file:
             return log_file.read(), 200, {'Content-Type': 'text/plain; charset=utf-8'}
+
+
+def cimc_get_mo_property(cimchandle, mo_dn, mo_property):
+    """
+    Get CIMC Managed Object property.
+
+    :param cimchandle: (ImcHandle) CIMC connection handle
+    :param mo_dn: (str) CIMC Managed Object Distinguished Name
+    :return: MO Property value
+    """
+    mo = cimchandle.query_dn(mo_dn)
+    return getattr(mo, mo_property)
+
+
+def cimc_set_mo_property(cimchandle, mo_dn, mo_property, value):
+    """
+    Set CIMC Managed Object property.
+
+    :param cimchandle: (ImcHandle) CIMC connection handle
+    :param mo_dn: (str) CIMC Managed Object Distinguished Name
+    :param mo_property: (str) CIMC Managed Object property
+    :param value: (str) Managed Object property new value
+    :return: n/a
+    """    
+    mo = cimchandle.query_dn(mo_dn)
+    setattr(mo, mo_property, value)
+    cimchandle.set_mo(mo)
+
+
+def cimc_vmedia_basic_set(cimchandle, logger, basic_boot_order):
+    """
+    Set Boot Order Policy (Basic Boot Order).
+
+    :param cimchandle: (ImcHandle) CIMC connection handle
+    :param logger: (logging.Handler) logger handler for jobid
+    :param basic_boot_order: (list of dict) format
+        [{"order":'1', "device-type":"cdrom", "name":"cdrom0"},
+        {"order":'2', "device-type":"lan", "name":"lan"}]
+        as returned by boot_order_policy_get() IMC SDK function
+    :return: n/a    
+    """
+    try:
+
+        vmedia = 'NULL'
+        # check if vmedia on configured boot order list
+        for boot_device in basic_boot_order:
+            if boot_device['device-type'] == 'cdrom':
+                vmedia = boot_device['order']
+                logger.info(f"Discovered VMEDIA on position: {vmedia}")
+
+        if vmedia == 'NULL':
+            logger.info('No valid VMEDIA on configured boot order list - adding...')
+            from imcsdk.apis.server.boot import _add_boot_device
+            _add_boot_device(cimchandle, 'sys/rack-unit-1/boot-policy', {"order": "1", "device-type": "cdrom", "name": "cdrom-eai"})
+            logger.info(f'Boot Order set to: {boot_order_policy_get(cimchandle)}')
+        elif vmedia != '1':
+            logger.info(f'VMEDIA found on configured boot order list at position: {vmedia} - moving to 1st position...')
+            new_boot_order = []
+            for boot_device in basic_boot_order:
+                if boot_device['device-type'] != 'cdrom' and int(boot_device['order']) < int(vmedia):
+                    # devices on higher position than VMEDIA - move 1 position down
+                    boot_device['order'] = str(int(boot_device['order']) + 1)
+                    new_boot_order.append(boot_device)
+                elif boot_device['device-type'] != 'cdrom' and int(boot_device['order']) > int(vmedia):
+                    # devices on lower position than VMEDIA - move 1 position down
+                    new_boot_order.append(boot_device)
+                else:
+                    # move VMEDIA to position 1
+                    boot_device['order'] = '1'
+                    new_boot_order.append(boot_device)
+            # apply new boot order policy
+            boot_order_policy_set(cimchandle, boot_devices=new_boot_order)
+            logger.info(f'Boot Order set to: {boot_order_policy_get(cimchandle)}')
+    except Exception as e:
+        logger.error(f'Error when running vmedia check:')
+        logger.error(format_message_for_web(e))
+
+
+def cimc_vmedia_advanced_check(cimchandle):
+    """
+    Check for valid VMEDIA on Advanced Boot Order list.
+    VMEDIA is valid when state is enabled and subtype is either 'cimc-mapped-dvd' or not specified.
+
+    :param cimchandle: (ImcHandle) CIMC connection handle
+    :return: (str)  NULL if no valid VMEDIA found,
+                    VMEDIA name if valid VMEDIA found,
+                    Error otherwise.
+    """
+    vmedia_name = 'NULL'
+    try:
+        vmedia_list = cimchandle.query_classid('LsbootVMedia')
+        if len(vmedia_list) > 0:
+            for vmedia in vmedia_list:
+                if getattr(vmedia, 'state').casefold() == 'enabled' and getattr(vmedia, 'subtype') != 'kvm-mapped-dvd':
+                    vmedia_name = getattr(vmedia, "name")
+        return vmedia_name
+
+    except Exception as e:
+        return f'Error when running vmedia check: {str(e)}'
+
+
+def cimc_vmedia_advanced_set(cimchandle, logger):
+    """
+    Set Boot Order Precision (Advanced Boot Order).
+
+    :param cimchandle: (ImcHandle) CIMC connection handle
+    :param logger: (logging.Handler) logger handler for jobid
+    :return: n/a    
+    """
+    try:
+        logger.info('Checking for VMEDIA on Advanced Boot Order ...')
+        vmedia = cimc_vmedia_advanced_check(cimchandle)
+        if 'Error' in vmedia:
+            logger.error(f'{vmedia}. Aborting.')
+            return 33
+        elif vmedia == 'NULL':
+            logger.info('No valid VMEDIA on configured boot order list - adding')
+            # append vmedia to boot order list
+            vmedia_order = str(len(boot_precision_configured_get(cimchandle)) + 1)
+            from imcsdk.apis.server.boot import _add_boot_device
+            vmedia = "vmedia-eai"
+            _add_boot_device(cimchandle, 'sys/rack-unit-1/boot-precision', {"order": vmedia_order, "device-type": "vmedia", "name": vmedia})
+            logger.info(f'Boot Order set to: {boot_precision_configured_get(cimchandle)}')
+        else:
+            logger.info(f'VMEDIA found - using: {vmedia}')
+
+        # set vmedia as OneTimePrecisionBootDevice
+        cimc_set_mo_property(cimchandle, 'sys/rack-unit-1/one-time-precision-boot', 'device', vmedia)
+        logger.info(f'Configured One time boot device: {vmedia}')
+    except Exception as e:
+        logger.error(f'Error when trying to set One time boot device:')
+        logger.error(format_message_for_web(e))
+
+    
+def cimc_vmedia_set(cimchandle, logger):
+    """
+    Set VMEDIA on Boot Order.
+
+    :param cimchandle: (ImcHandle) CIMC connection handle
+    :param logger: (logging.Handler) logger handler for jobid
+    :return: n/a    
+    """
+    try:
+        # check Secure Boot
+        logger.info('Checking UEFI Secure Boot')
+        secure_boot = cimc_get_mo_property(cimchandle, 'sys/rack-unit-1/boot-policy/boot-security', 'secure_boot')
+        if not secure_boot.casefold() == 'disabled':
+            logger.error('UEFI Secure Boot enabled - it has to be disabled for the installation to proceed. Aborting.')
+            return 33
+        else:
+            logger.info('UEFI Secure Boot disabled - OK to proceed.')
+
+        # check Basic vs Advanced Boot mode
+        basic_boot_order = boot_order_policy_get(cimchandle)
+        if len(basic_boot_order) > 0:
+            # set VMEDIA as first device on Basic Boot Order list
+            logger.info(f'Discovered Basic Boot Order: {len(basic_boot_order)} devices, {basic_boot_order}')
+            cimc_vmedia_basic_set(cimchandle, logger, basic_boot_order)
+        else:
+            # ad VMEDIA to Advanced Boot Order and set it as One Time Boot Device
+            adv_boot_order = boot_precision_configured_get(cimchandle)
+            logger.info(f'Discovered Advanced Boot Order: {len(adv_boot_order)} devices, {adv_boot_order}')
+            cimc_vmedia_advanced_set(cimchandle, logger)
+
+    except Exception as e:
+        logger.error(f'Error when setting VMedia:')
+        logger.error(format_message_for_web(e))
