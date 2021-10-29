@@ -1,6 +1,10 @@
 History
 =====================
 
+1.0 (2021-10-29)
+---------------------
+* set vmedia as one-time-boot-device or first device in boot order
+
 1.0alpha13 (2021-10-18)
 ---------------------
 * added Welcome Page when there is no installation ISO
