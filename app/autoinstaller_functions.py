@@ -101,7 +101,7 @@ def generate_kickstart(jobid, form_data, index, logger, mainlog, eai_host_ip=EAI
     # if form_data['static_routes_set'] == 'True':
     if form_data['static_routes']:
         for route in form_data['static_routes']:
-            net_cidr = route['subnet_ip'] + '/' + route['cidr']
+            net_cidr = route['subnet_ip'] + '/' + str(route['cidr'])
             static_routes += 'localcli network ip route ipv4 add -n ' + net_cidr + ' -g ' + route['gateway'] + '\n'
         pre_section = '%pre --interpreter=busybox\n' + static_routes + '\n'
     else:
