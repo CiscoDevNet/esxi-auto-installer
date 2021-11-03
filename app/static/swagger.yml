@@ -241,11 +241,11 @@ components:
           items:
             type: object
             required:
-            - subnet
+            - subnet_ip
             - cidr
             - gateway
             properties:
-              subnet:
+              subnet_ip:
                 type: string
                 example: 172.16.10.0
               cidr:
