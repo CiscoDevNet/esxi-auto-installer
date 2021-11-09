@@ -3,7 +3,7 @@ History
 
 1.1 (2021-11-09)
 ---------------------
-* SHA512 hased root password in kickstart file
+* SHA512 hashed root password in kickstart file
 
 1.0 (2021-10-29)
 ---------------------
