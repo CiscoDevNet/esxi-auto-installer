@@ -138,7 +138,9 @@ def generate_kickstart(jobid, form_data, index, logger, mainlog, eai_host_ip=EAI
 
 
     # remaining host data
-    rootpw = form_data['root_pwd']
+    import crypt
+    rootpw_hash = crypt.crypt(form_data['root_pwd'], crypt.mksalt(crypt.METHOD_SHA512))
+
     vmnicid = form_data['vmnic']
     vlan = form_data['vlan']
     netmask = form_data['host_netmask']
@@ -149,12 +151,12 @@ def generate_kickstart(jobid, form_data, index, logger, mainlog, eai_host_ip=EAI
     # read jinja template from file and render using read variables
     with open(ksjinja, 'r') as kstemplate_file:
         kstemplate = Template(kstemplate_file.read())
-    kickstart = kstemplate.render(clearpart=clearline, install=install, rootpw=rootpw, vmnicid='vmnic' + vmnicid, vlan=vlan,
+    kickstart = kstemplate.render(clearpart=clearline, install=install, rootpw_hash=rootpw_hash, vmnicid='vmnic' + vmnicid, vlan=vlan,
                                   ipaddr=ipaddr, netmask=netmask, gateway=gateway, hostname=hostname, pre_section=pre_section, dnsservers=dnsservers,
                                   set_def_gw=set_def_gw, enable_ssh=enable_ssh, disable_ipv6=disable_ipv6,
                                   eai_host_ip=eai_host_ip, jobid=jobid)
     # remove password before saving kickstart to log file
-    logger.info(f"Generated kickstart configuration:\n{re.sub(r'rootpw.*', 'rootpw ***********', kickstart)}\n")
+    logger.info(f"Generated kickstart configuration:\n{re.sub(r'rootpw.*', 'rootpw --iscrypted ***********', kickstart)}\n")
     if not dryrun:
         kspath = path.join(ksdir, jobid + '_ks.cfg')
         with open(kspath, 'w+') as ksfile:

@@ -1,6 +1,10 @@
 History
 =====================
 
+1.1 (2021-11-09)
+---------------------
+* SHA512 hashed root password in kickstart file
+
 1.0 (2021-10-29)
 ---------------------
 * set vmedia as one-time-boot-device or first device in boot order
