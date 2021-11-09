@@ -1,7 +1,7 @@
 accepteula
 {% if clearpart %}{{clearpart}}{% endif -%}
 {{install}}
-rootpw {{rootpw}}
+rootpw --iscrypted {{rootpw_hash}}
 network --bootproto=static --addvmportgroup=true --device={{vmnicid}} {% if vlan not in '0' %}--vlanid={{vlan}} {% endif %}--ip={{ipaddr}} --netmask={{netmask}} --gateway={{gateway}} --hostname={{hostname}}{% if dnsservers != '' %} --nameserver={{dnsservers}}{% endif %}
 reboot
 
