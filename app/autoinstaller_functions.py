@@ -300,9 +300,13 @@ def cimc_login(logger, cimcaddr, cimcusr, cimcpwd, dryrun=DRYRUN):
         else:
             cimcip = cimcaddr
             cimcport = 443
-
+        if cimcport == 80:
+            # ImcSeccion in imcsdk does not seem to handle non-secure port 80 correctly - let's workaround it here
+            cimcsecure = False
+        else:
+            cimcsecure = True
         # Create a connection handle
-        cimchandle = ImcHandle(cimcip, cimcusr, cimcpwd, cimcport)
+        cimchandle = ImcHandle(cimcip, cimcusr, cimcpwd, cimcport, cimcsecure)
         # Login to CIMC
         cimchandle.login()
         logger.info(f'Connected to CIMC: {cimcaddr}')
