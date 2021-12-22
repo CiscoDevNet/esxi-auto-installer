@@ -172,6 +172,14 @@ def generate_kickstart(jobid, form_data, index, logger, mainlog, eai_host_ip=EAI
 def iso_extract(mainlog, uploaded_file, uploaddir=UPLOADDIR, tmpisodir=MNTISODIR, extracted_iso_dir=ESXISODIR):
     mainlog.info(f'Extracting uploaded ISO: {uploaded_file.filename}')
 
+    # get system commands paths
+    from shutil import which
+    mkdir_cmd = which('mkdir')
+    mount_cmd = which('mount')
+    umount_cmd = which('umount')
+    chmod_cmd = which('chmod')
+    rmdir_cmd = which('rmdir')
+
     # STEP 1: save ISO to uploaddir (default: /opt/eai/upload/<iso_filename>)
     iso_save_path = path.join(uploaddir, uploaded_file.filename)
     uploaded_file.save(iso_save_path)
@@ -180,29 +188,35 @@ def iso_extract(mainlog, uploaded_file, uploaddir=UPLOADDIR, tmpisodir=MNTISODIR
     filebase = path.splitext(uploaded_file.filename)[0]
     mountdir = path.join(tmpisodir, filebase)
     mainlog.debug(f'Create mountpoint: {mountdir}')
-    system('sudo /usr/bin/mkdir -p ' + mountdir + ' 1>&2')
+    system(f'{mkdir_cmd} -p {mountdir} 1>&2')
 
     # STEP 3: mount the ISO
     mainlog.debug(f'Mount the ISO: ')
-    mainlog.debug(f'CMD: sudo /usr/bin/mount -r -o loop ' + iso_save_path + ' ' + mountdir)
-    system('sudo /usr/bin/mount -r -o loop ' + iso_save_path + ' ' + mountdir + ' 1>&2')
-    system('ls -la ' + mountdir + ' 1>&2')
+    command = f'{mount_cmd} -r -o loop {iso_save_path} {mountdir} 1>&2'
+    mainlog.debug(f'CMD: {command}')
+    system(command)
+    system(f'ls -la {mountdir} 1>&2')
 
     # STEP 4: copy mounted ISO content to extracted_iso_dir (default: /opt/eai/exsi-iso/<iso_filebase>)
-    mainlog.debug(f'CMD: cp -R {mountdir} {extracted_iso_dir}')
-    system('cp -R ' + mountdir + ' ' + extracted_iso_dir + ' 1>&2')
-    system('sudo /usr/bin/chown apache.apache ' + extracted_iso_dir + ' 1>&2')
-    system('/usr/bin/chmod 644 ' + extracted_iso_dir + '/boot.cfg' + ' 1>&2')
+    command = f'cp -R {mountdir} {extracted_iso_dir} 1>&2'
+    mainlog.debug(f'CMD: {command}')
+    system(command)
+    # set boot.cfg to be writable, so that it can be modified per each installation job
+    bootcfg_path = path.join(extracted_iso_dir, filebase, "boot.cfg")
+    mainlog.debug(f'bootcfg_path: {bootcfg_path}')
+    command = f'{chmod_cmd} 644 {path.join(extracted_iso_dir, filebase, "boot.cfg")} 1>&2'
+    mainlog.debug(f'CMD: {command}')
+    system(command)
 
     # STEP 5: cleanup - unmount and delete ISO and temporary mountpoint
-    system(f'sudo /usr/bin/umount {mountdir} 1>&2')
+    system(f'{umount_cmd} {mountdir} 1>&2')
     mainlog.debug(f'Cleanup - remove ISO: {iso_save_path} and mountdir: {mountdir}')
-    system('rm -f ' + iso_save_path + ' 1>&2')
-    system('sudo /usr/bin/rmdir ' + mountdir + ' 1>&2')
+    system(f'rm -f {iso_save_path} 1>&2')
+    system(f'{rmdir_cmd} {mountdir} 1>&2')
 
     # INFO: check content of tftpisodir directory (INFO only)
     mainlog.info(f'New ISO: {filebase}')
-    mainlog.info(f'Listing {extracted_iso_dir} content:')
+    mainlog.debug(f'Listing {extracted_iso_dir} content:')
     dirs = [f for f in listdir(extracted_iso_dir) if path.isdir(path.join(extracted_iso_dir, f))]
     mainlog.debug(dirs)
     system(f'ls -la {extracted_iso_dir} 1>&2')
