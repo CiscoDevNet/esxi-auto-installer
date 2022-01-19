@@ -1,6 +1,10 @@
 History
 =====================
 
+1.3 (2022-01-18)
+---------------------
+* Use Ubuntu and Nginx Docker containers instead of Apache + mod_wsgi Linux setup
+
 1.1 (2021-11-09)
 ---------------------
 * SHA512 hashed root password in kickstart file
