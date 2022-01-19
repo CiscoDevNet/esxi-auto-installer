@@ -5,6 +5,10 @@ History
 ---------------------
 * Use Ubuntu and Nginx Docker containers instead of Apache + mod_wsgi Linux setup
 
+1.2 (2021-12-03)
+---------------------
+* use http instead of https when port 80 is provided in CIMC IP address
+
 1.1 (2021-11-09)
 ---------------------
 * SHA512 hashed root password in kickstart file
