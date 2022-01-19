@@ -27,19 +27,30 @@ The install instructions were created using Ubuntu 20.04.2 LTS.
 ## Initial Setup
 
 ``` bash
-sudo apt update && \
-sudo apt install python3-pip git apache2 apache2-dev libapache2-mod-wsgi-py3 genisoimage -y && \
-sudo a2enmod wsgi && \
-sudo git clone https://github.com/CiscoDevNet/esxi-auto-installer /opt/eai && \
-sudo chown -R www-data.www-data /opt/eai && \
-cd /opt/eai && \
-sudo pip install -r requirements.txt && \
-sudo cp autoinstaller.conf /etc/apache2/sites-available/ && \
-sudo ln -s /etc/apache2/sites-available/autoinstaller.conf /etc/apache2/sites-enabled/autoinstaller.conf && \
-sudo unlink /etc/apache2/sites-enabled/000-default.conf && \
-sudo /bin/sh -c 'echo "www-data ALL=NOPASSWD:/usr/bin/mount, /usr/bin/umount, /usr/bin/mkdir, /usr/bin/chown, /usr/bin/rmdir" > /etc/sudoers.d/apache' && \
-sudo systemctl enable apache2 && \
-sudo systemctl restart apache2
+sudo apt update
+sudo apt install git ca-certificates curl gnupg lsb-release -y
+
+# Install Docker Engine
+# Follow steps described on https://docs.docker.com/engine/install/
+# Example code for Ubuntu:
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt update
+sudo apt install docker-ce docker-ce-cli containerd.io -y
+
+# Install Docker Compose
+# Follow steps described on https://docs.docker.com/compose/install/
+# Example code for Ubuntu:
+sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+# get the latest Auto Installer code
+sudo git clone https://github.com/CiscoDevNet/esxi-auto-installer /opt/eai
+
+# start the application
+cd /opt/eai/auto-installer_docker
+sudo ./run_docker.sh 
 ```
 
 If you want to use a custom directory, see [Custom install directory](#Custom-install-directory)
@@ -99,11 +110,17 @@ Main Auto-Installer log file `eai.log` is stored under `EAILOG` and provides ove
 ## Custom install directory
 `/opt/eai` is the default directory. If you use a different directory, you need to update some config files.
 - the `WORKDIR` path located in the `config.py` file.
-- All `/opt/eai` entries in `/etc/httpd/conf.d/autoinstaller.conf`
+- All `/opt/eai` references in the following files:
+```
+./auto-installer_docker/run_docker.sh
+./auto-installer_docker/nginx/project.conf
+./auto-installer_docker/docker-compose.yml
+./auto-installer_docker/auto-installer_flask/Dockerfile
+```
 
 ## Optional Configuration
 
-All Auto-Installer configuration is stored in `config.py` file, where the following defaults can be customized:
+Auto-Installer Flask application configuration is stored in `config.py` file, where the following defaults can be customized:
 - Main Auto-Installer directory (`WORKDIR`) and essential subdirectories
 - ESXi ISO directory
 - Temporary directories used during ISO upload or for storing custom installation ISO
@@ -112,7 +129,7 @@ All Auto-Installer configuration is stored in `config.py` file, where the follow
 
 ## Module details
 
-Auto-Installer is a [Flask](https://flask.palletsprojects.com) based application written in Python running behind Apache web server through [mod_wsgi](https://pypi.org/project/mod-wsgi/).
+Auto-Installer is a [Flask](https://flask.palletsprojects.com) based application written in Python running in Ubuntu [Docker](https://www.docker.com/) container behind nginx container web proxy. Ubuntu Docker image has been used instead of official Python image as the latter is missing genisoimage command EFI related flags.
 Additionally, it uses [Python SDK for Cisco IMC](https://github.com/CiscoUcs/imcsdk) for running tasks on Cisco UCS IMC.
 
 ## Common issues

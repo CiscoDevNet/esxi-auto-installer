@@ -4,24 +4,20 @@ from helper_functions import get_host_ip_address
 
 DRYRUN=False
 WORKDIR = '/opt/eai'
-APPDIR = os.path.join(WORKDIR, 'app')
 ESXISODIR = os.path.join(WORKDIR, 'esxi-iso')
 CUSTOMISODIR = os.path.join(WORKDIR, 'custom-iso')
 LOGDIR = os.path.join(WORKDIR, 'logs/jobs')
 EAILOG = os.path.join(WORKDIR, 'logs/eai.log')
-EAIDB = os.path.join(APPDIR, 'eaidb.sqlite3')
+EAIDB = os.path.join(WORKDIR, 'eaidb.sqlite3')
 
-# TODO: need to decide how to get/set EAI external IP address
-EAI_HOST_IP = get_host_ip_address()
-EAIHOST = EAI_HOST_IP
-# EAIHOST = os.environ.get('EAI_HOST_IP')
+EAIHOST = os.environ.get('EAI_HOST_IP')
 
 UPLOADDIR = os.path.join(WORKDIR, 'upload')
 MNTISODIR = os.path.join(UPLOADDIR, 'mnt')
 KSDIR = os.path.join(WORKDIR, 'ks')
 PXEDIR = os.path.join(WORKDIR, 'pxelinux.cfg')
-KSTEMPLATE = os.path.join(APPDIR, 'templates/kickstart.jinja')
-PXETEMPLATE = os.path.join(APPDIR, 'templates/pxecfg_template')
+KSTEMPLATE = os.path.join(WORKDIR, 'templates/kickstart.jinja')
+PXETEMPLATE = os.path.join(WORKDIR, 'templates/pxecfg_template')
 
 TFTPISODIR = '/tftpboot/iso'
 

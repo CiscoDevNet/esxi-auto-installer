@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  flask_app:
+    privileged: true
+    container_name: auto-installer_flask
+    restart: always
+    build: ./auto-installer_flask
+    volumes:
+      - /opt/eai/eaidb.sqlite3:/opt/eai/eaidb.sqlite3
+      - /opt/eai/logs:/opt/eai/logs
+      - /opt/eai/esxi-iso:/opt/eai/esxi-iso
+      - /opt/eai/custom-iso:/opt/eai/custom-iso
+    ports:
+      - "8000:8000"
+    environment:
+      - EAI_HOST_IP
+    command: gunicorn -w 2 -t 180 -b 0.0.0.0:8000 autoinstaller_gui:app
+
+  nginx:
+    container_name: nginx
+    restart: always
+    build: ./nginx
+    volumes:
+      - /opt/eai/custom-iso:/opt/eai/custom-iso
+    ports:
+      - "80:80"
+    depends_on:
+      - flask_app

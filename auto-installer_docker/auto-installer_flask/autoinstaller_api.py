@@ -93,7 +93,11 @@ class EAIJob(Resource):
                         # get job logger
                         logger = get_jobid_logger(jobid)
                         # run cleanup
-                        job_cleanup(jobid, logger, mainlog)
+                        if status_code == 31:
+                            # do not tru to unmount the ISO if login to CIMC failed
+                            job_cleanup(jobid, logger, mainlog, unmount_iso=False)
+                        else:
+                            job_cleanup(jobid, logger, mainlog, unmount_iso=True)
                         # update job log
                         logger.info(f'Installation job (ID: {jobid}) finished.')
                         logger.info(f'Final status code: {status_dict[status_code]}\n')
