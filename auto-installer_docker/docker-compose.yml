@@ -11,13 +11,11 @@ services:
       - /opt/eai/logs:/opt/eai/logs
       - /opt/eai/esxi-iso:/opt/eai/esxi-iso
       - /opt/eai/custom-iso:/opt/eai/custom-iso
-      # add DB to be mounted from host as well
     ports:
       - "8000:8000"
     environment:
       - EAI_HOST_IP
-    # command: gunicorn -w 2 -t 120 --worker-class gevent -b 0.0.0.0:8000 autoinstaller_gui:app
-    command: gunicorn -w 2 -t 180 -b 127.0.0.1:8000 autoinstaller_gui:app
+    command: gunicorn -w 2 -t 180 -b 0.0.0.0:8000 autoinstaller_gui:app
 
   nginx:
     container_name: nginx

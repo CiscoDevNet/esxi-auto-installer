@@ -265,12 +265,14 @@ def generate_custom_iso(jobid, logger, mainlog, hostname, iso_image, kscfg_path,
 
         # copy mounted ISO content to customisodir (i.e. /opt/esxi-iso/<iso_filebase>)
         tmpisodir = path.join(customisodir, jobid)
-        mainlog.debug(f'{jobid} cp -R {path.join(isodir, iso_image)} {tmpisodir} 1>&2')
-        system(f'cp -R {path.join(isodir, iso_image)} {tmpisodir} 1>&2')
+        command = f'cp -R {path.join(isodir, iso_image)} {tmpisodir} 1>&2'
+        mainlog.debug(f'{jobid} {command}')
+        system(command)
 
         system(f'chmod -R +w {tmpisodir} 1>&2')
-        mainlog.debug(f'{jobid} cp {kscfg_path} {path.join(tmpisodir, "ks.cfg")} 1>&2')
-        system(f'cp {kscfg_path} {path.join(tmpisodir, "ks.cfg")} 1>&2')
+        command = f'cp {kscfg_path} {path.join(tmpisodir, "ks.cfg")} 1>&2'
+        mainlog.debug(f'{jobid} {command}')
+        system(command)
 
         # prepare boot.cfg
         # read original boot.cfg
