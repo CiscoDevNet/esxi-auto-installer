@@ -48,11 +48,17 @@ class EAIJobs(Resource):
             install_data['host_subnet'] = str(ip_network(install_data['host_gateway'] + '/' + install_data['host_netmask'], strict=False).network_address)
             mainlog.debug(f'API /jobs endpoint called with args: {args}')
 
+            # if requested ISO is not valid - return an error
+            if not install_data['iso_image'] in get_available_isos():
+                mainlog.error(f"Requested ISO {install_data['iso_image']} not found")
+                # return f"Requested ISO {install_data['iso_image']} not found. Available ISOs: {get_available_isos()}", 400
+                return { "status": "error", "message": "Requested ISO not found" }, 404
+
             # interate over the list of ESXi hosts and run corresponding actions for each host
             jobid_list = create_jobs(install_data, mainlog)
             return jobid_list
         except KeyError as e:
-            return f'Incorrect key when trying to create a new job. Expected key: {str(e)}', 400
+            return { "status": "error", "message": f'Incorrect key when trying to create a new job. Expected key: {str(e)}' }, 400
 
 
 class EAIJob(Resource):
@@ -61,7 +67,7 @@ class EAIJob(Resource):
             eaidb_dict = eaidb_get_status()
             return eaidb_dict[jobid], 200
         except KeyError:
-            return f'Job ID {jobid} not found.', 404
+            return { "status": "error", "message": f'Job ID not found' }, 404
 
     def put(self, jobid, mainlog=get_main_logger(), status_dict=STATUS_CODES):
         try:
@@ -75,6 +81,7 @@ class EAIJob(Resource):
                 if status_code not in status_dict:
                     # ignore invalid status codes
                     mainlog.error(f'State not valid: {status_code}')
+                    return { "status": "error", "message": f'State not valid' }, 400
                 else:
                     if status_code == 0:
                         # this state should be only set when creating DB entry - not doing anything here
@@ -108,9 +115,9 @@ class EAIJob(Resource):
                 eaidb_dict = eaidb_get_status()
                 return eaidb_dict[jobid]
             else:
-                return f'Job ID {jobid} not found.', 404
+                return { "status": "error", "message": f'Job ID not found' }, 404
         except Exception:
-            return f'Job ID {jobid} not found.', 404
+            return { "status": "error", "message": f'Job ID not found' }, 404
 
 
 class EAILogs(Resource):
