@@ -1,6 +1,10 @@
 History
 =====================
 
+1.4 (2022-01-27)
+---------------------
+* Return an error on API /jobs POST call when ISO not found
+
 1.3 (2022-01-18)
 ---------------------
 * Use Ubuntu and Nginx Docker containers instead of Apache + mod_wsgi Linux setup
