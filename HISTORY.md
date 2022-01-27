@@ -1,6 +1,10 @@
 History
 =====================
 
+1.5 (2022-01-27)
+---------------------
+* Additional status when hypervisor has bene installed and server goes for the First Boot
+
 1.4 (2022-01-27)
 ---------------------
 * Return an error on API /jobs POST call when ISO not found

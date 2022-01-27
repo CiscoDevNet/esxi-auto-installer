@@ -26,6 +26,7 @@ STATUS_CODES = {
     10: 'Connecting to CIMC',
     11: 'Mounting installation ISO',
     15: 'Installation in progress',
+    16: 'Running First Boot',
     18: 'Running cleanup tasks',
     20: 'Finished',
     30: 'Error',
