@@ -45,7 +45,7 @@ sudo apt install docker-ce docker-ce-cli containerd.io -y
 sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 sudo chmod +x /usr/local/bin/docker-compose
 
-# get the latest Auto Installer code
+# get the latest ESXi Auto-Installer code
 sudo git clone https://github.com/CiscoDevNet/esxi-auto-installer /opt/eai
 
 # start the application
@@ -57,11 +57,11 @@ If you want to use a custom directory, see [Custom install directory](#Custom-in
 
 # Usage
 
-Point a web browser at the system where Auto-Installer running.
+Point a web browser at the system where ESXi Auto-Installer running.
 
 ## First task: Upload ISO
 
-Auto-Installer does not come bundled with an ESXi Installation ISO file. Before you can use Auto-Installer you must upload an ESXi Installation ISO file.\
+Auto-Installer does not come bundled with an ESXi Installation ISO file. Before you can use ESXi Auto-Installer you must upload an ESXi Installation ISO file.\
 From the main page click on "Upload ISO" in the top menu bar.\
 Click Browse to locate an ISO on your local machine.\
 After selecting a valid ESXi Installation ISO file, click Submit.
@@ -99,11 +99,20 @@ The API page shows the Swagger documentation for the APIs. You do not have to au
 
 You can also view the [Swagger Document in on Git](https://ciscodevnet.github.io/esxi-auto-installer/).
 
+### Ansible Example
+An example Ansible Playbook that installs ESXi using the CIMC method via the APIs is included in this repo.\
+To run the Ansible Playbook example, download the [ansible-cimc-playbook.yml](ansible-cimc-playbook.yml) and [ansible-cimc-inventory.yml](ansible-cimc-inventory.yml) files.
+Edit the `ansible-cimc-inventory.yml` file and put your server(s) information in place of the example values.\
+Then run:
+``` bash
+ansible-playbook -i ansible-cimc-inventory.yml ansible-cimc-playbook.yml
+```
+
 # Application Details
 
 ## Log files
 
-Main Auto-Installer log file `eai.log` is stored under `EAILOG` and provides overview on application run and launched jobs.
+The main ESXi Auto-Installer log file `eai.log` is stored under `EAILOG` and provides overview on application run and launched jobs.
 
 'Per job ID' log files are stored in `LOGDIR` directory and available via web GUI ('Status' tab) or from the host system. These logs provide detailed output from all tasks executed per given job ID.
 
@@ -121,7 +130,7 @@ Main Auto-Installer log file `eai.log` is stored under `EAILOG` and provides ove
 ## Optional Configuration
 
 Auto-Installer Flask application configuration is stored in `config.py` file, where the following defaults can be customized:
-- Main Auto-Installer directory (`WORKDIR`) and essential subdirectories
+- Main ESXi Auto-Installer directory (`WORKDIR`) and essential subdirectories
 - ESXi ISO directory
 - Temporary directories used during ISO upload or for storing custom installation ISO
 - Toggle "dry-run", i.e. do not run any CIMC action and installation but simulate application flow
@@ -150,7 +159,7 @@ If the ESXi host is in an isolated network and there is no way for it to contact
 ### I saw warnings on the ESXi Console during the installation phase!
 It is normal to see warnings on the ESXi Console screen during the installation phase.\
 As long as they are **warnings** and not **errors**, the installation will continue.\
-There may also be prompts that say "Press ENTER to contiue". But it is recommended that you do not press any keys. Again, as there are no actual errors, the installation will continue and the warning/prompt will go away momentarially.
+There may also be prompts that say "Press ENTER to contiue". But it is recommended that you do not press any keys. Again, as long there are no actual errors, the installation will continue and the warning/prompt will go away momentarially.
 
 ### Using the Static Routes feature causes my installation to fail.
 Currently, the static routes feature is not meant for routes related to the management IP address after the ESXi host is installed. It's designed to help with certain storage connectivity issues that can come up during the ESXi installation process.

@@ -1,0 +1,146 @@
+- name: Patch CIMC firmware via AutoTuner and Configure
+  hosts: all
+  gather_facts: false
+  vars:
+    delegate: localhost
+
+  tasks:
+    # Enter -e reinstall=true to overwrite default behaviour.
+    # If reinstall is set to true, playbook will reinstall over existing servers.
+    # Otherwise, default behaviour is to skip installation if a server is pingable.
+    - name: Convert reinstall parameter into boolean(true)
+      ansible.builtin.set_fact:
+        blnreinstall: true
+      when: (reinstall | default('') | lower) == "true" or (reinstall | default(false))
+
+    - name: Convert reinstall parameters into boolean(false)
+      ansible.builtin.set_fact:
+        blnreinstall: false
+      when: blnreinstall is not defined
+
+    # Verify if all required variables are present:
+    - name: Auto Installer iso_image is set.
+      ansible.builtin.assert:
+        fail_msg: "auto_installer.iso_image is undefined."
+        that: auto_installer.iso_image is defined
+      run_once: true
+    - name: Auto Installer address is set
+      ansible.builtin.assert:
+        fail_msg: "auto_installer.address is undefined"
+        that: auto_installer.address is defined
+      run_once: true
+    - name: Management Network netmask is set.
+      ansible.builtin.assert:
+        fail_msg: "management_network.netmask is not defined. Set this to the netmask of the ESXi Mgmt Interface."
+        that: management_network.netmask is defined
+      run_once: true
+    - name: Management Network gateway is set.
+      ansible.builtin.assert:
+        fail_msg: "management_network.gateway is not defined. Set this to the gateway address of the ESXi Mgmt Interface."
+        that: management_network.gateway is defined
+      run_once: true
+    - name: CIMC password is set
+      ansible.builtin.assert:
+        fail_msg: "The CIMC password is not defined."
+        that: cimc_pwd is defined
+      run_once: true
+    - name: CIMC address is defined (IP or FQDN)
+      ansible.builtin.assert:
+        fail_msg: "The CIMC address (IP or FQDN) is not defined."
+        that: cimc_ip is defined
+
+    # Check if host is already online.
+    # We run 2 pings because the first ping often fails.
+    - name: Inital ping...
+      delegate_to: "{{ delegate }}"
+      ansible.builtin.shell: ping -c 1 -w 2 "{{ inventory_hostname }}"
+      ignore_errors: true
+      changed_when: false
+
+    - name: Check if host is pingable
+      delegate_to: "{{ delegate }}"
+      ansible.builtin.shell: ping -c 1 -w 2 "{{ inventory_hostname }}"
+      ignore_errors: true
+      register: results
+      changed_when: false
+
+    - name: Warn that server is online
+      ansible.builtin.debug:
+        msg: "Server is pingable. Server will not be installed unless it is not pingable or reinstall=true"
+      when: not results.failed
+
+    - name: Install OS
+      when:
+        - blnreinstall or results.failed  # Verify host is offline or override is supplied.
+        - auto_installer.iso_image is defined
+        - auto_installer.address is defined
+        - management_network.netmask is defined
+        - management_network.gateway is defined
+        - cimc_ip is defined
+        - cimc_pwd is defined
+      block:
+
+        - name: Format static routes for API
+          set_fact:
+            api_routes: "{{ (api_routes | default([])) +
+              [{'subnet_ip': (item.subnet | ansible.netcommon.ipaddr('network')),
+              'cidr': (item.subnet | ansible.netcommon.ipaddr('prefix')),
+              'gateway': item.gateway}] }}"
+          loop: '{{ static_routes }}'
+          when: static_routes is defined
+
+        - name: Request ESXi Installation
+          delegate_to: "{{ delegate }}"
+          ansible.builtin.uri:
+            url: http://{{ auto_installer.address }}/api/v1/jobs
+            method: POST
+            body_format: json
+            body:
+              installmethod: "cimc"
+              iso_image: "{{ auto_installer.iso_image }}"
+              root_pwd: "{{  esxi_pwd }}"
+              vlan: "{{ management_network.vlan | default('0') }}"
+              vmnic: "{{ management_network.vmnic | default('0') }}"
+              firstdisk: "{{ auto_installer.firstdisk | default('firstdiskfound') }}"
+              firstdisktype: "{{ auto_installer.firstdisktype | default('local') }}"
+              # "diskpath": "naa.6d09466044143600247aee55ca2a6405"
+              enablessh: "{{ auto_installer.enablessh | default('true') }}"
+              clearpart: "{{ auto_installer.clearpart | default('false') }}"
+              cimc_usr: "{{  cimc_usr | default('admin') }}"
+              cimc_pwd: "{{  cimc_pwd }}"
+              host_netmask: "{{ management_network.netmask }}"
+              host_gateway: "{{ management_network.gateway }}"
+              # dns1": "192.168.0.10"
+              # dns2": "192.168.0.11"
+              static_routes: "{{ api_routes | default() }}"
+              hosts:
+                - hostname: "ESX{{ '%02d' | format((inventory_hostname[-2:] | int) - 0) }}"  # Uses the last 2 digits of the IP address in the server hostname.
+                  host_ip: "{{ inventory_hostname }}"
+                  cimc_ip: "{{ cimc_ip }}"
+          register: apiresponse
+          changed_when: true
+
+        - name: Print API Response
+          ansible.builtin.debug:
+            msg: "{{ apiresponse }}"
+
+        - name: Sleep for 10 seconds  # This allows us to catch immedient failures, if any, without waiting the full 3 minute.
+          wait_for:
+            timeout: 10
+          delegate_to: localhost
+
+        - name: Waiting for Installation to Complete
+          delegate_to: "{{ delegate }}"
+          ansible.builtin.uri:
+            url: http://{{ auto_installer.address }}/api/v1/jobs/{{ apiresponse.json[0] }}
+            method: GET
+          until: "'Finished' in apiresponse.json.status or 'Error' in apiresponse.json.status"
+          register: apiresponse
+          changed_when: false
+          failed_when: "'Finished' not in apiresponse.json.status"
+          retries: 20  # 20 * 180seconds = 1 hour
+          delay: 180  # Every 3 minutes
+
+        - name: Print Job Finished/Failed Response
+          ansible.builtin.debug:
+            msg: "{{ apiresponse }}"
