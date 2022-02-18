@@ -1,4 +1,4 @@
-- name: Patch CIMC firmware via AutoTuner and Configure
+- name: Install ESXi hypervisor via ESXi Auto-Installer
   hosts: all
   gather_facts: false
   vars:
