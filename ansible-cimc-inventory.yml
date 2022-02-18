@@ -1,0 +1,37 @@
+all:
+  hosts:
+    192.168.2.11:
+      cimc_ip: 192.168.0.111 # Can be IP address or resolvable FQDN.
+  vars:
+    # Login can be defined once under 'vars' for all hosts.
+    # Or you can move them under the host section to set unique logins for each host.
+    cimc_usr: admin
+    cimc_pwd: current-cimc-password-here
+    esxi_pwd: new-root-esxi-password-here
+    # ESXi auto_installer variables
+    auto_installer:
+      # Location of the ESXi AutoInstaller
+      address: 192.168.0.123
+      # Iso image to use for the installation
+      iso_image: VMware-VMvisor-Installer-6.7.0.update03b-201912001-15160138.x86_64
+      #  If you want to install to a specific disk, use firstdisk and firstdisktype.
+      #  options are 'firstdiskfound' (default), 'firstdisk' and  'diskpath'
+      # firstdisk: firstdisk
+      #  firstdisktype is only relevent if 'firstdisk' parameter is set to a value of 'firstdisk'.
+      #  options are 'local' (default), 'remote' and 'usb'.
+      # firstdisktype: remote
+      #  diskpath is only valid if 'firstdisk' is set to a value of 'diskpath'
+      # diskpath: naa.6d09466044143600247aee55ca2a6405
+    # Management Network settings used by the ESXi AutoInstaller
+    management_network:
+      netmask: 255.255.255.0
+      gateway: 192.168.2.1
+      # vlan: 20
+      # vmnic: 1
+
+    # Static routes used during pre-install phase. These routes are not used after ESXi is installed.
+    # static_routes:
+    # - subnet: 172.16.10.0/24
+    #   gateway: 192.168.0.251
+    # - subnet: 172.17.10.0/24
+    #   gateway: 192.168.0.251
