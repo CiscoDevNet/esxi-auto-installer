@@ -3,7 +3,7 @@ History
 
 1.5 (2022-01-27)
 ---------------------
-* Additional status when hypervisor has beel installed and server goes for the First Boot
+* Additional status when hypervisor has been installed and server goes for the First Boot
 
 1.4 (2022-01-27)
 ---------------------
