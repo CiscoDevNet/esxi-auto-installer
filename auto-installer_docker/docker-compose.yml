@@ -15,6 +15,9 @@ services:
       - "8000:8000"
     environment:
       - EAI_HOST_IP
+      - EAI_HOST_GW
+      - EAI_HOST_SUBNET
+      - EAI_HOST_NETMASK
     command: gunicorn -w 2 -t 180 -b 0.0.0.0:8000 autoinstaller_gui:app
 
   nginx:
