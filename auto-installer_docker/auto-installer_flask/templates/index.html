@@ -87,6 +87,14 @@
             </table>
             <h1>Step 2</h1>
             <div class="content_section_text">
+              Select installation method:<br /><br />
+              <input type="radio" id="customiso" name="installmethod" value="cimc" checked>
+              <label for="customiso">Mount installation ISO with CIMC (Cisco UCS only)</label><br />
+              <input type="radio" id="pxeboot" name="installmethod" value="pxeboot">
+              <label for="pxeboot">PXE Boot</label><br />
+            </div>
+            <h1>Step 3</h1>
+            <div class="content_section_text">
               Enter network information for the ESXi hosts:<br /><br />
             </div>
             Does ESXi require static routes at boot time?

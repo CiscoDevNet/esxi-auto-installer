@@ -9,15 +9,12 @@ import sqlite3 as sl
 
 def generate_jobid(cimcip='no_ip_address_provided'):
     """
-    Return jobid in format cimcp_timestamp, eg. 192.168.1.111_1617701465.718063
+    Return jobid in format cimcip_timestamp, eg. 192.168.1.111_1617701465.718063
 
-    :param cimcip: (str)
+    :param cimcip: (str) CIMC IP or MAC address
     :return: jobid (str)
     """
-    # check if custom port has been provided and remove if yes
-    if ':' in cimcip:
-        cimcip = cimcip.split(':')[0]
-    return cimcip + '_' + str(time.time())
+    return cimcip.replace(':','-') + '_' + str(time.time())
 
 
 def check_service_status(service_name):
@@ -89,7 +86,7 @@ def get_main_logger(log_file=EAILOG):
     return main_logger
 
 
-def eaidb_create_job_entry(jobid, timestamp, hostname, ipaddr, cimcip, cimcusr, cimcpwd, eaidb=EAIDB):
+def eaidb_create_job_entry(jobid, timestamp, hostname, ipaddr, cimcip, cimcusr, cimcpwd, macaddr, netmask, gateway, eaidb=EAIDB):
     """
     Create new entry in EAIDB database EAISTATUS table.
 
@@ -109,9 +106,9 @@ def eaidb_create_job_entry(jobid, timestamp, hostname, ipaddr, cimcip, cimcusr, 
 
     # create new DB record
     with con:
-        sql = 'INSERT INTO EAISTATUS (jobid, hostname, ipaddr, cimcip, start_time, finish_time, status, cimcusr, cimcpwd) ' \
-              'values(?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        data = (jobid, hostname, ipaddr, cimcip, start_time, finish_time, status, cimcusr, cimcpwd)
+        sql = 'INSERT INTO EAISTATUS (jobid, hostname, ipaddr, cimcip, start_time, finish_time, status, cimcusr, cimcpwd, macaddr, netmask, gateway) ' \
+              'values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        data = (jobid, hostname, ipaddr, cimcip, start_time, finish_time, status, cimcusr, cimcpwd, macaddr, netmask, gateway)
         con.execute(sql, data)
 
 
@@ -135,7 +132,7 @@ def eaidb_update_job_status(jobid, status, finish_time, eaidb=EAIDB):
 
 def eaidb_get_status(eaidb=EAIDB):
     """
-    Get all entries from EAISTATUS table.
+    Get all entries from EAISTATUS table, without cimcusr and cimcpwd
 
     :param eaidb: sqlite3 database filename
     :return: dict of table rows with columns as fields:
@@ -145,7 +142,11 @@ def eaidb_get_status(eaidb=EAIDB):
         cimcip (str),
         start_time (str),
         finish_time (str),
-        status (str) }
+        status (str),
+        macaddr (str),
+        netmask (str),
+        gateway (str)
+        }
     """
     con = sl.connect(eaidb)
     eaidb_dict = {}
@@ -158,6 +159,10 @@ def eaidb_get_status(eaidb=EAIDB):
             eaidb_dict[row[0]]['start_time'] = row[4]
             eaidb_dict[row[0]]['finish_time'] = row[5]
             eaidb_dict[row[0]]['status'] = row[6]
+            # skipping columns 7 and 8 (cimcusr and cimcpwd)
+            eaidb_dict[row[0]]['macaddr'] = row[9]
+            eaidb_dict[row[0]]['netmask'] = row[10]
+            eaidb_dict[row[0]]['gateway'] = row[11]
     return eaidb_dict
 
 

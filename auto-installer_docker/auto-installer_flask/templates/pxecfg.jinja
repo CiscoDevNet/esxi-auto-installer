@@ -1,0 +1,6 @@
+DEFAULT install
+NOHALT 1
+LABEL install
+ KERNEL {{iso_image}}/mboot.c32
+ APPEND -c {{iso_image}}/boot.cfg ks={{ksurl}}
+ IPAPPEND 2

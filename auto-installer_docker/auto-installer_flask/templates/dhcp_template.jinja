@@ -1,0 +1,12 @@
+
+### custom entries for {{hostname}} ###
+subnet {{subnet}} netmask {{netmask}} {
+  range {{ipaddr}} {{ipaddr}};
+  option routers {{gateway}};
+}
+host {{hostname}} {
+  hardware ethernet {{macaddr}};
+  fixed-address {{ipaddr}};
+}
+### end of custom entries for {{hostname}} ###
+

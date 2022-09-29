@@ -5,6 +5,7 @@ from imcsdk.apis.server.boot import *
 from imcsdk.apis.server.serveractions import server_power_cycle, server_power_state_get
 
 from generic_functions import *
+from helper_functions import *
 from config import *
 
 from os import system, path, listdir
@@ -48,6 +49,7 @@ def get_form_data(mainlog, form_result):
                                                    'gateway': form_result['gateway' + seq]})
 
     # get common settings - CIMC credentials and subnet/gateway
+    # TODO: skip cimc credentials if installmethod is pxeboot
     form_data['cimc_usr'] = form_result['cimc_usr']
     form_data['cimc_pwd'] = form_result['cimc_pwd']
     form_data['host_prefix'] = form_result['host_prefix']
@@ -68,11 +70,12 @@ def get_form_data(mainlog, form_result):
             form_data['hosts'].append({'hostname': hostname,
                                        'host_ip': form_result['host_ip' + seq],
                                        'cimc_ip': form_result['cimc_ip' + seq]})
+                                       # TODO: set/save cimc_ip/macaddr based on installmethod
     mainlog.debug(form_data)
     return form_data
 
 
-def generate_kickstart(jobid, form_data, index, logger, mainlog, eai_host_ip=EAIHOST, dryrun=DRYRUN, ksjinja=KSTEMPLATE, ksdir=KSDIR):
+def generate_kickstart(jobid, form_data, index, logger, mainlog, eai_host_ip=EAIHOST_IP, dryrun=DRYRUN, ksjinja=KSTEMPLATE, ksdir=KSDIR):
     logger.info(f'Generating kickstart file for server')
 
     # set installation disk
@@ -338,7 +341,7 @@ def cimc_logout(logger, cimchandle, cimcip, dryrun=DRYRUN):
     logger.info(f'Disconnected from CIMC: {cimcip}')
 
 
-def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, eai_ip=EAIHOST, dryrun=DRYRUN):
+def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, eai_ip=EAIHOST_IP, dryrun=DRYRUN):
     """
     Install ESXi hypervisor using custom installation ISO (iso_image):
     - login to CIMC
@@ -552,6 +555,8 @@ def cimc_unmount_iso(jobid, logger, mainlog):
         logger.error(f'Failed to unmount installation ISO: {format_message_for_web(e)}\n')
         return 3
 
+    return 0
+
 
 def remove_custom_iso(jobid, logger, mainlog, customisodir=CUSTOMISODIR):
     """
@@ -592,16 +597,31 @@ def process_submission(jobid_list, logger_list, mainlog, form_data):
         # customize kickstart config
         mainlog.info(f'{jobid} Generating kickstart file for server {hostname}')
         kscfg = generate_kickstart(jobid, form_data, index, logger, mainlog)
+        
+        if form_data['installmethod'] == 'customiso':
+            # generate custom installation ISO
+            mainlog.info(f'{jobid} Generating custom installation ISO for server {hostname}')
+            generate_custom_iso(jobid, logger, mainlog, hostname, form_data['iso_image'], kscfg)
 
-        # generate custom installation ISO
-        mainlog.info(f'{jobid} Generating custom installation ISO for server {hostname}')
-        generate_custom_iso(jobid, logger, mainlog, hostname, form_data['iso_image'], kscfg)
+            # start ESXi hypervisor installation
+            Process(target=install_esxi, args=(jobid, logger, mainlog, form_data['hosts'][index]['cimc_ip'], form_data['cimc_usr'], form_data['cimc_pwd'], jobid + '.iso')).start()
 
-        # start ESXi hypervisor installation
-        Process(target=install_esxi, args=(jobid, logger, mainlog, form_data['hosts'][index]['cimc_ip'], form_data['cimc_usr'], form_data['cimc_pwd'], jobid + '.iso')).start()
+        elif form_data['installmethod'] == 'pxeboot':
+            mainlog.info(f'{jobid} Generating PXE Boot files for server {hostname}')
+            generate_pxe_boot(jobid, logger, mainlog, form_data['iso_image'], form_data['hosts'][index]['macaddr'])
+
+            mainlog.info(f'{jobid} Generating EFI Boot files for server {hostname}')
+            generate_efi_boot(jobid, logger, mainlog, form_data['iso_image'], form_data['hosts'][index]['macaddr'])
+
+            mainlog.info(f'{jobid} Generating DHCP configuration for server {hostname}')
+            generate_dhcp_config(jobid, logger, mainlog)
+            eaidb_update_job_status(jobid, 'Ready to deploy', '')
+
+            mainlog.info(f'{jobid} Ready to start PXE Boot installation for server {hostname}')
+            logger.info(f'Ready to start PXE Boot installation - power on the server to initialize installation process.\n')
 
 
-def create_jobs(form_data, mainlog):
+def create_jobs(form_data, installmethod, mainlog):
     """
     Create installation job for each server in form_data['hosts'] list.
 
@@ -615,10 +635,23 @@ def create_jobs(form_data, mainlog):
     logger_list = []
     for index in range(len(form_data['hosts'])):
         hostname = form_data['hosts'][index]['hostname']
-        cimcip = form_data['hosts'][index]['cimc_ip']
+        # if form_data['hosts'][index]['cimc_ip']:
+        if installmethod == 'cimc':
+        # Installation method: mount installation ISO with CIMC API (Cisco UCS servers only)
+            cimcip = form_data['hosts'][index]['cimc_ip']
+            cimcpwd = form_data['cimc_pwd']
+            macaddr = ''
+            jobid = generate_jobid(cimcip)
+        else:
+        # Installation method: PXE boot
+            cimcip = ''
+            cimcpwd = ''
+            macaddr = form_data['hosts'][index]['macaddr']
+            jobid = generate_jobid(macaddr)
+        # cimcip = form_data['hosts'][index]['cimc_ip']
 
         # generate jobid based on CIMC IP and current timestamp
-        jobid = generate_jobid(cimcip)
+        # jobid = generate_jobid(cimcip_or_mac)
 
         # create logger handler
         logger = get_jobid_logger(jobid)
@@ -628,7 +661,7 @@ def create_jobs(form_data, mainlog):
         # create entry in Auto-Installer DB
         mainlog.info(f'{jobid} Saving installation data for server {hostname}')
         eaidb_create_job_entry(jobid, time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime()), hostname, form_data['hosts'][index]['host_ip'],
-                                cimcip, form_data['cimc_usr'], form_data['cimc_pwd'])
+                                cimcip, form_data['cimc_usr'], cimcpwd, macaddr, form_data['host_netmask'], form_data['host_gateway'])
 
         jobid_list.append(jobid)
         logger_list.append(logger)
@@ -823,3 +856,85 @@ def cimc_vmedia_set(cimchandle, logger):
     except Exception as e:
         logger.error(f'Error when setting VMedia:')
         logger.error(format_message_for_web(e))
+
+
+def generate_pxe_boot(jobid, logger, mainlog, iso_image, macaddr, dryrun=DRYRUN, pxejinja=PXETEMPLATE, pxedir=PXEDIR, eai_ip=EAIHOST_IP):
+    """
+    Build custom PXE config based on provided parameters and PXETEMPLATE.
+
+    :param jobid: (str) job ID
+    :param logger: (logging.Handler) logger handler for jobid
+    :param mainlog: (logging.Handler) main Auto-Installer logger handler
+    :param iso_image: (str) installation ISO name
+    :param dryrun: (bool) Toggle Auto-Installer "dry-run" mode
+    :param pxejinja: (str) PXE boot jinja template file name
+    :param pxedir: (str) Destination directory to save XPE boot file 
+    :param eai_ip: (str) Auto-Installer host system IP address
+    :return n/a
+    """
+    if not dryrun:
+        try:
+            with open(pxejinja, 'r') as pxetemplate_file:
+                pxetemplate = Template(pxetemplate_file.read())
+
+            # generate PXE config file name based on MAC address (add prefix + replace ':' with '-')
+            pxecfg_path = path.join(pxedir, f"01-{macaddr.replace(':', '-')}")
+
+            logger.info(f'Saving PXE boot file as: {pxecfg_path}')
+
+            # read jinja template from file and render using read variables
+            with open(pxecfg_path, 'w+') as pxefile:
+                pxefile.write(pxetemplate.render(iso_image=f'iso/{iso_image}', ksurl=f'http://{eai_ip}/ks/{jobid}_ks.cfg'))
+
+        except Exception as e:
+            logger.error(f'Failed to save PXE boot file: {format_message_for_web(e)}')
+            mainlog.error(f'{jobid} Failed to save PXE boot file: {str(e)}')
+    else:
+        logger.info(f'[DRYRUN] Generating PXE boot file')
+        mainlog.info(f'{jobid} [DRYRUN] Generating PXE boot file')
+
+
+def generate_efi_boot(jobid, logger, mainlog, iso_image, macaddr, dryrun=DRYRUN, tftpboot=TFTPBOOT, tftpisodir=TFTPISODIR, eai_ip=EAIHOST_IP):
+    """
+    Generate EFI boot structure:
+    - subdirectory in tftpboot directory (example: /tftboot/01-aa-bb-cc-dd-ee-ff)
+    - custom boot.cfg file based on boot.cfg from selected ISO
+
+    :param jobid: (str) job ID
+    :param logger: (logging.Handler) logger handler for jobid
+    :param mainlog: (logging.Handler) main Auto-Installer logger handler
+    :param iso_image: (str) installation ISO name
+    :param macaddr: (str) MAC address (example: aa:bb:cc:dd:ee:ff)
+    :param dryrun: (bool) Toggle Auto-Installer "dry-run" mode
+    :param tftpboot: (str) TFTPBOOT directory path (default: /tftpboot/)
+    :param tftpisodir: (str) ISO subdirectory in TFTPBOOT directory (default: /tftpboot/iso)
+    :param eai_ip: (str) Auto-Installer host system IP address
+    :return n/a     
+    """
+    if not dryrun:
+        try:
+            from shutil import which
+            mkdir_cmd = which('mkdir')
+            efidir = path.join(tftpboot, f"01-{macaddr.replace(':', '-')}")
+            system(f'{mkdir_cmd} {efidir}')
+
+            # read original boot.cfg
+            bootcfg_orig_path = path.join(tftpisodir, iso_image, 'boot.cfg')
+            with open(bootcfg_orig_path, 'r') as bootcfg_file:
+                bootcfg = bootcfg_file.read()
+
+            # search for kernelopt line and replace parameters with ksurl
+            bootcfg = re.sub(r"kernelopt.*", f'kernelopt=ks=http://{eai_ip}/ks/{jobid}_ks.cfg', bootcfg)
+
+            bootcfg_path = path.join(efidir, 'boot.cfg')
+            logger.info(f'Saving EFI boot file as: {bootcfg_path}')
+
+            with open(bootcfg_path, 'w+') as bootcfg_custom_file:
+                bootcfg_custom_file.write(bootcfg)
+
+        except Exception as e:
+            logger.error(f'Failed to save EFI boot.cfg file: {format_message_for_web(e)}')
+            mainlog.error(f'{jobid} Failed to save EFI boot.cfg file: {str(e)}')
+    else:
+        logger.info(f'[DRYRUN] Generating EFI boot file')
+        mainlog.info(f'{jobid} [DRYRUN] Generating EFI boot file')            

@@ -8,13 +8,14 @@ from autoinstaller_functions import *
 class EAIJobs(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser()
+        self.reqparse.add_argument('installmethod', type = str, required = True, help = 'No installation method provided', location = 'json')
         self.reqparse.add_argument('iso_image', type = str, required = True, help = 'No ISO name provided', location = 'json')
         self.reqparse.add_argument('root_pwd', type = str, required = True, help = 'No root password provided', location = 'json')
-        self.reqparse.add_argument('cimc_pwd', type = str, required = True, help = 'No CIMC password provided', location = 'json')
+        self.reqparse.add_argument('cimc_pwd', type = str, help = 'No CIMC password provided', location = 'json')
         self.reqparse.add_argument('host_netmask', type = str, required = True, help = 'No Netmask provided', location = 'json')
         self.reqparse.add_argument('host_gateway', type = str, required = True, help = 'No Gateway provided', location = 'json')
         self.reqparse.add_argument('hosts', type = list, required = True, help = 'No host list provided', location = 'json')
-        # TODO: add hosts list validation (hostname, host_ip, cimc_ip) ?
+        # hosts data validation (hostname, host_ip, cimc_ip, MAC address) handled in post() method
         self.reqparse.add_argument('vlan', type = str, default='0', help = 'No VLAN ID provided', location = 'json')
         self.reqparse.add_argument('vmnic', type = str, default='0', help = 'No VMNIC provided', location = 'json')
         self.reqparse.add_argument('cimc_usr', type = str, default='admin', help = 'No CIMC account provided', location = 'json')
@@ -40,25 +41,51 @@ class EAIJobs(Resource):
             jobid_list = []
             install_data = {}
             args = self.reqparse.parse_args()
-            print(args)
+            mainlog.debug(f'API /jobs endpoint called with args: {args}')
+
+            # Installation method: mount installation ISO with CIMC API (Cisco UCS servers only)
+            if args['installmethod'] == 'cimc':
+                # check if CIMC IP and credentials have bene provided
+                if not args['cimc_pwd'] or not args['cimc_usr']:
+                    mainlog.error(f'API POST /jobs error - missing CIMC credentials. Request aborted.')
+                    return { "status": "error", "message": "Missing CIMC credentials" }, 400
+                for host_data in args['hosts']:
+                    print(f'[DEBUG] Host data: {host_data}')
+                    if not host_data['hostname'] or not host_data['host_ip'] or not host_data['cimc_ip']:
+                        # in case some data is missing KeyError is thrown and corresponding error returned
+                        mainlog.error(f'API POST /jobs error - missing host data. Request aborted.')
+                        # TODO: validate host_ip and cimc_ip
+            # Installation method: PXE boot
+            elif args['installmethod'] == 'pxeboot':
+                # check if MAC address has been provided
+                for host_data in args['hosts']:
+                    print(f'[DEBUG] Host data: {host_data}')
+                    if not host_data['hostname'] or not host_data['host_ip'] or not host_data['macaddr']:
+                        # in case some data is missing KeyError is thrown and corresponding error returned
+                        mainlog.error(f'API POST /jobs error - missing host data. Request aborted.')
+                        # TODO: validate MAC address
+            else:
+                mainlog.error(f'API POST /jobs error - Unknown installation method. Request aborted.')
+                return { "status": "error", "message": "Unknown installation method" }, 400
+
             for k, v in args.items():
                 if v != None:
                     install_data[k] = v
 
             install_data['host_subnet'] = str(ip_network(install_data['host_gateway'] + '/' + install_data['host_netmask'], strict=False).network_address)
-            mainlog.debug(f'API /jobs endpoint called with args: {args}')
 
             # if requested ISO is not valid - return an error
             if not install_data['iso_image'] in get_available_isos():
                 mainlog.error(f"Requested ISO {install_data['iso_image']} not found")
-                # return f"Requested ISO {install_data['iso_image']} not found. Available ISOs: {get_available_isos()}", 400
                 return { "status": "error", "message": "Requested ISO not found" }, 404
 
+            mainlog.debug(f'API POST /jobs install data: {install_data}')
+
             # interate over the list of ESXi hosts and run corresponding actions for each host
-            jobid_list = create_jobs(install_data, mainlog)
+            jobid_list = create_jobs(install_data, args['installmethod'], mainlog)
             return jobid_list
         except KeyError as e:
-            return { "status": "error", "message": f'Incorrect key when trying to create a new job. Expected key: {str(e)}' }, 400
+            return { "status": "error", "message": f'Incorrect or missing key when trying to create a new job. Expected key: {str(e)}' }, 400
 
 
 class EAIJob(Resource):

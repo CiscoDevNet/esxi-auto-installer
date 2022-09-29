@@ -16,6 +16,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'cll-vmware-auto-installer'
 app.config['UPLOAD_EXTENSIONS'] = ['.iso']
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
+app.config['BUNDLE_ERRORS'] = True
 # app.config['UPLOAD_PATH'] = UPLOADDIR
 api = Api(app)
 
@@ -23,6 +24,7 @@ api = Api(app)
 @app.route("/", methods=['GET', 'POST'])
 def autoinstaller_gui():
     dirs = get_available_isos()
+    # print(f'{EAIHOST_IP} {EAIHOST_GW} {EAIHOST_SUBNET} {EAIHOST_NETMASK}')
 
     if len(dirs) == 0:
         # redirect to welcome page when no installation ISO is found
@@ -39,7 +41,7 @@ def autoinstaller_gui():
         mainlog = get_main_logger()
         mainlog.debug(result)
         # interate over the list of ESXi hosts and run corresponding actions for each host
-        create_jobs(get_form_data(mainlog, result), mainlog)
+        create_jobs(get_form_data(mainlog, result), result['installmethod'], mainlog)
         return redirect(url_for('show'))
     return render_template('index.html', form=form, isodirs=dirs)
 
@@ -70,7 +72,11 @@ def show():
     # convert dictionary result to list with selected jobs' fields and sort by start_date
     eaidb_list = []
     for job_entry in eaidb_dict.items():
-        list_entry = [job_entry[1]['hostname'], job_entry[1]['cimcip'], job_entry[1]['start_time'],
+        if job_entry[1]['cimcip']:
+            cimcip_or_mac = job_entry[1]['cimcip']
+        else:
+            cimcip_or_mac = job_entry[1]['macaddr']
+        list_entry = [job_entry[1]['hostname'], cimcip_or_mac, job_entry[1]['start_time'],
                    job_entry[1]['finish_time'], job_entry[1]['status'], job_entry[0]]
         eaidb_list.append(list_entry)
     # TODO: fix sort to actually sort by date, not by string (?)
@@ -122,6 +128,5 @@ api.add_resource(EAIISOs, '/api/v1/isos', methods=['GET'])
 
 
 if __name__ == "__main__":
-    # app.run(host='0.0.0.0', port=80, debug=True)
     app.run(host='0.0.0.0', port=8000, debug=True)
 
