@@ -171,7 +171,7 @@ paths:
 components:
   schemas:
     Jobs:
-      description: "jobID is a unique string, default: {cimcip}_{timestamp}, eg. '192.168.0.1_1628871425.1136827'"
+      description: "jobID is a unique string, default: {cimc_ip}_{timestamp}, eg. '192.168.0.1_1628871425.1136827'"
       type: object
       properties:
         jobID:
@@ -288,7 +288,7 @@ components:
     JobStatus:
       type: object
       properties:
-        cimcip:
+        cimc_ip:
           type: "string"
           example: "192.168.0.111"
         finish_time:
