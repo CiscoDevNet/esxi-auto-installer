@@ -4,6 +4,7 @@ from flask_restful import Resource, reqparse
 from flask import request
 from autoinstaller_functions import *
 
+import ipaddress
 
 class EAIJobs(Resource):
     def __init__(self):
@@ -43,30 +44,100 @@ class EAIJobs(Resource):
             args = self.reqparse.parse_args()
             mainlog.debug(f'API /jobs endpoint called with args: {args}')
 
-            # Installation method: mount installation ISO with CIMC API (Cisco UCS servers only)
-            if args['installmethod'] == 'cimc':
-                # check if CIMC IP and credentials have bene provided
+            if args['installmethod'] not in ('pxeboot', 'cimc'):
+                mainlog.error(f'API POST /jobs error - Unknown installation method. Request aborted.')
+                return { "status": "error", "message": "Unknown installation method" }, 400
+            # Verify fields that are common to all install types.
+            p = re.compile("^[A-Za-z\d\-_]{1,63}$")
+            for host_data in args['hosts']:
+                print(f'[DEBUG] Host data: {host_data}')
+                if 'hostname' in host_data:
+                    if not re.search(p, host_data["hostname"]):
+                        return {
+                            "status": "error",
+                            "message": "Required hosts field is not valid: hostname",
+                        }, 400
+                else:
+                        return {
+                            "status": "error",
+                            "message": "Required hosts field not provided: hostname",
+                        }, 400
+                if 'host_ip' in host_data:
+                    try:
+                        ipaddress.ip_address(host_data['host_ip'])
+                    except ValueError:
+                        return {"status": "error", "message": 'Required hosts field is not valid: host_ip'}, 400
+                else:
+                    mainlog.error(f'API POST /jobs error - missing host data. Request aborted.')
+                    return { "status": "error", "message": "Required hosts field not provided: host_ip" }, 400
+
+            # Installation method: PXE boot
+            if args['installmethod'] == 'pxeboot':
+                # Setup regex before the loop. This is a simplified mac address check because it will be run after the mac has been cleaned up.
+                p = re.compile("^([a-f0-9]){12}$")
+                # Set required keys. host_ip is omitted because we tested it earlier.
+                for host_data in args['hosts']:
+                    if not 'macaddr' in host_data:
+                    #if not host_data['hostname'] or not host_data['host_ip'] or not host_data['macaddr']:
+                        # in case some data is missing KeyError is thrown and corresponding error returned
+                        mainlog.error(f'API POST /jobs error - missing host data. Request aborted.')
+                        return { "status": "error", "message": "Required hosts field not provided. macaddr" }, 400
+                    # Remove symbols from MAC address.
+                    host_data["macaddr"] = (
+                            host_data["macaddr"]
+                            .replace(":", "")
+                            .replace(".", "")
+                            .replace("-", "")
+                            .lower()
+                        )
+                    # Verify mac address is a valid.
+                    if not re.search(p, host_data["macaddr"]):
+                        return {
+                            "status": "error",
+                            "message": "Required hosts field is not valid: macaddr",
+                        }, 400
+                    # Put MAC addres in required format
+                    host_data["macaddr"] = ":".join(
+                        [host_data["macaddr"][i:i + 2] for i in range(0, 12, 2)]
+                    )
+            else: # any OOBM installation method.
+                # Installation method: mount installation ISO with OOBM
+                # check if CIMC IP and credentials have been provided
                 if not args['cimc_pwd'] or not args['cimc_usr']:
                     mainlog.error(f'API POST /jobs error - missing CIMC credentials. Request aborted.')
                     return { "status": "error", "message": "Missing CIMC credentials" }, 400
                 for host_data in args['hosts']:
                     print(f'[DEBUG] Host data: {host_data}')
-                    if not host_data['hostname'] or not host_data['host_ip'] or not host_data['cimc_ip']:
+                    if 'cimc_ip' not in host_data:
+                    # if not host_data['hostname'] or not host_data['host_ip'] or not host_data['cimc_ip']:
                         # in case some data is missing KeyError is thrown and corresponding error returned
                         mainlog.error(f'API POST /jobs error - missing host data. Request aborted.')
-                        # TODO: validate host_ip and cimc_ip
-            # Installation method: PXE boot
-            elif args['installmethod'] == 'pxeboot':
-                # check if MAC address has been provided
-                for host_data in args['hosts']:
-                    print(f'[DEBUG] Host data: {host_data}')
-                    if not host_data['hostname'] or not host_data['host_ip'] or not host_data['macaddr']:
-                        # in case some data is missing KeyError is thrown and corresponding error returned
-                        mainlog.error(f'API POST /jobs error - missing host data. Request aborted.')
-                        # TODO: validate MAC address
-            else:
-                mainlog.error(f'API POST /jobs error - Unknown installation method. Request aborted.')
-                return { "status": "error", "message": "Unknown installation method" }, 400
+                        return { "status": "error", "message": "Required hosts field not provided. cimc_ip" }, 400
+                    # Verify OOBM IP Address
+                    try:
+                        ipaddress.ip_address(host_data['cimc_ip'])
+                    except ValueError:
+                        return {"status": "error", "message": 'Required hosts field is not valid: cimc_ip.'}, 400
+
+            # check if static_routes are valid.
+            if len(args['static_routes']) > 0:
+                for item in args["static_routes"]:
+                    # Test the ip address.
+                    try:
+                        ipaddress.ip_network(f"{item['subnet_ip']}/{item['cidr']}")
+                    except ValueError:
+                        mainlog.error(f"Static route subnet '{item['subnet_ip']}/{item['cidr']}' is invalid")
+                        return {"status": "error", "message": 'static_route field combination is not valid: subnet_ip and cidr'}, 400
+
+                    # Test the gateway.
+                    try:
+                        ipaddress.ip_address(item['gateway'])
+                    except ValueError:
+                        return {
+                                "status": "error",
+                                "message": "static_route field is not valid: gateway",
+                            }, 400
+
 
             for k, v in args.items():
                 if v != None:
@@ -79,6 +150,7 @@ class EAIJobs(Resource):
                 mainlog.error(f"Requested ISO {install_data['iso_image']} not found")
                 return { "status": "error", "message": "Requested ISO not found" }, 404
 
+            # All data validated, print debug log
             mainlog.debug(f'API POST /jobs install data: {install_data}')
 
             # interate over the list of ESXi hosts and run corresponding actions for each host

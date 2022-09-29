@@ -38,10 +38,15 @@ paths:
         Mandatory (minimal) input data parameters:
           - iso_image
           - root_pwd
-          - cimc_pwd
           - host_netmask
           - host_gateway
-          - hosts list (at least one entry with {hostname, ipaddr, cimcip})
+          - installmethod
+          - hosts list
+          - - if installmethod is "pxeboot" at least one entry with {hostname, host_ip, macaddr}
+          - - if installmethod is "cimc" one entry with {hostname, host_ip, cimc_ip}
+        
+        In addition, if installmethod is set to "cimc" then "cimc_pwd" is required.
+        cimc_usr defaults to "admin" if not supplied.
 
         Refer to schema definition for all parameters and default values.
       parameters:
@@ -166,7 +171,7 @@ paths:
 components:
   schemas:
     Jobs:
-      description: "jobID is a unique string, default: {cimcip}_{timestamp}, eg. '192.168.0.1_1628871425.1136827'"
+      description: "jobID is a unique string, default: {cimc_ip}_{timestamp}, eg. '192.168.0.1_1628871425.1136827'"
       type: object
       properties:
         jobID:
@@ -177,9 +182,9 @@ components:
       required:
       - iso_image
       - root_pwd
-      - cimc_pwd
       - host_netmask
       - host_gateway
+      - installmethod
       - hosts
       properties:
         iso_image:
@@ -218,6 +223,9 @@ components:
         clearpart:
           type: boolean
           default: False
+        installmethod:
+          type: string
+          enum: ['pxeboot', 'cimc']
         cimc_usr:
           type: string
           default: 'admin'
@@ -263,8 +271,7 @@ components:
             type: object
             required:
             - hostname
-            - ipaddr
-            - cimcip
+            - host_ip
             properties:
               hostname:
                 type: string
@@ -272,13 +279,16 @@ components:
               host_ip:
                 type: string
                 example: 192.168.2.11
+              macaddr:
+                type: string
+                example: "aa:bb:cc:dd:ee:ff"
               cimc_ip:
                 type: string
                 example: 192.168.0.111
     JobStatus:
       type: object
       properties:
-        cimcip:
+        cimc_ip:
           type: "string"
           example: "192.168.0.111"
         finish_time:
@@ -287,7 +297,7 @@ components:
         hostname:
           type: "string"
           example: Prefix-01-Suffix
-        ipaddr:
+        host_ip:
           type: "string"
           example: "192.168.2.11"
         start_time:

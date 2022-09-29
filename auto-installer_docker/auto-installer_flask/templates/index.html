@@ -88,20 +88,36 @@
             <h1>Step 2</h1>
             <div class="content_section_text">
               Select installation method:<br /><br />
-              <input type="radio" id="customiso" name="installmethod" value="cimc" checked>
-              <label for="customiso">Mount installation ISO with CIMC (Cisco UCS only)</label><br />
-              <input type="radio" id="pxeboot" name="installmethod" value="pxeboot">
+              <input type="radio" id="btnpxeboot" name="installmethod" value="pxeboot" oninput="InstallMethodShow('pxeboot')" checked>
               <label for="pxeboot">PXE Boot</label><br />
+              <input type="radio" id="btncimc" name="installmethod" value="cimc" oninput="InstallMethodShow('cimc')">
+              <label for="customiso">Cisco IMC ISO mount. (Cisco UCS only, B-Series not supported)</label><br />
+              <table class="disabled" id="oobm_creds">
+                <tr class="custom">
+                  <td class="custom">
+                      CIMC Account<br/>
+                      <input type="text" required name="cimc_usr" id="cimc_usr" value="admin" disabled>
+                  </td>
+                  <td class="custom">
+                      CIMC Password<br/>
+                      <input type="password" required name="cimc_pwd" id="cimc_pwd" disabled>
+                      <div class="content_section_text_small">
+                        <label for="show_cimc_pass">Show password</label>
+                        <input id="show_cimc_pass" name="show_cimc_pass" type="checkbox" value="y" disabled>
+                      </div>
+                  </td>
+              </tr>
+            </table>
             </div>
             <h1>Step 3</h1>
             <div class="content_section_text">
               Enter network information for the ESXi hosts:<br /><br />
             </div>
-            Does ESXi require static routes at boot time?
+            Does ESXi require static routes during installation? (for network storage installs)
             <input type="radio" id="static_routes_set" name="static_routes_set" value="True"  oninput="StaticRoutesShow('True')">Yes
             <input type="radio" checked id="static_routes_set" name="static_routes_set" value="False" oninput="StaticRoutesShow('False')">No<br />
             <div id="static_routes" class="hide50">
-              <Table  id="static_route_table" class="custom">
+              <Table id="static_route_table" class="custom">
                 <tr>
                   <td class="static_nopadding">Subnet Address<br /><input type="text" name="subnet_ip0" id="subnet_ip0">/</td>
                   <td class="static_nopadding">Mask<br /><input type="number" name="cidr0" id="cidr0" value="24" min="0" max="32" size="4"></td>
@@ -122,20 +138,6 @@
             <div ID="ManualIP" class="margin50">
               Common Settings:<br />
               <table class="custom">
-                <tr class="custom">
-                    <td class="custom">
-                        CIMC Account<br/>
-                        <input type="text" required name="cimc_usr" id="cimc_usr" value="admin">
-                    </td>
-                    <td class="custom">
-                        CIMC Password<br/>
-                        <input type="password" required name="cimc_pwd" id="cimc_pwd">
-                        <div class="content_section_text_small">
-                          <label for="show_cimc_pass">Show password</label>
-                          <input id="show_cimc_pass" name="show_cimc_pass" type="checkbox" value="y">
-                        </div>
-                    </td>
-                </tr>
                 <tr>
                   <td class="custom">Netmask<br />
                     <input type="text" required name="host_netmask" value="255.255.255.0"></td>
@@ -165,7 +167,8 @@
                   <td class="manual_ip_header">ESXi Hostname</td>
                   <td class="manual_ip_header_sm">Suffix</td>
                   <td class="manual_ip_header">Mgmt ESXi IP</td>
-                  <td class="manual_ip_header">CIMC IP Address</td>
+                  <td class="manual_ip_header" style="display:none">CIMC IP Address</td>
+                  <td class="manual_ip_header">Mgmt MAC Address</td>
                 </tr>
               </table>
               <input type="button" value="Add Row" onclick="AddManualIPRow()" class="margin50">
@@ -201,7 +204,13 @@
     <script>
       //create first row in Manual IP Address table
       ServerCount = 0 // Find usage will increment to 1.
+      const mac_placeholder = ["aa:bb:cc:dd:ee:ff", "aabb.ccdd.eeff", "aa-bb-cc-dd-ee-ff", "aabbccddeeff"];
       AddManualIPRow()
+      // Set the install method controls.
+      if (!(btnpxeboot.checked)) {
+        btnpxeboot.checked = true
+      }
+      InstallMethodShow('pxeboot')
 
       ///// CUSTOM FORM VALIDATION MESSAGES /////
 
@@ -298,7 +307,7 @@
       //custom validation message for CIMCPWD field
       const input_pass = document.querySelector('input[name="cimc_pwd"]');
       input_pass.addEventListener('invalid', function (event) {
-        if (event.target.validity.valueMissing) {
+        if (event.target.disabled != true && event.target.validity.valueMissing) {
           event.target.setCustomValidity('Enter CIMC Password');
         }
       })
@@ -354,16 +363,27 @@
       const input_cimcip = document.querySelector('input[name^="cimc_ip"]');
       input_cimcip.addEventListener('invalid', function (event) {
         if (event.target.validity.valueMissing) {
-          event.target.setCustomValidity('Enter server CIMC IP address, eg. 172.172.1.10');
+          event.target.setCustomValidity('Enter server CIMC IP address, eg. 172.16.1.10');
         }
       })
       input_cimcip.addEventListener('change', function (event) {
         event.target.setCustomValidity('');
       })
 
+      //custom validation message for MACADDR field
+      const input_macaddr = document.querySelector('input[name^="macaddr"]');
+      input_macaddr.addEventListener('invalid', function (event) {
+        if (event.target.validity.valueMissing) {
+          event.target.setCustomValidity('Enter server MAC address, eg. aa:bb:cc:dd:ee:ff');
+        }
+      })
+      input_macaddr.addEventListener('change', function (event) {
+        event.target.setCustomValidity('');
+      })
+
       //toggle root password field preview
       window.addEventListener("load", function(){
-            var checkbox  = document.getElementById('show_root_pass')
+            var checkbox = document.getElementById('show_root_pass')
             var x = document.getElementById('root_pwd')
             checkbox.addEventListener('change', function() {
                 if(this.checked) {
@@ -376,7 +396,7 @@
 
       //toggle CIMC password field preview
       window.addEventListener("load", function(){
-            var checkbox  = document.getElementById('show_cimc_pass')
+            var checkbox = document.getElementById('show_cimc_pass')
             var x = document.getElementById('cimc_pwd')
             checkbox.addEventListener('change', function() {
                 if(this.checked) {

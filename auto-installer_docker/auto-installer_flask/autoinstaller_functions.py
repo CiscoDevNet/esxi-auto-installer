@@ -50,8 +50,10 @@ def get_form_data(mainlog, form_result):
 
     # get common settings - CIMC credentials and subnet/gateway
     # TODO: skip cimc credentials if installmethod is pxeboot
-    form_data['cimc_usr'] = form_result['cimc_usr']
-    form_data['cimc_pwd'] = form_result['cimc_pwd']
+    form_data['installmethod'] = form_result['installmethod']
+    if form_data['installmethod'] != 'pxeboot':
+        form_data['cimc_usr'] = form_result['cimc_usr']
+        form_data['cimc_pwd'] = form_result['cimc_pwd']
     form_data['host_prefix'] = form_result['host_prefix']
     form_data['host_suffix'] = form_result['host_suffix']
     # calculate subnet based on gateway IP address and netmask (needed for PXE booted installation)
@@ -63,14 +65,24 @@ def get_form_data(mainlog, form_result):
 
     # get ESXi host and CIMC IP address(es)
     form_data['hosts'] = []
-    for key, value in form_result.items():
-        if 'hostname' in key:
-            seq = key.replace('hostname', '')
-            hostname = form_result['host_prefix'] + form_result[key] + form_result['host_suffix']
-            form_data['hosts'].append({'hostname': hostname,
-                                       'host_ip': form_result['host_ip' + seq],
-                                       'cimc_ip': form_result['cimc_ip' + seq]})
-                                       # TODO: set/save cimc_ip/macaddr based on installmethod
+    if form_data['installmethod'] == 'pxeboot':
+
+        for key, value in form_result.items():
+            if 'hostname' in key:
+                seq = key.replace('hostname', '')
+                hostname = form_result['host_prefix'] + form_result[key] + form_result['host_suffix']
+                form_data['hosts'].append({'hostname': hostname,
+                                        'host_ip': form_result['host_ip' + seq],
+                                        'macaddr': form_result['macaddr' + seq]})
+    else:
+        for key, value in form_result.items():
+            if 'hostname' in key:
+                seq = key.replace('hostname', '')
+                hostname = form_result['host_prefix'] + form_result[key] + form_result['host_suffix']
+                form_data['hosts'].append({'hostname': hostname,
+                                        'host_ip': form_result['host_ip' + seq],
+                                        'cimc_ip': form_result['cimc_ip' + seq]})
+    # print(form_data)
     mainlog.debug(form_data)
     return form_data
 
@@ -636,18 +648,21 @@ def create_jobs(form_data, installmethod, mainlog):
     for index in range(len(form_data['hosts'])):
         hostname = form_data['hosts'][index]['hostname']
         # if form_data['hosts'][index]['cimc_ip']:
-        if installmethod == 'cimc':
-        # Installation method: mount installation ISO with CIMC API (Cisco UCS servers only)
-            cimcip = form_data['hosts'][index]['cimc_ip']
-            cimcpwd = form_data['cimc_pwd']
-            macaddr = ''
-            jobid = generate_jobid(cimcip)
-        else:
+        if installmethod == 'pxeboot':
         # Installation method: PXE boot
+            cimcusr = ''
             cimcip = ''
             cimcpwd = ''
             macaddr = form_data['hosts'][index]['macaddr']
             jobid = generate_jobid(macaddr)
+        else:
+        # Installation method: mount installation ISO with CIMC API (Cisco UCS servers only)
+            cimcusr = form_data['cimc_usr']
+            cimcip = form_data['hosts'][index]['cimc_ip']
+            cimcpwd = form_data['cimc_pwd']
+            macaddr = ''
+            jobid = generate_jobid(cimcip)
+
         # cimcip = form_data['hosts'][index]['cimc_ip']
 
         # generate jobid based on CIMC IP and current timestamp
@@ -660,8 +675,9 @@ def create_jobs(form_data, installmethod, mainlog):
 
         # create entry in Auto-Installer DB
         mainlog.info(f'{jobid} Saving installation data for server {hostname}')
+        # print(form_data)
         eaidb_create_job_entry(jobid, time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime()), hostname, form_data['hosts'][index]['host_ip'],
-                                cimcip, form_data['cimc_usr'], cimcpwd, macaddr, form_data['host_netmask'], form_data['host_gateway'])
+                                cimcip, cimcusr, cimcpwd, macaddr, form_data['host_netmask'], form_data['host_gateway'])
 
         jobid_list.append(jobid)
         logger_list.append(logger)
@@ -937,4 +953,4 @@ def generate_efi_boot(jobid, logger, mainlog, iso_image, macaddr, dryrun=DRYRUN,
             mainlog.error(f'{jobid} Failed to save EFI boot.cfg file: {str(e)}')
     else:
         logger.info(f'[DRYRUN] Generating EFI boot file')
-        mainlog.info(f'{jobid} [DRYRUN] Generating EFI boot file')            
+        mainlog.info(f'{jobid} [DRYRUN] Generating EFI boot file')

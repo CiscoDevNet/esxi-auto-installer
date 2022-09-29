@@ -91,9 +91,13 @@ function AddManualIPRow() {
   td = tr.insertCell(CellCount);
   td.setAttribute('class','ipaddr');
   var newelement = document.createElement('input');
+  if (btnpxeboot.checked) {
+    td.setAttribute('style','display: none');
+  } else {
+    newelement.setAttribute('required', '');
+  }
   newelement.setAttribute('type','text');
   newelement.setAttribute('name','cimc_ip' + ServerCount);
-  newelement.setAttribute('required', '');
   newelement.setAttribute('placeholder',"192.168.200.10[:port]");
   if (ServerCount > 1) {
     prevCIMCIP = ManualIPTable.rows[ServerCount-1].children[CellCount].childNodes[0].value.split('.')
@@ -104,7 +108,30 @@ function AddManualIPRow() {
   }
   //newelement.setAttribute('Value',ServerCount);
   td.appendChild(newelement);
-  CellCount++
+  CellCount++;
+
+  //Unique Mac Address
+  td = tr.insertCell(CellCount);
+  td.setAttribute('class','ipaddr');
+  var newelement = document.createElement('input');
+  if (!(btnpxeboot.checked)) {
+    td.setAttribute('style','display: none');
+  } else {
+    newelement.setAttribute('required', '');
+  }
+  newelement.setAttribute('type','text');
+  newelement.setAttribute('name','macaddr' + ServerCount);
+
+  newelement.setAttribute('placeholder', mac_placeholder[Math.floor(Math.random() * 4)]);
+  if (ServerCount > 1) {
+    prevMAC = ManualIPTable.rows[ServerCount-1].children[CellCount].childNodes[0].value;
+    if (prevMAC.length > 8) {
+      newelement.setAttribute('Value', prevMAC.substring(0, prevMAC.length / 2));
+    } else {
+      newelement.setAttribute('Value', prevMAC)
+    }
+  }
+  td.appendChild(newelement);
 }
 
 function RemoveManualIPRow() {
@@ -117,11 +144,47 @@ function RemoveManualIPRow() {
 function UpdateESXiHostName() {
   var prefix = document.getElementById("host_prefix").value;
   var suffix = document.getElementById("host_suffix").value;
-  var table = document.getElementById('ManualIPTable');
+  // var table = document.getElementById('ManualIPTable');
   var i;
   for (i = 1; i < document.getElementById('ManualIPTable').rows.length; i++)  {
     document.getElementById('HOSTPREFIXStr' + i).innerText = prefix;
     document.getElementById('HOSTSUFFIXStr' + i).innerText = suffix;
+  }
+}
+
+function InstallMethodShow(itemclickedon) {
+  if (itemclickedon == "pxeboot") {
+    // disable oobm credentials controls
+    oobm_creds.setAttribute('class', 'disabled');
+    cimc_usr.setAttribute('disabled', 'true');
+    cimc_pwd.setAttribute('disabled', 'true');
+    if (show_cimc_pass.checked) {
+      cimc_pwd.type='password'
+      show_cimc_pass.checked = false;
+    }
+    show_cimc_pass.setAttribute('disabled', 'true');
+    // change host table to hide oobm IP and show MAC address.
+    ManualIPTable.rows[0].children[4].style.display = "none";
+    ManualIPTable.rows[0].children[5].removeAttribute('style');
+    for (i = 1; i < document.getElementById('ManualIPTable').rows.length; i++) {
+      ManualIPTable.rows[i].children[4].children[0].required = false
+      ManualIPTable.rows[i].children[4].style.display = "none";
+      ManualIPTable.rows[i].children[5].removeAttribute('style');
+      ManualIPTable.rows[i].children[5].children[0].required = true
+    }
+  } else {
+    oobm_creds.setAttribute('class','custom');
+    cimc_usr.removeAttribute('disabled');
+    cimc_pwd.removeAttribute('disabled');
+    show_cimc_pass.removeAttribute('disabled');
+    ManualIPTable.rows[0].children[4].removeAttribute('style');
+    ManualIPTable.rows[0].children[5].style.display = "none";
+    for (i = 1; i < document.getElementById('ManualIPTable').rows.length; i++) {
+      ManualIPTable.rows[i].children[4].children[0].required = true
+      ManualIPTable.rows[i].children[4].removeAttribute('style');
+      ManualIPTable.rows[i].children[5].style.display = "none";
+      ManualIPTable.rows[i].children[5].children[0].required = false
+    }
   }
 }
 
