@@ -22,7 +22,7 @@ After Auto-Installer is complete, you can use your traditional automation method
 ## Pre-requisites
 
 ESXi Auto-Installer requires Linux or “Unix-like” system with few additional components installed.\
-The install instructions were created using Ubuntu 20.04.2 LTS.
+These install instructions were created using Ubuntu 20.04.2 LTS.
 
 ## Initial Setup
 
@@ -45,7 +45,7 @@ sudo apt install docker-ce docker-ce-cli containerd.io -y
 sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 sudo chmod +x /usr/local/bin/docker-compose
 
-# get the latest Auto Installer code
+# get the latest ESXi Auto-Installer code
 sudo git clone https://github.com/CiscoDevNet/esxi-auto-installer /opt/eai
 
 # start the application
@@ -57,11 +57,11 @@ If you want to use a custom directory, see [Custom install directory](#Custom-in
 
 # Usage
 
-Point a web browser at the system where Auto-Installer running.
+Point a web browser at the system where ESXi Auto-Installer running.
 
 ## First task: Upload ISO
 
-Auto-Installer does not come bundled with an ESXi Installation ISO file. Before you can use Auto-Installer you must upload an ESXi Installation ISO file.\
+Auto-Installer does not come bundled with an ESXi Installation ISO file. Before you can use ESXi Auto-Installer you must upload an ESXi Installation ISO file.\
 From the main page click on "Upload ISO" in the top menu bar.\
 Click Browse to locate an ISO on your local machine.\
 After selecting a valid ESXi Installation ISO file, click Submit.
@@ -99,11 +99,20 @@ The API page shows the Swagger documentation for the APIs. You do not have to au
 
 You can also view the [Swagger Document in on Git](https://ciscodevnet.github.io/esxi-auto-installer/).
 
+### Ansible Example
+An example Ansible Playbook that installs ESXi using the CIMC method via the APIs is included in this repo.\
+To run the Ansible Playbook example, download the [ansible-cimc-playbook.yml](ansible-cimc-playbook.yml) and [ansible-cimc-inventory.yml](ansible-cimc-inventory.yml) files.
+Edit the `ansible-cimc-inventory.yml` file and put your server(s) information in place of the example values.\
+Then run:
+``` bash
+ansible-playbook -i ansible-cimc-inventory.yml ansible-cimc-playbook.yml
+```
+
 # Application Details
 
 ## Log files
 
-Main Auto-Installer log file `eai.log` is stored under `EAILOG` and provides overview on application run and launched jobs.
+The main ESXi Auto-Installer log file `eai.log` is stored under `EAILOG` and provides overview on application run and launched jobs.
 
 'Per job ID' log files are stored in `LOGDIR` directory and available via web GUI ('Status' tab) or from the host system. These logs provide detailed output from all tasks executed per given job ID.
 
@@ -121,10 +130,10 @@ Main Auto-Installer log file `eai.log` is stored under `EAILOG` and provides ove
 ## Optional Configuration
 
 Auto-Installer Flask application configuration is stored in `config.py` file, where the following defaults can be customized:
-- Main Auto-Installer directory (`WORKDIR`) and essential subdirectories
+- Main ESXi Auto-Installer directory (`WORKDIR`) and essential subdirectories
 - ESXi ISO directory
 - Temporary directories used during ISO upload or for storing custom installation ISO
-- Toggle "dry-run", i.e. do not run any CIMC action and installation but simulate application flow
+- Toggle "dry-run", i.e. do not run any CIMC action or installation but simulate application flow
 - Application status codes dictionary
 
 ## Module details
@@ -135,8 +144,8 @@ Additionally, it uses [Python SDK for Cisco IMC](https://github.com/CiscoUcs/imc
 ## Common issues
 
 ### My server reboots, but does not install ESXi.
-ESXi Auto-Installer mounts the ESXi ISO to your Cisco Server via IMC. But after it reboots your server, it's up to the server's boot order to decide whether or not the server will boot off the Virtual DVD Drive.
-Your Cisco server Boot Order can be set to 'basic mode' or 'advanced mode'.\
+ESXi Auto-Installer mounts the ESXi ISO to your Cisco server via IMC. But after it reboots your server, it's up to the server's boot order to decide whether or not the server will boot off the Virtual DVD Drive.
+Your Cisco server's Boot Order can be set to 'basic mode' or 'advanced mode'.\
 If the server is in 'basic mode', ensure that CDROM boot option is near the top, usually before the HDD and PXE boot options.\
 If the server is in 'advanced mode', you want VMEDIA to be near the top. You can also use the 'one time boot' option to boot to VMEDIA if it is not near the top.
 
@@ -150,7 +159,30 @@ If the ESXi host is in an isolated network and there is no way for it to contact
 ### I saw warnings on the ESXi Console during the installation phase!
 It is normal to see warnings on the ESXi Console screen during the installation phase.\
 As long as they are **warnings** and not **errors**, the installation will continue.\
-There may also be prompts that say "Press ENTER to contiue". But it is recommended that you do not press any keys. Again, as there are no actual errors, the installation will continue and the warning/prompt will go away momentarially.
+There may also be prompts that say "Press ENTER to contiue". But it is recommended that you do not press any keys. Again, as long there are no actual errors, the installation will continue and the warning/prompt will go away momentarially.
+
+### There is a problem with the kickstart file, how do I troubleshoot it?
+If you get the error similar to:
+![Kickstart Error](doc_images/kickstarterror.png)
+```
+An error has occurred while parsing the installation script
+
+error:/vmfs/volumes/mpx.vmhba32:c0:t0:l3/KS.CFG:line
+```
+Then something is wrong with the kickstart file. ESXi Auto-Installer generates the kickstart file based on the data provided to start an installation. Sometimes there is an unforseen configuration issue or typo that causes the kickstart to fail and you need to find out why.
+During the installation, when you see the kickstart error, use the following steps to identify the root cause.
+
+ 1. Note what section there error is in. It could be in %firstboot or %pre. Also note the line number.
+ 2. You can view the kickstart file in your ESXi Auto-Installer's Status page.
+ 3. On the ESXi Console, while the error is displayed on the screen, press ALT+F1 to enter the command line mode.
+ 4. Login with user name `root` and no password.
+ 5. `cd /var/log`
+ 6. `vi weasel.log`
+ 7. Review the file for clues about what went wrong.
+
+Here is an example of a bad route in the %pre section.
+![Kickstart Log](doc_images/kickstartlog.png)
+
 
 ### Using the Static Routes feature causes my installation to fail.
 Currently, the static routes feature is not meant for routes related to the management IP address after the ESXi host is installed. It's designed to help with certain storage connectivity issues that can come up during the ESXi installation process.
@@ -166,7 +198,7 @@ The ESXi Auto-Installer is specifically designed to be minimalistic, focusing on
 
 > This project is not about replace existing tools, it's about enabling them.
 
-Thus, the ESXi Auto-Installer project will not contain configuration options. The big exception to rule is enabling the SSH service because a lot of tools require SSH to connect to ESXi.
+Thus, the ESXi Auto-Installer project will not contain configuration options. The big exception to this rule is enabling the SSH service. This is because a lot of tools require SSH in order to connect to ESXi.
 
 Instead of add features to configuration ESXi, this project will focus on automation feature so it can be used by existing tools.\
 That said we do have a few things we hope to bring you in the future that may help. For example, we want you to be able to add scripts that run on first boot. This should provide flexibility if you need a special configuration.
