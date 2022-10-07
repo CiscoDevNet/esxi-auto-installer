@@ -1,4 +1,3 @@
-# FROM python:3.10-slim-buster
 FROM ubuntu:20.04
 
 WORKDIR /opt/eai/
