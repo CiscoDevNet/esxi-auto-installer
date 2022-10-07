@@ -40,3 +40,4 @@ services:
     network_mode: host
     volumes:
       - /opt/eai/etc_dhcp:/etc/dhcp/
+      - /opt/eai/tftpboot:/tftpboot
