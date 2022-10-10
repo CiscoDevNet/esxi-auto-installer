@@ -3,7 +3,6 @@ FROM ubuntu:20.04
 WORKDIR /opt/eai/
 COPY requirements.txt .
 COPY . .
-RUN mkdir /opt/eai/ks
 RUN mkdir /opt/eai/custom-iso
 RUN mkdir -p /opt/eai/upload/mnt
 RUN apt update -y

@@ -11,6 +11,7 @@ services:
       - /opt/eai/logs:/opt/eai/logs
       - /opt/eai/esxi-iso:/opt/eai/esxi-iso
       - /opt/eai/custom-iso:/opt/eai/custom-iso
+      - /opt/eai/ks:/opt/eai/ks      
       - /opt/eai/tftpboot:/opt/eai/tftpboot
       - /opt/eai/etc_dhcp:/opt/eai/etc_dhcp
     ports:
