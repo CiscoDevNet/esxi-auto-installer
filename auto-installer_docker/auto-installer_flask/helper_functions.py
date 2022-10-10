@@ -110,16 +110,8 @@ def generate_dhcp_host_entries(mainlog, eaidb=EAIDB, dhcp_host_tpl=DHCP_HOST_TPL
                 # hostname has to be unique in dhcpd.conf - skip entries with same hostname
                 print(f"[SKIPPING] {job_entry[0]} Skipping host entry - hostname {job_entry[1]['hostname']} already in use")
                 continue
-            elif any(f"ethernet {job_entry[1]['macaddr']}" in s for s in hosts):
-                # MAC address has to be unique in dhcpd.conf - skip entries with same MAC address
-                print(f"[SKIPPING] {job_entry[0]} Skipping host entry - MAC address {job_entry[1]['macaddr']} already in use")
-                continue
-            elif any(f"fixed-address {job_entry[1]['ipaddr']}" in s for s in hosts):
-                # IP address has to be unique in dhcpd.conf - skip entries with same IP address
-                print(f"[SKIPPING] {job_entry[0]} Skipping host entry - IP address {job_entry[1]['ipaddr']} already in use")
-                continue
             else:
-                # generate host entry for each job with unique hostname, MAC and IP address, and 'Ready to deploy' status
+                # generate host entry for each job with unique hostname and 'Ready to deploy' status
                 subnet=ip_network(job_entry[1]['ipaddr'] + '/' + job_entry[1]['netmask'], strict=False).network_address
 
                 host_entry = dhcp_host_entry.render(hostname=job_entry[1]['hostname'], subnet=subnet, netmask=job_entry[1]['netmask'], ipaddr=job_entry[1]['ipaddr'], gateway=job_entry[1]['gateway'], macaddr=job_entry[1]['macaddr'])
