@@ -18,10 +18,7 @@ EAIHOST_NETMASK = os.environ.get('EAI_HOST_NETMASK')
 UPLOADDIR = os.path.join(WORKDIR, 'upload')
 MNTISODIR = os.path.join(UPLOADDIR, 'mnt')
 
-# TODO: cleanup /tftpboot directory structure
-# TFTPBOOT = '/tftpboot/'
 TFTPBOOT = os.path.join(WORKDIR, 'tftpboot')
-# TFTPISODIR = '/tftpboot/iso'
 TFTPISODIR = os.path.join(TFTPBOOT, 'iso')
 PXEDIR = os.path.join(TFTPBOOT, 'pxelinux.cfg')
 KSDIR = os.path.join(WORKDIR, 'ks')
