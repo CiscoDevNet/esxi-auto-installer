@@ -1,4 +1,5 @@
 # VMware Auto-Installer functions
+from platform import system_alias
 from imcsdk.imchandle import ImcHandle
 from imcsdk.apis.server.vmedia import *
 from imcsdk.apis.server.boot import *
@@ -14,6 +15,7 @@ import re
 import time
 from ipaddress import ip_network
 from multiprocessing import Process
+from shutil import which
 
 def get_form_data(mainlog, form_result):
     """
@@ -188,7 +190,6 @@ def iso_extract(mainlog, uploaded_file, uploaddir=UPLOADDIR, tmpisodir=MNTISODIR
     mainlog.info(f'Extracting uploaded ISO: {uploaded_file.filename}')
 
     # get system commands paths
-    from shutil import which
     mkdir_cmd = which('mkdir')
     mount_cmd = which('mount')
     umount_cmd = which('umount')
@@ -237,7 +238,18 @@ def iso_extract(mainlog, uploaded_file, uploaddir=UPLOADDIR, tmpisodir=MNTISODIR
     system(f'ls -la {extracted_iso_dir} 1>&2')
 
 
-def iso_prepare_tftp(mainlog, uploaded_file, extracted_iso_dir=ESXISODIR, tftpisodir=TFTPISODIR):
+def iso_prepare_tftp(mainlog, uploaded_file, extracted_iso_dir=ESXISODIR, tftpisodir=TFTPISODIR, tftpdir=TFTPBOOT, pxedir=PXEDIR):
+    # prepare tftpboot directory structure on first run
+    mkdir_cmd = which('mkdir')
+    if not path.isdir(tftpisodir):
+        mainlog.info(f'tftpboot: creating {tftpisodir} directory')
+        system(f'{mkdir_cmd} {tftpisodir}')
+        
+    if not path.isdir(pxedir):
+        mainlog.info(f'tftpboot: creating {pxedir} directory')
+        system(f'{mkdir_cmd} {pxedir}')
+
+    # prepare uploaded ISO for PXE boot
     filebase = path.splitext(uploaded_file.filename)[0]
     mainlog.info(f'tftpboot: copy and prepare {filebase} installation media.')
     source_iso_dir = path.join(extracted_iso_dir, filebase)
@@ -252,8 +264,8 @@ def iso_prepare_tftp(mainlog, uploaded_file, extracted_iso_dir=ESXISODIR, tftpis
     with open(bootcfg_path, 'r') as bootcfg_file:
         bootcfg = bootcfg_file.read()
     # customize boot.cfg file
-    title = 'title=Loading ESXi installer - ' + filebase
-    prefix = 'prefix=iso/' + filebase
+    title = f'title=Loading ESXi installer - {filebase}'
+    prefix = f'prefix=iso/{filebase}'
     # customize 'title' and 'prefix'
     bootcfg = re.sub(r"title.*", title, bootcfg)
     if 'prefix' in bootcfg:
@@ -271,6 +283,20 @@ def iso_prepare_tftp(mainlog, uploaded_file, extracted_iso_dir=ESXISODIR, tftpis
     with open(bootcfg_path, 'w+') as bootcfg_file:
         bootcfg_file.write(bootcfg)
     mainlog.info(f'tftpboot: installation media for {filebase} ready.')
+    
+    # prepare sysconfig and EFI files/symlinks on first run
+    mbootefi = path.join(tftpdir, 'mboot.efi')
+    if not path.isfile(mbootefi):
+        mainlog.info(f'tftpboot: creating {mbootefi} file and remaining symlinks')
+        
+        ln_cmd = which('ln')
+        system(f"{ln_cmd} -s {path.join(tftpisodir, filebase, 'efi', 'boot', 'bootx64.efi')} {mbootefi}")
+        system(f"{ln_cmd} -s /usr/lib/syslinux/modules/bios/ldlinux.c32 {path.join(tftpdir, 'ldlinux.c32')}")
+        system(f"{ln_cmd} -s /usr/lib/syslinux/modules/bios/libutil.c32 {path.join(tftpdir, 'libutil.c32')}")
+        system(f"{ln_cmd} -s /usr/lib/syslinux/modules/bios/menu.c32 {path.join(tftpdir, 'menu.c32')}")
+        system(f"{ln_cmd} -s /usr/lib/PXELINUX/pxelinux.0 {path.join(tftpdir, 'pxelinux.0')}")    
+
+
 
 
 def generate_custom_iso(jobid, logger, mainlog, hostname, iso_image, kscfg_path, dryrun=DRYRUN, isodir=ESXISODIR, customisodir=CUSTOMISODIR):
@@ -467,7 +493,7 @@ def get_available_isos(isodir=ESXISODIR):
     return dirs
 
 
-def job_cleanup(jobid, logger, mainlog, unmount_iso=True, dryrun=DRYRUN):
+def job_cleanup(jobid, logger, mainlog, unmount_iso=True, dryrun=DRYRUN, tftpboot=TFTPBOOT, pxedir=PXEDIR):
     """
     Run post-installation cleanup tasks:
     - remove kickstart file
@@ -481,26 +507,42 @@ def job_cleanup(jobid, logger, mainlog, unmount_iso=True, dryrun=DRYRUN):
     :return: n/a
     """
     if not dryrun:
-        eaidb_update_job_status(jobid, 'Running cleanup tasks', '')
+        try:
+            eaidb_dict = eaidb_get_status()
+            
+            eaidb_update_job_status(jobid, 'Running cleanup tasks', '')
 
-        mainlog.info(f'{jobid} Starting cleanup')
-        logger.info('')
-        logger.info(f'Starting cleanup:')
+            mainlog.info(f'{jobid} Starting cleanup')
+            logger.info('')
+            logger.info(f'Starting cleanup:')
 
-        logger.info(f'* kickstart file')
-        remove_kickstart(jobid, logger, mainlog)
+            logger.info(f'* kickstart file')
+            remove_kickstart(jobid, logger, mainlog)
 
-        logger.info(f'* custom installation ISO')
-        if unmount_iso:
-            cimc_unmount_iso(jobid, logger, mainlog)
-        remove_custom_iso(jobid, logger, mainlog)
+            if eaidb_dict[jobid]['cimcip']:
+                logger.info(f'* custom installation ISO')
+                if unmount_iso:
+                    cimc_unmount_iso(jobid, logger, mainlog)
+                remove_custom_iso(jobid, logger, mainlog)
 
-        logger.info(f'* remove CIMC password from database')
-        eaidb_remove_cimc_password(jobid)
+                logger.info(f'* remove CIMC password from database')
+                eaidb_remove_cimc_password(jobid)
 
-        # TODO: add PXE cleanup when method is implemented
-        mainlog.info(f'{jobid} Cleanup finished.')
-        logger.info(f'Cleanup finished.\n')
+            elif eaidb_dict[jobid]['macaddr']:
+                rm_cmd = which('rm')
+                logger.info(f'* PXE boot config')
+                pxepath = path.join(pxedir, f"01-{eaidb_dict[jobid]['macaddr'].replace(':', '-')}")            
+                system(f'{rm_cmd} {pxepath}')
+                
+                logger.info(f'* EFI boot config')            
+                efidir = path.join(tftpboot, f"01-{eaidb_dict[jobid]['macaddr'].replace(':', '-')}")
+                system(f'{rm_cmd} -rf {efidir}')
+
+            mainlog.info(f'{jobid} Cleanup finished.')
+            logger.info(f'Cleanup finished.\n')
+        except Exception as e:
+            logger.error(f'Errors during job cleanup: {format_message_for_web(e)}')
+            mainlog.error(f'{jobid} Errors during job cleanup: {str(e)}')            
     else:
         mainlog.debug(f'{jobid} [DRYRUN] Running job cleanup tasks)')
 
@@ -929,7 +971,6 @@ def generate_efi_boot(jobid, logger, mainlog, iso_image, macaddr, dryrun=DRYRUN,
     """
     if not dryrun:
         try:
-            from shutil import which
             mkdir_cmd = which('mkdir')
             efidir = path.join(tftpboot, f"01-{macaddr.replace(':', '-')}")
             system(f'{mkdir_cmd} {efidir}')
@@ -954,3 +995,4 @@ def generate_efi_boot(jobid, logger, mainlog, iso_image, macaddr, dryrun=DRYRUN,
     else:
         logger.info(f'[DRYRUN] Generating EFI boot file')
         mainlog.info(f'{jobid} [DRYRUN] Generating EFI boot file')
+
