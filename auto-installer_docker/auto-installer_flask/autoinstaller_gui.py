@@ -23,9 +23,13 @@ api = Api(app)
 
 @app.route("/", methods=['GET', 'POST'])
 def autoinstaller_gui():
+    mainlog = get_main_logger()
+    
+    # initial run to generate dhcpd.conf if there are valid entries in EAIDB
+    generate_dhcp_config('', get_jobid_logger(), mainlog)
+    
+    # check if there is at least one installation ISO
     dirs = get_available_isos()
-    # print(f'{EAIHOST_IP} {EAIHOST_GW} {EAIHOST_SUBNET} {EAIHOST_NETMASK}')
-
     if len(dirs) == 0:
         # redirect to welcome page when no installation ISO is found
         return render_template('no_iso.html')
@@ -37,8 +41,7 @@ def autoinstaller_gui():
     # if request.method == 'POST' and form.validate_on_submit():
     # TODO: server side data validation
 
-    if request.method == 'POST' and form.is_submitted():
-        mainlog = get_main_logger()
+    if request.method == 'POST' and form.is_submitted():        
         mainlog.debug(result)
         # interate over the list of ESXi hosts and run corresponding actions for each host
         create_jobs(get_form_data(mainlog, result), result['installmethod'], mainlog)
@@ -109,7 +112,7 @@ def upload_iso():
                 # extract ISO to ESXISODIR
                 iso_extract(mainlog, uploaded_iso)
                 # copy extracted ISO and prepare it for tftpboot
-                # iso_prepare_tftp(mainlog, uploaded_iso)
+                iso_prepare_tftp(mainlog, uploaded_iso)
         return redirect(url_for('autoinstaller_gui'))
     return render_template('upload.html')
 
