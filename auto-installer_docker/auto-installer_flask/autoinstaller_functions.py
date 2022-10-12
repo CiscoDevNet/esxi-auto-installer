@@ -284,19 +284,12 @@ def iso_prepare_tftp(mainlog, uploaded_file, extracted_iso_dir=ESXISODIR, tftpis
         bootcfg_file.write(bootcfg)
     mainlog.info(f'tftpboot: installation media for {filebase} ready.')
     
-    # prepare sysconfig and EFI files/symlinks on first run
+    # prepare mboot EFI file on first run
     mbootefi = path.join(tftpdir, 'mboot.efi')
     if not path.isfile(mbootefi):
-        mainlog.info(f'tftpboot: creating {mbootefi} file and remaining symlinks')
-        
-        ln_cmd = which('ln')
-        system(f"{ln_cmd} -s {path.join(tftpisodir, filebase, 'efi', 'boot', 'bootx64.efi')} {mbootefi}")
-        system(f"{ln_cmd} -s /usr/lib/syslinux/modules/bios/ldlinux.c32 {path.join(tftpdir, 'ldlinux.c32')}")
-        system(f"{ln_cmd} -s /usr/lib/syslinux/modules/bios/libutil.c32 {path.join(tftpdir, 'libutil.c32')}")
-        system(f"{ln_cmd} -s /usr/lib/syslinux/modules/bios/menu.c32 {path.join(tftpdir, 'menu.c32')}")
-        system(f"{ln_cmd} -s /usr/lib/PXELINUX/pxelinux.0 {path.join(tftpdir, 'pxelinux.0')}")    
-
-
+        mainlog.info(f'tftpboot: creating {mbootefi} file')
+        cp_cmd = which('cp')
+        system(f"{cp_cmd} {path.join(tftpisodir, filebase, 'efi', 'boot', 'bootx64.efi')} {mbootefi}")
 
 
 def generate_custom_iso(jobid, logger, mainlog, hostname, iso_image, kscfg_path, dryrun=DRYRUN, isodir=ESXISODIR, customisodir=CUSTOMISODIR):
@@ -537,6 +530,9 @@ def job_cleanup(jobid, logger, mainlog, unmount_iso=True, dryrun=DRYRUN, tftpboo
                 logger.info(f'* EFI boot config')            
                 efidir = path.join(tftpboot, f"01-{eaidb_dict[jobid]['macaddr'].replace(':', '-')}")
                 system(f'{rm_cmd} -rf {efidir}')
+                
+                logger.info(f'* DHCP config')            
+                generate_dhcp_config(jobid, logger, mainlog)
 
             mainlog.info(f'{jobid} Cleanup finished.')
             logger.info(f'Cleanup finished.\n')
@@ -559,7 +555,7 @@ def remove_kickstart(jobid, logger, mainlog, ksdir=KSDIR):
     """
     kspath = path.join(ksdir, jobid + '_ks.cfg')
     mainlog.info(f'{jobid} Removing kickstart file: {kspath}')
-    logger.info(f'Removing kickstart file: {kspath}')
+    # logger.info(f'Removing kickstart file: {kspath}')
     try:
         system(f'rm -f {kspath} 1>&2')
     except Exception as e:
