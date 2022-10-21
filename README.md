@@ -28,7 +28,7 @@ These install instructions were created using Ubuntu 20.04.2 LTS.
 
 ``` bash
 sudo apt update
-sudo apt install git ca-certificates curl gnupg lsb-release -y
+sudo apt install git ca-certificates curl gnupg lsb-release python3-pip -y
 
 # Install Docker Engine
 # Follow steps described on https://docs.docker.com/engine/install/
@@ -44,6 +44,9 @@ sudo apt install docker-ce docker-ce-cli containerd.io -y
 # Example code for Ubuntu:
 sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 sudo chmod +x /usr/local/bin/docker-compose
+
+# Install required python libraries
+sudo pip3 install netifaces jinja2
 
 # get the latest ESXi Auto-Installer code
 sudo git clone https://github.com/CiscoDevNet/esxi-auto-installer /opt/eai
