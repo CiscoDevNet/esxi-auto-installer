@@ -182,6 +182,9 @@ class EAIJob(Resource):
                     mainlog.error(f'State not valid: {status_code}')
                     return { "status": "error", "message": f'State not valid' }, 400
                 else:
+                    # get job logger
+                    logger = get_jobid_logger(jobid)      
+                                  
                     if status_code == 0:
                         # this state should be only set when creating DB entry - not doing anything here
                         eaidb_dict = eaidb_get_status()
@@ -190,14 +193,13 @@ class EAIJob(Resource):
                         # status codes for installation phases
                         status = status_dict[status_code]
                         finish_time = ''
+                        logger.info(f'{status_dict[status_code]}')
                     elif status_code in range(20,39):
                         # status codes for finished or errors
                         status = status_dict[status_code]
                         finish_time = time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime())
 
                         # for status codes from range Finished/Error - run cleanup and log status in job log
-                        # get job logger
-                        logger = get_jobid_logger(jobid)
                         # run cleanup
                         if status_code == 31:
                             # do not tru to unmount the ISO if login to CIMC failed
