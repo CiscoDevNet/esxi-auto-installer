@@ -1,3 +1,34 @@
+echo Checking pre-requisites
+# check pre-requisites: docker-compose
+which docker-compose >/dev/null
+if [ $? -ne 0 ]
+then
+    echo "[ERROR] Missing docker-compose binary - install the package and re-run this script. Aborting."
+    exit 1
+fi
+# check pre-requisites: python3
+which python3 >/dev/null
+if [ $? -ne 0 ]
+then
+    echo "[ERROR] Missing Python binary - install the package and re-run this script. Aborting."
+    exit 2
+fi
+# check pre-requisites: python3
+pip3 show netifaces >/dev/null
+if [ $? -ne 0 ]
+then
+    echo "[ERROR] Missing Python netifaces library - install and re-run this script. Aborting."
+    exit 3
+fi
+# check pre-requisites: python3
+pip3 show jinja2 >/dev/null
+if [ $? -ne 0 ]
+then
+    echo "[ERROR] Missing Python jinja2 library - install and re-run this script. Aborting."
+    exit 4
+fi
+
+# (re)building docker containers
 echo Killing old docker processes
 docker-compose rm -fs
 
