@@ -668,7 +668,7 @@ def process_submission(jobid_list, logger_list, mainlog, form_data):
             eaidb_update_job_status(jobid, 'Ready to deploy', '')
 
             mainlog.info(f'{jobid} Ready to start PXE Boot installation for server {hostname}')
-            logger.info(f'Ready to start PXE Boot installation - power on the server to initialize installation process.\n')
+            logger.info(f'Ready to start PXE Boot installation - power on or restart the server to initialize installation process.\n')
 
 
 def create_jobs(form_data, installmethod, mainlog):
