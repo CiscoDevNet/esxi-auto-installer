@@ -40,6 +40,7 @@ STATUS_CODES = {
     16: 'Running First Boot',
     18: 'Running cleanup tasks',
     20: 'Finished',
+    25: 'Cancelled',
     30: 'Error',
     31: 'Error: Failed to login to CIMC',
     32: 'Error: Failed to mount installation ISO',
