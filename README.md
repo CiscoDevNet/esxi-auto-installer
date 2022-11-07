@@ -1,9 +1,9 @@
 # ESXi Auto-Installer
 
-ESXi Auto-Installer automates bare-metal ESXi hypervisor deployment, providing 100% hands-off installation on Cisco UCS physical servers.
+ESXi Auto-Installer automates bare-metal ESXi hypervisor deployment, providing 100% hands-off installation on Cisco UCS physical servers. Installation on other server platforms, including Virtual Machines, is possible with standard PXE boot method, however it may require some additional network configuration, depending on your network setup.
 
 ESXi Auto-Installer will:
-- Install the ESXi Operating System on a Cisco Server.
+- Install the ESXi Operating System on a physical or virtual server.
 - Configure the ESXi Management interface with an IP address.
 - Enable SSH
 
@@ -15,7 +15,7 @@ After Auto-Installer is complete, you can use your traditional automation method
 - Implements most kickstart parameters described in [VMWare's documentation](https://docs.vmware.com/en/VMware-vSphere/7.0/com.vmware.esxi.upgrade.doc/GUID-61A14EBB-5CF3-43EE-87EF-DB8EC6D83698.html)
 - Supports iSCSI boot installs
 - [API for additional automation](https://ciscodevnet.github.io/esxi-auto-installer/)
-- Future: Platform agnostic installations (including virtual machines) using PXE boot
+- Platform agnostic installations (including virtual machines) using PXE boot
 
 # Setup guide
 
