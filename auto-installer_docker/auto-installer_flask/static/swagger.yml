@@ -102,6 +102,7 @@ paths:
         16: Running First Boot
         18: Running cleanup tasks
         20: Finished
+        25: Cancelled
         30: Error
         31: Error: Failed to login to CIMC
         32: Error: Failed to mount installation ISO
@@ -288,24 +289,33 @@ components:
     JobStatus:
       type: object
       properties:
-        cimc_ip:
-          type: "string"
-          example: "192.168.0.111"
-        finish_time:
-          type: "string"
-          example: "2022-01-01 08:08:08 GMT"
         hostname:
           type: "string"
           example: Prefix-01-Suffix
-        host_ip:
+        ipaddr:
           type: "string"
           example: "192.168.2.11"
+        cimcip:
+          type: "string"
+          example: "192.168.0.111"
         start_time:
           type: "string"
           example: "2022-01-01 07:07:07 GMT"
+        finish_time:
+          type: "string"
+          example: "2022-01-01 08:08:08 GMT"
         status:
           type: "string"
           example: "Installation in progress"
+        macaddr:
+          type: "string"
+          example: ""
+        netmask:
+          type: "string"
+          example: "255.255.255.0"
+        gateway:
+          type: "string"
+          example: "192.168.0.1"
     JobIDs:
       description: "List of job IDs"
       type: array
