@@ -51,7 +51,6 @@ def get_form_data(mainlog, form_result):
                                                    'gateway': form_result['gateway' + seq]})
 
     # get common settings - CIMC credentials and subnet/gateway
-    # TODO: skip cimc credentials if installmethod is pxeboot
     form_data['installmethod'] = form_result['installmethod']
     if form_data['installmethod'] != 'pxeboot':
         form_data['cimc_usr'] = form_result['cimc_usr']
@@ -68,7 +67,6 @@ def get_form_data(mainlog, form_result):
     # get ESXi host and CIMC IP address(es)
     form_data['hosts'] = []
     if form_data['installmethod'] == 'pxeboot':
-
         for key, value in form_result.items():
             if 'hostname' in key:
                 seq = key.replace('hostname', '')

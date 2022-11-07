@@ -29,7 +29,7 @@ class EAIJobs(Resource):
         self.reqparse.add_argument('dns2', type = str, default='', location = 'json')
         # self.reqparse.add_argument('static_routes_set', type = bool, default=False, location = 'json')
         self.reqparse.add_argument('static_routes', type = list, default=[], location = 'json')
-        # TODO: add static_routes list validation (subnet_ip, cidr, gateway) ?
+        # static_routes data validation (subnet_ip, cidr, gateway) handled in post() method
         super(EAIJobs, self).__init__()
 
     def get(self):
@@ -187,7 +187,6 @@ class EAIJob(Resource):
                 status_code = int(query_parameters.get('state'))
                 mainlog.debug(f'{jobid} API endpoint called with args: {query_parameters}')
 
-                # TODO: move status code validation/translation to separate function?
                 if status_code not in status_dict:
                     # ignore invalid status codes
                     mainlog.error(f'State not valid: {status_code}')
