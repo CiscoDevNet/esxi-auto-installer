@@ -1,5 +1,6 @@
 # Auxiliary funtions library
 
+from asyncio.log import logger
 from netifaces import gateways, ifaddresses, AF_INET
 from ipaddress import ip_network
 from jinja2 import Template
@@ -35,9 +36,6 @@ def get_host_network_settings():
 
 
 def generate_dhcp_config(jobid, logger, mainlog, eai_ip=EAIHOST_IP, eai_gw=EAIHOST_GW, eai_subnet=EAIHOST_SUBNET, eai_mask=EAIHOST_NETMASK, dhcpd_tpl=DHCPD_CONF_TPL, dhcpd_conf_path=DHCPD_CONF):
-    # TODO: add logging
-    # TODO: add flag, so that we don't attempt to modify dhcpd.conf if generate_dhcp_config() is already running
-    # TODO: restart dhcpd service (or perhaps do it from separate function in dhcpd container? or restart dhcpd container?)
     """
     Generate dhcpd.conf configuration file main configuration file and custom host entries
 
@@ -66,12 +64,10 @@ def generate_dhcp_config(jobid, logger, mainlog, eai_ip=EAIHOST_IP, eai_gw=EAIHO
         host_entries = generate_dhcp_host_entries('mainlog')
         if len(host_entries):
             for entry in host_entries:
-                # print(entry)
                 dhcpd_conf.write(entry)
 
 
 def generate_dhcp_host_entries(mainlog, eaidb=EAIDB, dhcp_host_tpl=DHCP_HOST_TPL):
-    # TODO: add logging
     """
     Generate host entries part of dhcpd.conf based on entries in EAIDB in state 'Ready to deploy'.
     This function get's called by generate_dhcp_config() which first generates mains dhcpd.conf configuration section.
@@ -82,10 +78,6 @@ def generate_dhcp_host_entries(mainlog, eaidb=EAIDB, dhcp_host_tpl=DHCP_HOST_TPL
     :return: (list) host entries in the following format:
 
             ## custom entries for {{hostname}} ###
-            subnet {{subnet}} netmask {{netmask}} {
-              range {{ipaddr}} {{ipaddr}};
-              option routers {{gateway}};
-            }
             host {{hostname}} {
               hardware ethernet {{macaddr}};
               fixed-address {{ipaddr}};
@@ -99,13 +91,11 @@ def generate_dhcp_host_entries(mainlog, eaidb=EAIDB, dhcp_host_tpl=DHCP_HOST_TPL
 
     # read EAIDB
     eaidb_dict = eaidb_get_status(eaidb)
-    # print(eaidb_dict)
-    # exit()
+
     hosts = []
     for job_entry in eaidb_dict.items():
         # ignore jobs that finished/errored
         if job_entry[1]['macaddr'] and job_entry[1]['status'] == 'Ready to deploy':
-            # print(f"[DEBUG] Processing: {job_entry}")
             if any(f"host {job_entry[1]['hostname']}" in s for s in hosts):
                 # hostname has to be unique in dhcpd.conf - skip entries with same hostname
                 print(f"[SKIPPING] {job_entry[0]} Skipping host entry - hostname {job_entry[1]['hostname']} already in use")
@@ -117,7 +107,7 @@ def generate_dhcp_host_entries(mainlog, eaidb=EAIDB, dhcp_host_tpl=DHCP_HOST_TPL
                 host_entry = dhcp_host_entry.render(hostname=job_entry[1]['hostname'], subnet=subnet, netmask=job_entry[1]['netmask'], ipaddr=job_entry[1]['ipaddr'], gateway=job_entry[1]['gateway'], macaddr=job_entry[1]['macaddr'])
                 hosts.append(host_entry)
 
-    print(f'[DEBUG] Generated {len(hosts)} host entries for dhcpd.conf')
-    from pprint import pprint
-    pprint(hosts)
+    mainlog.debug(f'Generated {len(hosts)} host entries for dhcpd.conf')
+    # from pprint import pprint
+    # pprint(hosts)
     return hosts
