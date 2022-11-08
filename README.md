@@ -10,11 +10,12 @@ ESXi Auto-Installer will:
 After Auto-Installer is complete, you can use your traditional automation methods to configure the ESXi Host.
 
 ## Features
-- Start deployment on multiple servers in parallel (using same CIMC credentials)
+- Start deployment on multiple servers in parallel
 - Supports custom ESXi installation ISO
 - Implements most kickstart parameters described in [VMWare's documentation](https://docs.vmware.com/en/VMware-vSphere/7.0/com.vmware.esxi.upgrade.doc/GUID-61A14EBB-5CF3-43EE-87EF-DB8EC6D83698.html)
 - Supports iSCSI boot installs
 - [API for additional automation](https://ciscodevnet.github.io/esxi-auto-installer/)
+- Fully automated installs on Cisco UCS Servers (Excluding B series)
 - Platform agnostic installations (including virtual machines) using PXE boot
 
 # Setup guide
@@ -64,7 +65,7 @@ Point a web browser at the system where ESXi Auto-Installer running.
 
 ## First task: Upload ISO
 
-Auto-Installer does not come bundled with an ESXi Installation ISO file. Before you can use ESXi Auto-Installer you must upload an ESXi Installation ISO file.\
+ESXi Auto-Installer does not come bundled with an ESXi Installation ISO file. Before you can use ESXi Auto-Installer you must upload an ESXi Installation ISO file.\
 From the main page click on "Upload ISO" in the top menu bar.\
 Click Browse to locate an ISO on your local machine.\
 After selecting a valid ESXi Installation ISO file, click Submit.
@@ -103,12 +104,12 @@ The API page shows the Swagger documentation for the APIs. You do not have to au
 You can also view the [Swagger Document in on Git](https://ciscodevnet.github.io/esxi-auto-installer/).
 
 ### Ansible Example
-An example Ansible Playbook that installs ESXi using the CIMC method via the APIs is included in this repo.\
-To run the Ansible Playbook example, download the [ansible-cimc-playbook.yml](ansible-cimc-playbook.yml) and [ansible-cimc-inventory.yml](ansible-cimc-inventory.yml) files.
-Edit the `ansible-cimc-inventory.yml` file and put your server(s) information in place of the example values.\
+An example Ansible Playbook that installs ESXi via the ESXi Auto-Installer APIs is included in this repo.\
+To run the Ansible Playbook example, download the [ansible-playbook.yml](ansible-playbook.yml) and [ansible-inventory.yml](ansible-inventory.yml) files.
+Edit the `ansible-inventory.yml` file and put your server(s) information in place of the example values.\
 Then run:
 ``` bash
-ansible-playbook -i ansible-cimc-inventory.yml ansible-cimc-playbook.yml
+ansible-playbook -i ansible-inventory.yml ansible-playbook.yml
 ```
 
 # Application Details
@@ -132,7 +133,7 @@ The main ESXi Auto-Installer log file `eai.log` is stored under `EAILOG` and pro
 
 ## Optional Configuration
 
-Auto-Installer Flask application configuration is stored in `config.py` file, where the following defaults can be customized:
+ESXi Auto-Installer Flask application configuration is stored in `config.py` file, where the following defaults can be customized:
 - Main ESXi Auto-Installer directory (`WORKDIR`) and essential subdirectories
 - ESXi ISO directory
 - Temporary directories used during ISO upload or for storing custom installation ISO
@@ -141,19 +142,25 @@ Auto-Installer Flask application configuration is stored in `config.py` file, wh
 
 ## Module details
 
-Auto-Installer is a [Flask](https://flask.palletsprojects.com) based application written in Python running in Ubuntu [Docker](https://www.docker.com/) container behind nginx container web proxy. Ubuntu Docker image has been used instead of official Python image as the latter is missing genisoimage command EFI related flags.
+ESXi Auto-Installer is a [Flask](https://flask.palletsprojects.com) based application written in Python running in Ubuntu [Docker](https://www.docker.com/) container behind nginx container web proxy. Ubuntu Docker image has been used instead of official Python image as the latter is missing genisoimage command EFI related flags.
 Additionally, it uses [Python SDK for Cisco IMC](https://github.com/CiscoUcs/imcsdk) for running tasks on Cisco UCS IMC.
 
-## Common issues
+## CIMC vs PXE installations
+CIMC: If you have a Cisco UCS Server (except UCS B series), generally the CIMC installation method is simpler and more reliable.
+- Do not need access to the ESXi Mgmt Interface, so it works even on VLAN Trunking ports.
+- Reliable, even if your ESXi host is in a different subnet.
+- Automatically reboots the host.
 
-### My server reboots, but does not install ESXi.
-ESXi Auto-Installer mounts the ESXi ISO to your Cisco server via IMC. But after it reboots your server, it's up to the server's boot order to decide whether or not the server will boot off the Virtual DVD Drive.
-Your Cisco server's Boot Order can be set to 'basic mode' or 'advanced mode'.\
-If the server is in 'basic mode', ensure that CDROM boot option is near the top, usually before the HDD and PXE boot options.\
-If the server is in 'advanced mode', you want VMEDIA to be near the top. You can also use the 'one time boot' option to boot to VMEDIA if it is not near the top.
+PXE: For all other systems, including Virtual Machines and Cisco UCS B series servers, you can use the PXE boot method.
+- Sometimes requires network changes before DHCP works. This is where most problems with PXE install method come from.
+- Need to know the MAC address of your Mgmt NIC.
+- After submitting the request to ESXi Auto-Installer, you need to reboot the target host.
+- Fast installs, especially over 40GB NICs.
+
+## Common issues / FAQ
 
 ### ESXi hosts status does not change to finished.
-The kickstart file instructs the host to contact the Auto-Installer via the /api/v1/jobs PUT API to update its status to "Finished".\
+The kickstart file instructs the host to contact the ESXi Auto-Installer via the /api/v1/jobs PUT API to update its status to "Finished".\
 If the ESXi host installed successfully, but the status on Auto-Installer did not update to "Finished", it could be because the ESXi host was unable to contact the Auto-Installer during the initial ESXi boot.
 
 Common reasons are wrong IP Address, Gateway, VLAN or VMNIC settings. Or the ESXi host may require a static route.
@@ -162,7 +169,7 @@ If the ESXi host is in an isolated network and there is no way for it to contact
 ### I saw warnings on the ESXi Console during the installation phase!
 It is normal to see warnings on the ESXi Console screen during the installation phase.\
 As long as they are **warnings** and not **errors**, the installation will continue.\
-There may also be prompts that say "Press ENTER to contiue". But it is recommended that you do not press any keys. Again, as long there are no actual errors, the installation will continue and the warning/prompt will go away momentarially.
+There may also be prompts that say "Press ENTER to continue", but it is recommended that you do not press any keys. Again, as long there are no actual errors, the installation will continue and the warning/prompt will go away momentarily.
 
 ### There is a problem with the kickstart file, how do I troubleshoot it?
 If you get the error similar to:
@@ -172,12 +179,13 @@ An error has occurred while parsing the installation script
 
 error:/vmfs/volumes/mpx.vmhba32:c0:t0:l3/KS.CFG:line
 ```
-Then something is wrong with the kickstart file. ESXi Auto-Installer generates the kickstart file based on the data provided to start an installation. Sometimes there is an unforseen configuration issue or typo that causes the kickstart to fail and you need to find out why.
+Then something is wrong with the kickstart file. ESXi Auto-Installer generates the kickstart file based on the data provided to start an installation. Sometimes there is an unforeseen configuration issue or typo that causes the kickstart to fail and you need to find out why.
 During the installation, when you see the kickstart error, use the following steps to identify the root cause.
 
- 1. Note what section there error is in. It could be in %firstboot or %pre. Also note the line number.
- 2. You can view the kickstart file in your ESXi Auto-Installer's Status page.
- 3. On the ESXi Console, while the error is displayed on the screen, press ALT+F1 to enter the command line mode.
+ 1. Take a note of the error and the line number.
+ 2. You can view the content of the kickstart file on the ESXi Auto-Installer's Status page. Usually you can spot the error by just reviewing the kickstart content.
+ 3. If the error is still not understood, then check the logs on the ESXi host.\
+ To do this, go to the ESXi Console. While the error is displayed on the screen, press ALT+F1 to enter the command line mode.
  4. Login with user name `root` and no password.
  5. `cd /var/log`
  6. `vi weasel.log`
@@ -186,6 +194,39 @@ During the installation, when you see the kickstart error, use the following ste
 Here is an example of a bad route in the %pre section.
 ![Kickstart Log](doc_images/kickstartlog.png)
 
+### PXE Install: Which MAC address do I enter?
+Your servers often have multiple NICs, each with one or more MAC addresses.\
+The MAC address you add to Auto-Installer should be the MAC address of the NIC that will become your ESXi Mgmt Interface. This card to be configured to PXE Boot.
+
+### PXE Install: After submitting a job to ESXi Auto-Installer, nothing happens to my server.
+Unlike the OOB install methods like CIMC, when using the PXE Installation method you must reboot the host yourself. In PXE Installs, Auto-Installer passively waits for the DHCP request from the host when the host attempts to PXE boot.
+
+### PXE Install: My ESXi host is in a install-reboot loop.
+If PXE is the first boot option in the BIOS, you server will continually pickup the PXE reinstall command from the Auto-Installer.
+Workaround: In BIOS, set the PXE boot option below your primary boot drive. If you don't have an OS, the boot drive will be skipped the first time. This allows Auto-Installer to run over PXE and then the system will boot to it's primary drive.
+If there is a pre-existing OS, use a one-time boot option, or manually catch the BIOS boot prompt menu and select PXE.\
+**NOTE**: This issue will be fixed in an upcoming release.
+
+### PXE Install: My ESXi host is on a different subnet, can I still use the PXE install method?
+On it's own, a DHCP broadcast only works on the local layer-2 subnet. However, routers/gateways have a feature called `IP Helper` or `DHCP Relay`. This feature can forward the DHCP request from a host in one subnet to a DHCP server in another subnet. If you configure this feature on the subnet where your host is located with the IP address of your ESXi Auto-Installer, Auto-Installer will be able to install into any host on that subnet.
+
+### PXE Install: My host does not PXE boot even though Auto-Installer is in the same subnet.
+Routers/gateways have a feature called `IP Helper` or `DHCP Relay`. If this is configured on the local subnet some multilayer switches will not broadcast the DHCP request onto the local subnet.\
+Workaround: Add ESXi Auto-Installer to the list of IP Helper or DHCP Relay addresses. Or remove the IP Helper/DHCP Relay feature all together.
+
+### PXE Install: My ESXi Mgmt interface is on a trunked port with VLAN tagging. Can I use Auto-Installer?
+For physical hosts, if you need VLAN tagging on your ESXi Mgmt Interface, you can configure your VLAN Trunk with a Native VLAN. If you set the Native VLAN to the ESXi Mgmt Interfaces VLAN, then the ESXi Mgmt Interface will operate without a VLAN tag (while still permitting tagging for other VLANs).\
+This allows DHCP broadcasts to work during the PXE boot phase so Auto-Installer will work.\
+Native VLAN is configured on the switch interface that your ESXi Mgmt Interface is plugged into. So you may need support from your network team.\
+If you have a VLAN Trunk, but do not use Native VLAN, generally you cannot use Auto-Installer PXE installations. This is because most NIC cards do not support VLAN tagging during the PXE boot phase. However, some more advanced cards do support VLAN tagging at boot time. If so, you have to configure the card for VLAN tagging in your servers BIOS or Out-Of-Band-Management.\
+\
+For Virtual Nested ESXi hosts, as long as you are not trunking down to the VM, you can place Auto-Installer in a portgroup with the same VLAN tag and it will work.
+
+### CIMC Install: My server reboots, but does not install ESXi.
+ESXi Auto-Installer mounts the ESXi ISO to your Cisco server via IMC. But after it reboots your server, it's up to the server's boot order to decide whether or not the server will boot off the Virtual DVD Drive.
+Your Cisco server's Boot Order can be set to 'basic mode' or 'advanced mode'.\
+If the server is in 'basic mode', ensure that CDROM boot option is near the top, usually before the HDD and PXE boot options.\
+If the server is in 'advanced mode', you want VMEDIA to be near the top. You can also use the 'one time boot' option to boot to VMEDIA if it is not near the top.
 
 ### Using the Static Routes feature causes my installation to fail.
 Currently, the static routes feature is not meant for routes related to the management IP address after the ESXi host is installed. It's designed to help with certain storage connectivity issues that can come up during the ESXi installation process.
@@ -203,5 +244,4 @@ The ESXi Auto-Installer is specifically designed to be minimalistic, focusing on
 
 Thus, the ESXi Auto-Installer project will not contain configuration options. The big exception to this rule is enabling the SSH service. This is because a lot of tools require SSH in order to connect to ESXi.
 
-Instead of add features to configuration ESXi, this project will focus on automation feature so it can be used by existing tools.\
-That said we do have a few things we hope to bring you in the future that may help. For example, we want you to be able to add scripts that run on first boot. This should provide flexibility if you need a special configuration.
+Instead of add features to configuration ESXi, this project will focus on automation feature so it can be used by existing tools.
