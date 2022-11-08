@@ -171,6 +171,13 @@ It is normal to see warnings on the ESXi Console screen during the installation 
 As long as they are **warnings** and not **errors**, the installation will continue.\
 There may also be prompts that say "Press ENTER to continue", but it is recommended that you do not press any keys. Again, as long there are no actual errors, the installation will continue and the warning/prompt will go away momentarily.
 
+### Error related to SecureBoot
+When you install using either CIMC or DHCP, you get an error related to SecureBoot.\
+SecureBoot is a BIOS feature.\
+Currently ESXi Auto-Installer is incompatible with SecureBoot.\
+Workaround: Disable SecureBoot in BIOS before using ESXi Auto-Installer. After ESXi has been installed, you can reenable secure boot.\
+**NOTE**: This issue will be fixed in an upcoming release.
+
 ### There is a problem with the kickstart file, how do I troubleshoot it?
 If you get the error similar to:
 ![Kickstart Error](doc_images/kickstarterror.png)
