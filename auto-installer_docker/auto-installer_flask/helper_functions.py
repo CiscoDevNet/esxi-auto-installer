@@ -61,7 +61,7 @@ def generate_dhcp_config(jobid, logger, mainlog, eai_ip=EAIHOST_IP, eai_gw=EAIHO
         dhcpd_conf.write(dhcpd_conf_template.render(nextserver=eai_ip, subnet=eai_subnet, netmask=eai_mask, ipaddr=eai_ip, gateway=eai_gw))
 
         # dhcpd.conf host entries
-        host_entries = generate_dhcp_host_entries('mainlog')
+        host_entries = generate_dhcp_host_entries(mainlog)
         if len(host_entries):
             for entry in host_entries:
                 dhcpd_conf.write(entry)
