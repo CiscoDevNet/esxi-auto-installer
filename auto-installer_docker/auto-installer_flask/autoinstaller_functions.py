@@ -646,7 +646,7 @@ def process_submission(jobid_list, logger_list, mainlog, form_data):
         mainlog.info(f'{jobid} Generating kickstart file for server {hostname}')
         kscfg = generate_kickstart(jobid, form_data, index, logger, mainlog)
         
-        if form_data['installmethod'] == 'customiso':
+        if form_data['installmethod'] == 'cimc':
             # generate custom installation ISO
             mainlog.info(f'{jobid} Generating custom installation ISO for server {hostname}')
             generate_custom_iso(jobid, logger, mainlog, hostname, form_data['iso_image'], kscfg)
