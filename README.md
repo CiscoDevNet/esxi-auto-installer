@@ -229,12 +229,6 @@ If you have a VLAN Trunk, but do not use Native VLAN, generally you cannot use A
 \
 For Virtual Nested ESXi hosts, as long as you are not trunking down to the VM, you can place Auto-Installer in a portgroup with the same VLAN tag and it will work.
 
-### CIMC Install: My server reboots, but does not install ESXi.
-ESXi Auto-Installer mounts the ESXi ISO to your Cisco server via IMC. But after it reboots your server, it's up to the server's boot order to decide whether or not the server will boot off the Virtual DVD Drive.
-Your Cisco server's Boot Order can be set to 'basic mode' or 'advanced mode'.\
-If the server is in 'basic mode', ensure that CDROM boot option is near the top, usually before the HDD and PXE boot options.\
-If the server is in 'advanced mode', you want VMEDIA to be near the top. You can also use the 'one time boot' option to boot to VMEDIA if it is not near the top.
-
 ### Using the Static Routes feature causes my installation to fail.
 Currently, the static routes feature is not meant for routes related to the management IP address after the ESXi host is installed. It's designed to help with certain storage connectivity issues that can come up during the ESXi installation process.
 For now, "standard" IP Static Routing will need to apply those outside of the ESXi Auto-Installer after your installation is complete.
