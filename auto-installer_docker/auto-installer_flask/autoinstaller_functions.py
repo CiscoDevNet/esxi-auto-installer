@@ -646,15 +646,7 @@ def process_submission(jobid_list, logger_list, mainlog, form_data):
         mainlog.info(f'{jobid} Generating kickstart file for server {hostname}')
         kscfg = generate_kickstart(jobid, form_data, index, logger, mainlog)
         
-        if form_data['installmethod'] == 'cimc':
-            # generate custom installation ISO
-            mainlog.info(f'{jobid} Generating custom installation ISO for server {hostname}')
-            generate_custom_iso(jobid, logger, mainlog, hostname, form_data['iso_image'], kscfg)
-
-            # start ESXi hypervisor installation
-            Process(target=install_esxi, args=(jobid, logger, mainlog, form_data['hosts'][index]['cimc_ip'], form_data['cimc_usr'], form_data['cimc_pwd'], jobid + '.iso')).start()
-
-        elif form_data['installmethod'] == 'pxeboot':
+        if form_data['installmethod'] == 'pxeboot':
             mainlog.info(f'{jobid} Generating PXE Boot files for server {hostname}')
             generate_pxe_boot(jobid, logger, mainlog, form_data['iso_image'], form_data['hosts'][index]['macaddr'])
 
@@ -667,6 +659,14 @@ def process_submission(jobid_list, logger_list, mainlog, form_data):
 
             mainlog.info(f'{jobid} Ready to start PXE Boot installation for server {hostname}')
             logger.info(f'Ready to start PXE Boot installation - power on or restart the server to initialize installation process.\n')
+
+        else:
+            # generate custom installation ISO
+            mainlog.info(f'{jobid} Generating custom installation ISO for server {hostname}')
+            generate_custom_iso(jobid, logger, mainlog, hostname, form_data['iso_image'], kscfg)
+
+            # start ESXi hypervisor installation
+            Process(target=install_esxi, args=(jobid, logger, mainlog, form_data['hosts'][index]['cimc_ip'], form_data['cimc_usr'], form_data['cimc_pwd'], jobid + '.iso')).start()
 
 
 def create_jobs(form_data, installmethod, mainlog):
