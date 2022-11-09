@@ -126,7 +126,16 @@ class EAIJobs(Resource):
                         return { "status": "error", "message": "Required hosts field not provided. cimc_ip" }, 400
                     # Verify OOBM IP Address
                     try:
-                        ipaddress.ip_address(host_data['cimc_ip'])
+                        if host_data['cimc_ip'].count('.') == 3:
+                            # It's an IPv4 address.
+                            port_separator = host_data['cimc_ip'].rfind(':')
+                            address_string = host_data['cimc_ip'] if port_separator == -1 else host_data['cimc_ip'][0:port_separator]
+                        else:
+                            # Could be IPv6 address.
+                            port_separator = host_data['cimc_ip'].rfind(']:')
+                            address_string = host_data['cimc_ip'] if port_separator == -1 else host_data['cimc_ip'][0:port_separator + 1]
+
+                        ipaddress.ip_address(address_string)
                     except ValueError:
                         return {"status": "error", "message": 'Required hosts field is not valid: cimc_ip.'}, 400
 
@@ -194,7 +203,6 @@ class EAIJob(Resource):
                 else:
                     # get job logger
                     logger = get_jobid_logger(jobid)      
-                                  
                     if status_code == 0:
                         # this state should be only set when creating DB entry - not doing anything here
                         eaidb_dict = eaidb_get_status()
