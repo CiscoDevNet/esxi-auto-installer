@@ -71,9 +71,19 @@ def get_form_data(mainlog, form_result):
             if 'hostname' in key:
                 seq = key.replace('hostname', '')
                 hostname = form_result['host_prefix'] + form_result[key] + form_result['host_suffix']
+                macaddr = (
+                    form_result['macaddr' + seq]
+                    .replace(":", "")
+                    .replace(".", "")
+                    .replace("-", "")
+                    .lower()
+                )
+                macaddr = ":".join(
+                    [macaddr[i:i + 2] for i in range(0, 12, 2)]
+                )
                 form_data['hosts'].append({'hostname': hostname,
                                         'host_ip': form_result['host_ip' + seq],
-                                        'macaddr': form_result['macaddr' + seq]})
+                                        'macaddr': macaddr})
     else:
         for key, value in form_result.items():
             if 'hostname' in key:
