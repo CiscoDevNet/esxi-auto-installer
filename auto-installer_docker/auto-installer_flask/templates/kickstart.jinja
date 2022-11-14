@@ -8,7 +8,7 @@ reboot
 {% if pre_section %}{{pre_section}}{% endif -%}
 
 %post --interpreter=busybox
-echo -ne "PUT /api/v1/jobs/{{jobid}}?state=16 HTTP/1.0\r\nHost: {{eai_host_ip}}\r\n\r\n" | nc {{eai_host_ip}} 80 >/dev/null 2>&1
+echo -ne "PUT /api/v1/jobs/{{jobid}}?state=16 HTTP/1.0\r\nHost: {{eai_host_ip}}\r\n\r\n" | nc {{eai_host_ip}} 80 >/dev/null 2>&1 || true
 
 %firstboot --interpreter=busybox
 {% if set_def_gw %}{{set_def_gw}}{% endif -%}

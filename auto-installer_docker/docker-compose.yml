@@ -11,10 +11,16 @@ services:
       - /opt/eai/logs:/opt/eai/logs
       - /opt/eai/esxi-iso:/opt/eai/esxi-iso
       - /opt/eai/custom-iso:/opt/eai/custom-iso
+      - /opt/eai/ks:/opt/eai/ks      
+      - /opt/eai/tftpboot:/opt/eai/tftpboot
+      - /opt/eai/etc_dhcp:/opt/eai/etc_dhcp
     ports:
-      - "8000:8000"
+    - 8000:8000
     environment:
       - EAI_HOST_IP
+      - EAI_HOST_GW
+      - EAI_HOST_SUBNET
+      - EAI_HOST_NETMASK
     command: gunicorn -w 2 -t 180 -b 0.0.0.0:8000 autoinstaller_gui:app
 
   nginx:
@@ -24,6 +30,15 @@ services:
     volumes:
       - /opt/eai/custom-iso:/opt/eai/custom-iso
     ports:
-      - "80:80"
+      - 80:80
     depends_on:
       - flask_app
+
+  dhcp:
+    container_name: dhcp_server
+    restart: always
+    build: ./dhcp_server
+    network_mode: host
+    volumes:
+      - /opt/eai/etc_dhcp:/etc/dhcp/
+      - /opt/eai/tftpboot:/tftpboot

@@ -4,3 +4,5 @@ flask_restful
 gunicorn
 imcsdk
 ipaddress
+netifaces
+jinja2
