@@ -1,6 +1,4 @@
-www/__pycache__/
 .idea/*
-tftpboot/
 esxi-iso/
 auto-installer_docker/auto-installer_flask/__pycache__
 logs/jobs/
