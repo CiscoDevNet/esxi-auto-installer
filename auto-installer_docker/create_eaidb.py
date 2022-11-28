@@ -6,20 +6,6 @@ from os import system, path, listdir
 from shutil import which
 import sqlite3 as sl
 
-EAISTATUS_COLUMNS = {
-    'jobid': {'type': 'TEXT'}, 
-    'hostname': {'type': 'TEXT'}, 
-    'ipaddr': {'type': 'TEXT'}, 
-    'cimcip': {'type': 'TEXT'}, 
-    'start_time': {'type': 'DATETIME'}, 
-    'finish_time': {'type': 'DATETIME'}, 
-    'status': {'type': 'TEXT'}, 
-    'cimcusr': {'type': 'TEXT'}, 
-    'cimcpwd': {'type': 'TEXT'}, 
-    'macaddr': {'type': 'TEXT'}, 
-    'netmask': {'type': 'TEXT'}, 
-    'gateway': {'type': 'TEXT'}
-    }
 
 def eaidb_create_db(eaidb=EAIDB, required_columns=EAISTATUS_COLUMNS):
     # check EAISTATUS table format
