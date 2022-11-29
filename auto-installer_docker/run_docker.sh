@@ -1,4 +1,4 @@
-echo Checking pre-requisites
+echo "*** Checking pre-requisites ***"
 # check pre-requisites: docker-compose
 which docker-compose >/dev/null
 if [ $? -ne 0 ]
@@ -27,12 +27,15 @@ then
     echo "[ERROR] Missing Python jinja2 library - install and re-run this script. Aborting."
     exit 4
 fi
+echo "[INFO] All pre-requisites met."
 
 # (re)building docker containers
-echo Killing old docker processes
+echo
+echo "*** Killing old docker processes ***"
 docker-compose rm -fs
 
-echo Exporting host network settings
+echo
+echo "*** Exporting host network settings ***"
 
 NETWORK_DATA=( `python3 get_host_network_settings.py` )
 export EAI_HOST_IP=${NETWORK_DATA[0]}
@@ -47,5 +50,9 @@ echo EAI_HOST_SUBNET: $EAI_HOST_SUBNET
 echo EAI_HOST_NETMASK: $EAI_HOST_NETMASK
 echo
 
-echo Building docker containers
+echo "*** Checking/creating EAIDB database ***"
+python3 create_eaidb.py 
+echo
+
+echo "*** Building docker containers ***"
 docker-compose up --build -d

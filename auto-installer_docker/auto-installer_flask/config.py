@@ -46,3 +46,18 @@ STATUS_CODES = {
     32: 'Error: Failed to mount installation ISO',
     33: 'Error: UEFI Secure Boot Mode enabled'
 }
+
+EAISTATUS_COLUMNS = {
+    'jobid': {'type': 'TEXT'}, 
+    'hostname': {'type': 'TEXT'}, 
+    'ipaddr': {'type': 'TEXT'}, 
+    'cimcip': {'type': 'TEXT'}, 
+    'start_time': {'type': 'DATETIME'}, 
+    'finish_time': {'type': 'DATETIME'}, 
+    'status': {'type': 'TEXT'}, 
+    'cimcusr': {'type': 'TEXT'}, 
+    'cimcpwd': {'type': 'TEXT'}, 
+    'macaddr': {'type': 'TEXT'}, 
+    'netmask': {'type': 'TEXT'}, 
+    'gateway': {'type': 'TEXT'}
+    }

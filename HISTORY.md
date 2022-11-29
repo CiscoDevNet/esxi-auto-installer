@@ -1,6 +1,10 @@
 History
 =====================
 
+2.1 (2022-11-28)
+---------------------
+* removed EAIDB file from repo and added check/create script before starting containers
+
 2.0 (2022-11-10)
 ---------------------
 * Added PXE boot installation method
