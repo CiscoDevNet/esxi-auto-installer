@@ -98,14 +98,16 @@ paths:
          0: Ready to deploy
         10: Connecting to CIMC
         11: Mounting installation ISO
-        15: Installation in progress
+        15: Server is booting
         16: Running First Boot
+        17: Running final reboot
         18: Running cleanup tasks
         20: Finished
         30: Error
         31: Error: Failed to login to CIMC
         32: Error: Failed to mount installation ISO
-        33: Error: UEFI Secure Boot Mode enabled
+        34: Error: Installed but SSH was not enabled
+        35: Error: No response after final reboot
         ```
       parameters:
       - name: jobID
@@ -305,7 +307,7 @@ components:
           example: "2022-01-01 07:07:07 GMT"
         status:
           type: "string"
-          example: "Installation in progress"
+          example: "Installer has started"
     JobIDs:
       description: "List of job IDs"
       type: array

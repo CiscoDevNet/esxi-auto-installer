@@ -117,6 +117,8 @@
             <input type="radio" id="static_routes_set" name="static_routes_set" value="True"  oninput="StaticRoutesShow('True')">Yes
             <input type="radio" checked id="static_routes_set" name="static_routes_set" value="False" oninput="StaticRoutesShow('False')">No<br />
             <div id="static_routes" class="hide50">
+              NOTE: This feature in incompatible with the SecureBoot BIOS feature.<BR>
+              Make sure to disable SecureBoot in the servers BIOS before installing ESXi.
               <Table id="static_route_table" class="custom">
                 <tr>
                   <td class="static_nopadding">Subnet Address<br /><input type="text" name="subnet_ip0" id="subnet_ip0">/</td>

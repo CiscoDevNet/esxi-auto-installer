@@ -115,7 +115,16 @@ class EAIJobs(Resource):
                         return { "status": "error", "message": "Required hosts field not provided. cimc_ip" }, 400
                     # Verify OOBM IP Address
                     try:
-                        ipaddress.ip_address(host_data['cimc_ip'])
+                        if host_data['cimc_ip'].count('.') == 3:
+                            # It's an IPv4 address.
+                            port_separator = host_data['cimc_ip'].rfind(':')
+                            address_string = host_data['cimc_ip'] if port_separator == -1 else host_data['cimc_ip'][0:port_separator]
+                        else:
+                            # Could be IPv6 address.
+                            port_separator = host_data['cimc_ip'].rfind(']:')
+                            address_string = host_data['cimc_ip'] if port_separator == -1 else host_data['cimc_ip'][0:port_separator + 1]
+
+                        ipaddress.ip_address(address_string)
                     except ValueError:
                         return {"status": "error", "message": 'Required hosts field is not valid: cimc_ip.'}, 400
 
@@ -174,7 +183,7 @@ class EAIJob(Resource):
                 # only run cleanup tasks for existing job ID
                 query_parameters = request.args
                 status_code = int(query_parameters.get('state'))
-                mainlog.debug(f'{jobid} API endpoint called with args: {query_parameters}')
+                mainlog.debug(f'{jobid} API endpoint called with args: {query_parameters.to_dict()}')
 
                 # TODO: move status code validation/translation to separate function?
                 if status_code not in status_dict:
@@ -182,41 +191,48 @@ class EAIJob(Resource):
                     mainlog.error(f'State not valid: {status_code}')
                     return { "status": "error", "message": f'State not valid' }, 400
                 else:
-                    if status_code == 0:
-                        # this state should be only set when creating DB entry - not doing anything here
-                        eaidb_dict = eaidb_get_status()
-                        return eaidb_dict[jobid]
-                    elif status_code in range(10,19):
-                        # status codes for installation phases
-                        status = status_dict[status_code]
-                        finish_time = ''
-                    elif status_code in range(20,39):
-                        # status codes for finished or errors
-                        status = status_dict[status_code]
-                        finish_time = time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime())
+                    status = status_dict[status_code]
+                    logger = get_jobid_logger(jobid)
+                    logger.info(f'API received status code {status_code}: {status}\n')
 
+                    
+                    # if status_code == 0:
+                    #     # this state should be only set when creating DB entry - not doing anything here
+                    #     pass
+                    if status_code in range(10,19):
+                        # status codes for installation phases
+                        Finished=False
+                        if status_code == 17:
+                            Process(target=final_reboot, args=(jobid, (True if query_parameters.get('enable_ssh') == '1' else False), logger, mainlog)).start()
+                            
+                    elif status_code in range(20,39):
+                        # TODO:
+                        #### Under new 'api-ssh' update, this section will never be called.
+                        #### Need to ensure it's functionality is covered.
+                        
+                        # status codes for finished or errors
+                        Finished=True
                         # for status codes from range Finished/Error - run cleanup and log status in job log
                         # get job logger
-                        logger = get_jobid_logger(jobid)
                         # run cleanup
                         if status_code == 31:
                             # do not tru to unmount the ISO if login to CIMC failed
                             job_cleanup(jobid, logger, mainlog, unmount_iso=False)
                         else:
                             job_cleanup(jobid, logger, mainlog, unmount_iso=True)
-                        # update job log
-                        logger.info(f'Installation job (ID: {jobid}) finished.')
-                        logger.info(f'Final status code: {status_dict[status_code]}\n')
 
-                    # update status in EAIDB
-                    eaidb_update_job_status(jobid, status, finish_time)
+                    if status_code != 17:
+                        # update status in EAIDB
+                        # Do not want to set status for code 16 because it will set it's own status multiple times. Do not want a race condition.
+                        eaidb_update_job_status(jobid, status, logger, Finished)
 
-                eaidb_dict = eaidb_get_status()
-                return eaidb_dict[jobid]
+                eaidb_dict = eaidb_get(jobid, ('hostname', 'ipaddr', 'cimcip', 'start_time', 'finish_time', 'status', 'macaddr', 'netmask', 'gateway'))
+                return eaidb_dict
             else:
                 return { "status": "error", "message": f'Job ID not found' }, 404
         except Exception:
-            return { "status": "error", "message": f'Job ID not found' }, 404
+           mainlog.error("Unable to process PUT jobs request.")
+           return { "status": "error", "message": f'Job ID not found' }, 404
 
 
 class EAILogs(Resource):

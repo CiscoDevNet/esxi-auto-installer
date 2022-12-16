@@ -12,10 +12,14 @@ from config import *
 from os import system, path, listdir
 from jinja2 import Template
 import re
-import time
 from ipaddress import ip_network
 from multiprocessing import Process
 from shutil import which
+
+## Libraries to support enable SSH ##
+import requests
+import xml.etree.ElementTree as ET
+import datetime
 
 def get_form_data(mainlog, form_result):
     """
@@ -68,14 +72,23 @@ def get_form_data(mainlog, form_result):
     # get ESXi host and CIMC IP address(es)
     form_data['hosts'] = []
     if form_data['installmethod'] == 'pxeboot':
-
         for key, value in form_result.items():
             if 'hostname' in key:
                 seq = key.replace('hostname', '')
                 hostname = form_result['host_prefix'] + form_result[key] + form_result['host_suffix']
+                macaddr = (
+                    form_result['macaddr' + seq]
+                    .replace(":", "")
+                    .replace(".", "")
+                    .replace("-", "")
+                    .lower()
+                )
+                macaddr = ":".join(
+                    [macaddr[i:i + 2] for i in range(0, 12, 2)]
+                )
                 form_data['hosts'].append({'hostname': hostname,
                                         'host_ip': form_result['host_ip' + seq],
-                                        'macaddr': form_result['macaddr' + seq]})
+                                        'macaddr': macaddr})
     else:
         for key, value in form_result.items():
             if 'hostname' in key:
@@ -136,14 +149,6 @@ def generate_kickstart(jobid, form_data, index, logger, mainlog, eai_host_ip=EAI
     else:
         enable_ssh = ''
 
-    # in this version we don't disable IPv6 (default is enabled) and no reboot after %firstboot is required
-    disable_ipv6 = False
-    # disableipv6 = False
-    # if disableipv6:
-    #     disable_ipv6 = '# disable IPv6\nesxcli network ip set --ipv6-enabled=false\n'
-    # else:
-    #     disable_ipv6 = ''
-
     # process DNS
     if form_data['dns1'] != '':
         if form_data['dns2'] != '':
@@ -170,7 +175,7 @@ def generate_kickstart(jobid, form_data, index, logger, mainlog, eai_host_ip=EAI
         kstemplate = Template(kstemplate_file.read())
     kickstart = kstemplate.render(clearpart=clearline, install=install, rootpw_hash=rootpw_hash, vmnicid='vmnic' + vmnicid, vlan=vlan,
                                   ipaddr=ipaddr, netmask=netmask, gateway=gateway, hostname=hostname, pre_section=pre_section, dnsservers=dnsservers,
-                                  set_def_gw=set_def_gw, enable_ssh=enable_ssh, disable_ipv6=disable_ipv6,
+                                  set_def_gw=set_def_gw, enable_ssh=enable_ssh,
                                   eai_host_ip=eai_host_ip, jobid=jobid)
     # remove password before saving kickstart to log file
     logger.info(f"Generated kickstart configuration:\n{re.sub(r'rootpw.*', 'rootpw --iscrypted ***********', kickstart)}\n")
@@ -372,7 +377,7 @@ def cimc_logout(logger, cimchandle, cimcip, dryrun=DRYRUN):
     logger.info(f'Disconnected from CIMC: {cimcip}')
 
 
-def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, eai_ip=EAIHOST_IP, dryrun=DRYRUN):
+def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, eai_ip=EAIHOST_IP, dryrun=DRYRUN, status_dict=STATUS_CODES):
     """
     Install ESXi hypervisor using custom installation ISO (iso_image):
     - login to CIMC
@@ -395,14 +400,14 @@ def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, ea
     if not dryrun:
         # login to CIMC
         try:
-            eaidb_update_job_status(jobid, 'Connecting to CIMC', '')
+            eaidb_update_job_status(jobid, 'Connecting to CIMC', logger)
             cimchandle = cimc_login(logger, cimcip, cimcusr, cimcpwd)
         except Exception as e:
             mainlog.error(f'{jobid} Error when trying to login to CIMC: {str(e)}')
             logger.error(f'Error when trying to login to CIMC: {format_message_for_web(e)}\n')
             # if cimc_login failed - run cleanup tasks (with unmount_iso=False), update EAIDB with error message and abort
             job_cleanup(jobid, logger, mainlog, unmount_iso=False)
-            eaidb_update_job_status(jobid, 'Error: Failed to login to CIMC', time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime()))
+            eaidb_update_job_status(jobid, 'Error: Failed to login to CIMC', logger, True)
             return 1
 
         # set VMEDIA on Boot Order
@@ -410,7 +415,7 @@ def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, ea
             if cimc_vmedia_set(cimchandle, logger) == 33:
                 job_cleanup(jobid, logger, mainlog, unmount_iso=False)
                 cimc_logout(logger, cimchandle, cimcip)
-                eaidb_update_job_status(jobid, 'Error: UEFI Secure Boot Mode enabled', time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime()))
+                eaidb_update_job_status(jobid, 'Error: UEFI Secure Boot Mode enabled', logger, True)
                 return 33
         except Exception as e:
             mainlog.error(f'{jobid} : {str(e)}')
@@ -420,7 +425,7 @@ def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, ea
         # mount custom ISO and reboot the server to start the installation
         try:
             # update status in EAIDB to 'Mounting installation ISO'
-            eaidb_update_job_status(jobid, 'Mounting installation ISO', '')
+            eaidb_update_job_status(jobid, 'Mounting installation ISO', logger)
 
             logger.info('')
             logger.info(f'Mount custom installation ISO on CIMC')
@@ -442,8 +447,8 @@ def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, ea
             logger.info(f'Server power state: {pwrstate}')
             logger.info(f'Open KVM console to follow the installation process or wait for the job status update to [Finished].\n')
 
-            # update status in EAIDB to 'Installation in progress'
-            eaidb_update_job_status(jobid, 'Installation in progress', '')
+            # update status in EAIDB to 'Server is booting'
+            eaidb_update_job_status(jobid, status_dict[15], logger)
 
         except Exception as e:
             mainlog.error(f'{jobid} : {str(e)}')
@@ -452,7 +457,7 @@ def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, ea
             # if mounting ISO failed - run cleanup tasks, update EAIDB with error message and abort
             job_cleanup(jobid, logger, mainlog)
             cimc_logout(logger, cimchandle, cimcip)
-            eaidb_update_job_status(jobid, 'Error: Failed to mount installation ISO', time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime()))
+            eaidb_update_job_status(jobid, 'Error: Failed to mount installation ISO', logger, True)
             return 2
 
         # logout from CIMC
@@ -486,7 +491,7 @@ def get_available_isos(isodir=ESXISODIR):
     return dirs
 
 
-def job_cleanup(jobid, logger, mainlog, unmount_iso=True, dryrun=DRYRUN, tftpboot=TFTPBOOT, pxedir=PXEDIR):
+def job_cleanup(jobid, logger, mainlog, unmount_iso=True, cleanroot=True, dryrun=DRYRUN, tftpboot=TFTPBOOT, pxedir=PXEDIR):
     """
     Run post-installation cleanup tasks:
     - remove kickstart file
@@ -503,7 +508,7 @@ def job_cleanup(jobid, logger, mainlog, unmount_iso=True, dryrun=DRYRUN, tftpboo
         try:
             eaidb_dict = eaidb_get_status()
             
-            eaidb_update_job_status(jobid, 'Running cleanup tasks', '')
+            eaidb_update_job_status(jobid, 'Running cleanup tasks', logger)
 
             mainlog.info(f'{jobid} Starting cleanup')
             logger.info('')
@@ -518,8 +523,12 @@ def job_cleanup(jobid, logger, mainlog, unmount_iso=True, dryrun=DRYRUN, tftpboo
                     cimc_unmount_iso(jobid, logger, mainlog)
                 remove_custom_iso(jobid, logger, mainlog)
 
-                logger.info(f'* remove CIMC password from database')
-                eaidb_remove_cimc_password(jobid)
+                if cleanroot:
+                    logger.info(f'* remove server passwords from database')
+                    eaidb_set(jobid, {'root_pwd':'', 'cimcpwd': ''})            
+                else:
+                    logger.info(f'* remove CIMC password from database')
+                    eaidb_set(jobid, {'cimcpwd': ''})
 
             elif eaidb_dict[jobid]['macaddr']:
                 rm_cmd = which('rm')
@@ -533,6 +542,9 @@ def job_cleanup(jobid, logger, mainlog, unmount_iso=True, dryrun=DRYRUN, tftpboo
                 
                 logger.info(f'* DHCP config')            
                 generate_dhcp_config(jobid, logger, mainlog)
+                if cleanroot:
+                    logger.info(f'* remove root password from database')
+                    eaidb_set(jobid, {'root_pwd':''})            
 
             mainlog.info(f'{jobid} Cleanup finished.')
             logger.info(f'Cleanup finished.\n')
@@ -648,15 +660,7 @@ def process_submission(jobid_list, logger_list, mainlog, form_data):
         mainlog.info(f'{jobid} Generating kickstart file for server {hostname}')
         kscfg = generate_kickstart(jobid, form_data, index, logger, mainlog)
         
-        if form_data['installmethod'] == 'customiso':
-            # generate custom installation ISO
-            mainlog.info(f'{jobid} Generating custom installation ISO for server {hostname}')
-            generate_custom_iso(jobid, logger, mainlog, hostname, form_data['iso_image'], kscfg)
-
-            # start ESXi hypervisor installation
-            Process(target=install_esxi, args=(jobid, logger, mainlog, form_data['hosts'][index]['cimc_ip'], form_data['cimc_usr'], form_data['cimc_pwd'], jobid + '.iso')).start()
-
-        elif form_data['installmethod'] == 'pxeboot':
+        if form_data['installmethod'] == 'pxeboot':
             mainlog.info(f'{jobid} Generating PXE Boot files for server {hostname}')
             generate_pxe_boot(jobid, logger, mainlog, form_data['iso_image'], form_data['hosts'][index]['macaddr'])
 
@@ -665,11 +669,18 @@ def process_submission(jobid_list, logger_list, mainlog, form_data):
 
             mainlog.info(f'{jobid} Generating DHCP configuration for server {hostname}')
             generate_dhcp_config(jobid, logger, mainlog)
-            eaidb_update_job_status(jobid, 'Ready to deploy', '')
+            eaidb_update_job_status(jobid, 'Ready to deploy', logger)
 
             mainlog.info(f'{jobid} Ready to start PXE Boot installation for server {hostname}')
             logger.info(f'Ready to start PXE Boot installation - power on the server to initialize installation process.\n')
 
+        else:
+            # generate custom installation ISO
+            mainlog.info(f'{jobid} Generating custom installation ISO for server {hostname}')
+            generate_custom_iso(jobid, logger, mainlog, hostname, form_data['iso_image'], kscfg)
+
+            # start ESXi hypervisor installation
+            Process(target=install_esxi, args=(jobid, logger, mainlog, form_data['hosts'][index]['cimc_ip'], form_data['cimc_usr'], form_data['cimc_pwd'], jobid + '.iso')).start()
 
 def create_jobs(form_data, installmethod, mainlog):
     """
@@ -714,8 +725,8 @@ def create_jobs(form_data, installmethod, mainlog):
         # create entry in Auto-Installer DB
         mainlog.info(f'{jobid} Saving installation data for server {hostname}')
         # print(form_data)
-        eaidb_create_job_entry(jobid, time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime()), hostname, form_data['hosts'][index]['host_ip'],
-                                cimcip, cimcusr, cimcpwd, macaddr, form_data['host_netmask'], form_data['host_gateway'])
+        eaidb_create_job_entry(jobid, hostname, form_data['hosts'][index]['host_ip'],
+                                form_data['root_pwd'], cimcip, cimcusr, cimcpwd, macaddr, form_data['host_netmask'], form_data['host_gateway'])
 
         jobid_list.append(jobid)
         logger_list.append(logger)
@@ -886,15 +897,6 @@ def cimc_vmedia_set(cimchandle, logger):
     :return: n/a    
     """
     try:
-        # check Secure Boot
-        logger.info('Checking UEFI Secure Boot')
-        secure_boot = cimc_get_mo_property(cimchandle, 'sys/rack-unit-1/boot-policy/boot-security', 'secure_boot')
-        if not secure_boot.casefold() == 'disabled':
-            logger.error('UEFI Secure Boot enabled - it has to be disabled for the installation to proceed. Aborting.')
-            return 33
-        else:
-            logger.info('UEFI Secure Boot disabled - OK to proceed.')
-
         # check Basic vs Advanced Boot mode
         basic_boot_order = boot_order_policy_get(cimchandle)
         if len(basic_boot_order) > 0:
@@ -992,3 +994,121 @@ def generate_efi_boot(jobid, logger, mainlog, iso_image, macaddr, dryrun=DRYRUN,
         logger.info(f'[DRYRUN] Generating EFI boot file')
         mainlog.info(f'{jobid} [DRYRUN] Generating EFI boot file')
 
+def final_reboot(jobid, ssh, logger, mainlog, sleeptimer=60, timeoutminutes=45, status_dict=STATUS_CODES):
+    # Server is in final reboot, does not need files anymore. Also prevents PXE reboot loop.
+    job_cleanup(jobid, logger, mainlog, cleanroot=False)
+
+    ### Wait for host to boot
+    eaidb_update_job_status(jobid, status_dict[17], logger)
+    # Collect required data
+    eaidb_dict = eaidb_get(jobid, ('ipaddr','root_pwd'))
+    url = "https://" + eaidb_dict['ipaddr'] + "/sdk"
+    # Create Session
+    session = requests.Session()
+    # Request SOAP API
+    response = None
+    timeout = datetime.datetime.now() + datetime.timedelta(minutes = timeoutminutes)
+    logger.info("Waiting for ESXi to become responsive.")
+    while getattr(response, "status_code", 0) != 200:
+        try:
+            mainlog.debug("Attempting to connect to ESXi API at " + eaidb_dict['ipaddr'])
+            response = session.get(f"{url}/vimServiceVersions.xml", verify=False)
+            # mainlog.debug(response.text)
+        except:
+            if datetime.datetime.now() > timeout:
+                logger.error("ESXi API Connection timeout. Unable to start SSH service.")
+                mainlog.error("ESXi API Connection timeout. Unable to start SSH service.")
+                eaidb_update_job_status(jobid, status_dict[35], logger, True)
+                return
+            mainlog.debug(f"Sleeping for {sleeptimer} seconds.")
+            time.sleep(sleeptimer)
+            continue
+
+
+    ## After system has booted up, enable SSH if set.
+    try:
+        if ssh:
+            # TODO:
+            #### Ideally whether or not to enable ssh should be saved to the database.
+            
+            # TODO:
+            #### Need to see if we can prevent multiple instances of enable_ssh running for the same ESXi host. ###
+
+            enable_ssh(eaidb_dict['ipaddr'], eaidb_dict['root_pwd'], mainlog, logger, session=session)
+        else:
+            # Close session
+            session.close()
+    except:
+        eaidb_update_job_status(jobid, status_dict[34], logger, True)
+    else:
+        eaidb_update_job_status(jobid, status_dict[20], logger, True)
+
+def enable_ssh(ipaddr, esxipass, mainlog, logger, session=None, esxiuser='root'):
+    # https://developer.vmware.com/apis/1355/vsphere
+
+    url = "https://" + ipaddr + "/sdk"
+    # Create Session
+    if session == None:
+        session = requests.Session()
+    # Request SOAP API
+    response = None
+
+    logger.info("Request API Namespace.")
+    try:
+        response = session.get(f"{url}/vimServiceVersions.xml", verify=False)
+        # mainlog.debug(response.text)
+    except:
+        logger.error("Could not connect to ESXi API. Unable to start SSH service.")
+        mainlog.error("Could not connect to ESXi API. Unable to start SSH service.")
+        raise Exception("Failed to retrieve vimServiceVersions.xml")
+
+    # Create values used for the rest of the session
+    try:
+        xml = ET.fromstring(response.text)
+        xmlns = xml[0][0].text
+        session.headers.update({'Content-Type': 'application/xml', 'SOAPAction': f'"{xmlns}/{xml[0][1].text}"'})
+    except:
+        logger.error("Unable to parse ESXi API Response. Unable to start SSH service.")
+        mainlog.error("Unable to parse ESXi API Response")
+        raise Exception("Failed to parse vimServiceVersions.xml")
+
+
+    # Request Authentication
+    payload = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<soapenv:Envelope xmlns:soapenc=\"http://schemas.xmlsoap.org/soap/encoding/\" xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\">\n<soapenv:Body><Login xmlns=\"" + xmlns + "\"><_this type=\"SessionManager\">ha-sessionmgr</_this><userName>" + esxiuser + "</userName><password>" + esxipass + "</password></Login></soapenv:Body>\n</soapenv:Envelope>"
+    try:
+        response = session.post(url, data=payload, verify=False)
+    except:
+        raise Exception("Failed to log into the ESXi host.")
+    # mainlog.debug(response.text)
+    if response.text.count("xsi:type=\"InvalidLogin\""):
+        # Throw an error because the username or password is incorrect.
+        # This should never happen because we just installed ESXi and set the password.
+        logger.error("Unable to log into ESXi API. Unable to start SSH service.")
+        mainlog.error("Unable to log into ESXi API.")
+        raise Exception('Username and password was rejected by ESXi host.')
+
+    try:
+        # Set SSH policy to "on"
+        payload = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<soapenv:Envelope xmlns:soapenc=\"http://schemas.xmlsoap.org/soap/encoding/\" xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\">\n<soapenv:Body><UpdateServicePolicy xmlns=\"" + xmlns + "\"><_this type=\"HostServiceSystem\">serviceSystem</_this><id>TSM-SSH</id><policy>on</policy></UpdateServicePolicy></soapenv:Body>\n</soapenv:Envelope>"
+        response = session.post(url, data=payload, verify=False)
+        logger.info("Set SSH policy to 'on'.")
+        # mainlog.debug(response.text)
+
+        # Start the SSH Service
+        payload = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<soapenv:Envelope xmlns:soapenc=\"http://schemas.xmlsoap.org/soap/encoding/\" xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\">\n<soapenv:Body><StartService xmlns=\"" + xmlns + "\"><_this type=\"HostServiceSystem\">serviceSystem</_this><id>TSM-SSH</id></StartService></soapenv:Body>\n</soapenv:Envelope>"
+        response = session.post(url, data=payload, verify=False)
+        logger.info("Started SSH service.")
+        # mainlog.debug(response.text)
+    except:
+        raise Exception("Failed to start ssh service.")
+
+    # Logout
+    payload = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<soapenv:Envelope xmlns:soapenc=\"http://schemas.xmlsoap.org/soap/encoding/\" xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\">\n<soapenv:Body><Logout xmlns=\"" + xmlns + "\"><_this type=\"SessionManager\">ha-sessionmgr</_this></Logout></soapenv:Body>\n</soapenv:Envelope>"
+    try:
+        response = session.post(url, data=payload, verify=False)
+    except:
+        raise Exception("Failed to logoff API.")
+    # mainlog.debug(response.text)
+    mainlog.info("SSH was enabled.")
+    # Close session
+    session.close()
