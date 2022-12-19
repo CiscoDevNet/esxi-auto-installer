@@ -55,7 +55,6 @@ def get_form_data(mainlog, form_result):
                                                    'gateway': form_result['gateway' + seq]})
 
     # get common settings - CIMC credentials and subnet/gateway
-    # TODO: skip cimc credentials if installmethod is pxeboot
     form_data['installmethod'] = form_result['installmethod']
     if form_data['installmethod'] != 'pxeboot':
         form_data['cimc_usr'] = form_result['cimc_usr']
@@ -672,7 +671,15 @@ def process_submission(jobid_list, logger_list, mainlog, form_data):
             eaidb_update_job_status(jobid, 'Ready to deploy', logger)
 
             mainlog.info(f'{jobid} Ready to start PXE Boot installation for server {hostname}')
-            logger.info(f'Ready to start PXE Boot installation - power on the server to initialize installation process.\n')
+            logger.info(f'Ready to start PXE Boot installation - power on or restart the server to initialize installation process.\n')
+
+        else:
+            # generate custom installation ISO
+            mainlog.info(f'{jobid} Generating custom installation ISO for server {hostname}')
+            generate_custom_iso(jobid, logger, mainlog, hostname, form_data['iso_image'], kscfg)
+
+            # start ESXi hypervisor installation
+            Process(target=install_esxi, args=(jobid, logger, mainlog, form_data['hosts'][index]['cimc_ip'], form_data['cimc_usr'], form_data['cimc_pwd'], jobid + '.iso')).start()
 
         else:
             # generate custom installation ISO
@@ -835,22 +842,27 @@ def cimc_vmedia_basic_set(cimchandle, logger, basic_boot_order):
 def cimc_vmedia_advanced_check(cimchandle):
     """
     Check for valid VMEDIA on Advanced Boot Order list.
-    VMEDIA is valid when state is enabled and subtype is either 'cimc-mapped-dvd' or not specified.
+    VMEDIA is valid when subtype is either 'cimc-mapped-dvd' or not specified.
 
     :param cimchandle: (ImcHandle) CIMC connection handle
-    :return: (str)  NULL if no valid VMEDIA found,
-                    VMEDIA name if valid VMEDIA found,
-                    Error otherwise.
+    :return: (dict) NULL if no valid VMEDIA found,
+                    VMEDIA name, dn and state if valid VMEDIA found,
+             (str)  Error otherwise.
+             
     """
-    vmedia_name = 'NULL'
+
+    vmedia_dict = {'name': 'NULL', 'dn': 'NULL', 'state': 'NULL'}
     try:
         vmedia_list = cimchandle.query_classid('LsbootVMedia')
         if len(vmedia_list) > 0:
             for vmedia in vmedia_list:
-                if getattr(vmedia, 'state').casefold() == 'enabled' and getattr(vmedia, 'subtype') != 'kvm-mapped-dvd':
-                    vmedia_name = getattr(vmedia, "name")
-        return vmedia_name
-
+                if getattr(vmedia, 'subtype') != 'kvm-mapped-dvd':
+                    vmedia_dict['name'] = getattr(vmedia, 'name')
+                    vmedia_dict['dn'] = getattr(vmedia, 'dn')
+                    vmedia_dict['state'] = getattr(vmedia, 'state')
+                    break   # fvoudn valid vmedia - we can break the loop here
+        return vmedia_dict
+        
     except Exception as e:
         return f'Error when running vmedia check: {str(e)}'
 
@@ -866,23 +878,26 @@ def cimc_vmedia_advanced_set(cimchandle, logger):
     try:
         logger.info('Checking for VMEDIA on Advanced Boot Order ...')
         vmedia = cimc_vmedia_advanced_check(cimchandle)
-        if 'Error' in vmedia:
-            logger.error(f'{vmedia}. Aborting.')
+        if 'Error' in str(vmedia):
+            logger.error(f'{str(vmedia)}. Aborting.')
             return 33
-        elif vmedia == 'NULL':
+        elif vmedia['name'] == 'NULL':
             logger.info('No valid VMEDIA on configured boot order list - adding')
             # append vmedia to boot order list
             vmedia_order = str(len(boot_precision_configured_get(cimchandle)) + 1)
             from imcsdk.apis.server.boot import _add_boot_device
-            vmedia = "vmedia-eai"
-            _add_boot_device(cimchandle, 'sys/rack-unit-1/boot-precision', {"order": vmedia_order, "device-type": "vmedia", "name": vmedia})
+            vmedia['name'] = "vmedia-eai"
+            _add_boot_device(cimchandle, 'sys/rack-unit-1/boot-precision', {"order": vmedia_order, "device-type": "vmedia", "name": vmedia['name']})
             logger.info(f'Boot Order set to: {boot_precision_configured_get(cimchandle)}')
         else:
-            logger.info(f'VMEDIA found - using: {vmedia}')
+            logger.info(f"VMEDIA found - using: {vmedia['name']}")
+            if vmedia['state'].casefold() != 'enabled':
+                logger.info(f"VMEDIA {vmedia['name']} disabled: changing state to Enabled")
+                cimc_set_mo_property(cimchandle, vmedia['dn'], 'state', 'Enabled')
 
         # set vmedia as OneTimePrecisionBootDevice
-        cimc_set_mo_property(cimchandle, 'sys/rack-unit-1/one-time-precision-boot', 'device', vmedia)
-        logger.info(f'Configured One time boot device: {vmedia}')
+        cimc_set_mo_property(cimchandle, 'sys/rack-unit-1/one-time-precision-boot', 'device', vmedia['name'])
+        logger.info(f"Configured One time boot device: {vmedia['name']}")
     except Exception as e:
         logger.error(f'Error when trying to set One time boot device:')
         logger.error(format_message_for_web(e))

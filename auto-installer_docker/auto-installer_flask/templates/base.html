@@ -4,6 +4,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     {% block metarefresh %}{% endblock %}
     <title>ESXi Auto-Installer</title>
+    <!-- <link rel="shortcut icon" href="static/favicon.ico"> -->
     {% block stylesheet %}{% endblock %}
     <script src="{{ url_for('static', filename='scripts.js') }}"></script>
   </head>
@@ -12,7 +13,7 @@
       <!--<div class="logo"><img src="{{ url_for('static', filename='cisco-logo.png') }}" alt="Cisco Logo"/></div>-->
       <div class="page_header">
         <div>ESXi Auto-Installer</div>
-        <div class="version">(v2.0 2022-09-07)</div>
+        <div class="version">(v2.2 2022-12-19)</div>
       </div>
       <div id="navbar" class="menu">
         <a href="{{ url_for('autoinstaller_gui') }}">Home</a>

@@ -1,7 +1,14 @@
 History
 =====================
+2.2 (2022-12-19)
+---------------------
+* Make installer compatible with Secure Boot. Added additional status update when installer starts.
 
-2.0 (2022-10-12)
+2.1 (2022-11-28)
+---------------------
+* removed EAIDB file from repo and added check/create script before starting containers
+
+2.0 (2022-11-10)
 ---------------------
 * Added PXE boot installation method
 

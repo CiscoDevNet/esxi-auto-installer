@@ -1,4 +1,12 @@
 #!/bin/bash
+# start tftpd
+/etc/init.d/tftpd-hpa status
+if [ $? -ne 0 ]
+then
+    /etc/init.d/tftpd-hpa start
+fi
+
+# start dhcpd config "watchdog"
 while true
 do
     if [ -f /etc/dhcp/dhcpd.conf ]

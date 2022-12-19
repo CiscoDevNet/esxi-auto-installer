@@ -29,7 +29,7 @@ class EAIJobs(Resource):
         self.reqparse.add_argument('dns2', type = str, default='', location = 'json')
         # self.reqparse.add_argument('static_routes_set', type = bool, default=False, location = 'json')
         self.reqparse.add_argument('static_routes', type = list, default=[], location = 'json')
-        # TODO: add static_routes list validation (subnet_ip, cidr, gateway) ?
+        # static_routes data validation (subnet_ip, cidr, gateway) handled in post() method
         super(EAIJobs, self).__init__()
 
     def get(self):
@@ -75,13 +75,24 @@ class EAIJobs(Resource):
             if args['installmethod'] == 'pxeboot':
                 # Setup regex before the loop. This is a simplified mac address check because it will be run after the mac has been cleaned up.
                 p = re.compile("^([a-f0-9]){12}$")
+                # get current entries from EAIDB
+                eaidb_dict = eaidb_get_status()
+
                 # Set required keys. host_ip is omitted because we tested it earlier.
                 for host_data in args['hosts']:
+                    # do not create new entry with same hostname and 'Ready to deploy' state
+                    for jobid, job_data in eaidb_dict.items():
+                        if host_data['hostname'] == job_data['hostname'] and job_data['status'] == 'Ready to deploy':
+                            return {
+                                "status": "error",
+                                "message": f"Conflicting job entry. Run the following API call to cancel conflicting job.",
+                                "cancel_url": f"http://{EAIHOST_IP}/api/v1/jobs/{jobid}?state=25",
+                                "http_method": "PUT",
+                            }, 409
+
                     if not 'macaddr' in host_data:
-                    #if not host_data['hostname'] or not host_data['host_ip'] or not host_data['macaddr']:
-                        # in case some data is missing KeyError is thrown and corresponding error returned
                         mainlog.error(f'API POST /jobs error - missing host data. Request aborted.')
-                        return { "status": "error", "message": "Required hosts field not provided. macaddr" }, 400
+                        return { "status": "error", "message": "Required hosts field not provided: macaddr" }, 400
                     # Remove symbols from MAC address.
                     host_data["macaddr"] = (
                             host_data["macaddr"]
@@ -147,7 +158,7 @@ class EAIJobs(Resource):
                                 "message": "static_route field is not valid: gateway",
                             }, 400
 
-
+            # host data validation passed for all entries - let's skip arguments with None value and calculate host_subnet
             for k, v in args.items():
                 if v != None:
                     install_data[k] = v
@@ -185,7 +196,6 @@ class EAIJob(Resource):
                 status_code = int(query_parameters.get('state'))
                 mainlog.debug(f'{jobid} API endpoint called with args: {query_parameters.to_dict()}')
 
-                # TODO: move status code validation/translation to separate function?
                 if status_code not in status_dict:
                     # ignore invalid status codes
                     mainlog.error(f'State not valid: {status_code}')
@@ -216,7 +226,7 @@ class EAIJob(Resource):
                         # get job logger
                         # run cleanup
                         if status_code == 31:
-                            # do not tru to unmount the ISO if login to CIMC failed
+                            # do not try to unmount the ISO if login to CIMC failed
                             job_cleanup(jobid, logger, mainlog, unmount_iso=False)
                         else:
                             job_cleanup(jobid, logger, mainlog, unmount_iso=True)

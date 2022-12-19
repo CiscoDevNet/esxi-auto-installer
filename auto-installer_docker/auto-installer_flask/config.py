@@ -41,9 +41,25 @@ STATUS_CODES = {
     17: 'Running final reboot',
     18: 'Running cleanup tasks',
     20: 'Finished',
+    25: 'Cancelled',
     30: 'Error',
     31: 'Error: Failed to login to CIMC',
     32: 'Error: Failed to mount installation ISO',
     34: 'Error: ESXi Installed but SSH was not enabled',
     35: 'Error: No response after final reboot'
+}
+
+EAISTATUS_COLUMNS = {
+    'jobid': {'type': 'TEXT'}, 
+    'hostname': {'type': 'TEXT'}, 
+    'ipaddr': {'type': 'TEXT'}, 
+    'cimcip': {'type': 'TEXT'}, 
+    'start_time': {'type': 'DATETIME'}, 
+    'finish_time': {'type': 'DATETIME'}, 
+    'status': {'type': 'TEXT'}, 
+    'cimcusr': {'type': 'TEXT'}, 
+    'cimcpwd': {'type': 'TEXT'}, 
+    'macaddr': {'type': 'TEXT'}, 
+    'netmask': {'type': 'TEXT'}, 
+    'gateway': {'type': 'TEXT'}
 }
