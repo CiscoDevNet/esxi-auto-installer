@@ -59,6 +59,7 @@ EAISTATUS_COLUMNS = {
     'status': {'type': 'TEXT'}, 
     'cimcusr': {'type': 'TEXT'}, 
     'cimcpwd': {'type': 'TEXT'}, 
+    'root_pwd': {'type': 'TEXT'},
     'macaddr': {'type': 'TEXT'}, 
     'netmask': {'type': 'TEXT'}, 
     'gateway': {'type': 'TEXT'}

@@ -681,14 +681,6 @@ def process_submission(jobid_list, logger_list, mainlog, form_data):
             # start ESXi hypervisor installation
             Process(target=install_esxi, args=(jobid, logger, mainlog, form_data['hosts'][index]['cimc_ip'], form_data['cimc_usr'], form_data['cimc_pwd'], jobid + '.iso')).start()
 
-        else:
-            # generate custom installation ISO
-            mainlog.info(f'{jobid} Generating custom installation ISO for server {hostname}')
-            generate_custom_iso(jobid, logger, mainlog, hostname, form_data['iso_image'], kscfg)
-
-            # start ESXi hypervisor installation
-            Process(target=install_esxi, args=(jobid, logger, mainlog, form_data['hosts'][index]['cimc_ip'], form_data['cimc_usr'], form_data['cimc_pwd'], jobid + '.iso')).start()
-
 def create_jobs(form_data, installmethod, mainlog):
     """
     Create installation job for each server in form_data['hosts'] list.

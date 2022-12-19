@@ -171,7 +171,7 @@ def eaidb_get_status(eaidb=EAIDB):
     con = sl.connect(eaidb)
     eaidb_dict = {}
     with con:
-        for columns in con.execute("SELECT * FROM EAISTATUS"):
+        for columns in con.execute("SELECT jobid, hostname, ipaddr, cimcip, start_time, finish_time, status, macaddr, netmask, gateway FROM EAISTATUS"):
             eaidb_dict[columns[0]] = {}
             eaidb_dict[columns[0]]['hostname'] = columns[1]
             eaidb_dict[columns[0]]['ipaddr'] = columns[2]
@@ -179,10 +179,9 @@ def eaidb_get_status(eaidb=EAIDB):
             eaidb_dict[columns[0]]['start_time'] = columns[4]
             eaidb_dict[columns[0]]['finish_time'] = columns[5]
             eaidb_dict[columns[0]]['status'] = columns[6]
-            # skipping columns 7 and 8 (cimcusr and cimcpwd)
-            eaidb_dict[columns[0]]['macaddr'] = columns[9]
-            eaidb_dict[columns[0]]['netmask'] = columns[10]
-            eaidb_dict[columns[0]]['gateway'] = columns[11]
+            eaidb_dict[columns[0]]['macaddr'] = columns[7]
+            eaidb_dict[columns[0]]['netmask'] = columns[8]
+            eaidb_dict[columns[0]]['gateway'] = columns[9]
     return eaidb_dict
 
 
@@ -212,7 +211,7 @@ def eaidb_check_jobid_exists(jobid, eaidb=EAIDB):
     """
     con = sl.connect(eaidb)
     with con:
-        if con.execute(f"SELECT * FROM EAISTATUS WHERE jobid=?;", (jobid,)).fetchone() is not None:
+        if con.execute(f"SELECT jobid FROM EAISTATUS WHERE jobid=?;", (jobid,)).fetchone() is not None:
             return True
         else:
             return False
