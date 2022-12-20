@@ -265,5 +265,3 @@ def eaidb_set(jobid, fieldsdict, eaidb=EAIDB):
     with dbcon:
         sql = f'UPDATE EAISTATUS SET {"=?, ".join(fields)}=? WHERE jobid=?'
         dbcon.execute(sql, data + (jobid,))
-
-# eaidb_get('00-50-56-ad-f3-ee_1666105104.5060387', ('ipaddr', 'root_pwd', 'hostname'))
