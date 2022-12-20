@@ -27,6 +27,7 @@ KSTEMPLATE = os.path.join(TEMPLATESDIR, 'kickstart.jinja')
 PXETEMPLATE = os.path.join(TEMPLATESDIR, 'pxecfg.jinja')
 
 DHCPD_CONF_TPL = os.path.join(TEMPLATESDIR, 'dhcpd_conf_template.jinja')
+DHCP_SUBNET_TPL = os.path.join(TEMPLATESDIR, 'dhcp_subnet.jinja')
 DHCP_HOST_TPL = os.path.join(TEMPLATESDIR, 'dhcp_template.jinja')
 # path to DHCP server config file
 DHCPD_CONF = os.path.join(WORKDIR, 'etc_dhcp', 'dhcpd.conf')

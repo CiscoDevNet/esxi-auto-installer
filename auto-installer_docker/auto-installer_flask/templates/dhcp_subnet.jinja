@@ -1,0 +1,3 @@
+{% for subnet in subnets %}{% set network, mask = subnet.split('/') %}subnet {{network}} netmask {{mask}} {
+}
+{% endfor %}
