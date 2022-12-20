@@ -125,7 +125,7 @@ paths:
         explode: true
         schema:
           type: integer
-          maximum: 32
+          maximum: 35
       responses:
         '200':
           description: 'OK'
