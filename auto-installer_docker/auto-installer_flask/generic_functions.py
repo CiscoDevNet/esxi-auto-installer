@@ -109,47 +109,6 @@ def eaidb_create_job_entry(jobid, hostname, ipaddr, root_pwd, cimcip, cimcusr, c
         data = (jobid, hostname, ipaddr, root_pwd, cimcip, start_time, finish_time, status, cimcusr, cimcpwd, macaddr, netmask, gateway)
         con.execute(sql, data)
 
-
-def eaidb_update_job_status(jobid, status, logger, finished=False, eaidb=EAIDB):
-    """
-    Update 'status' and 'finish_time' columns in EAISTATUS table for 'jobid'.
-
-    :param jobid: (str) job ID
-    :param status:
-    :param logger:
-    :param finished:
-    :param eaidb:
-    :return:
-    """
-
-    # Setup DB Query
-    sql = 'UPDATE EAISTATUS SET'
-    if finished:
-        sql += ' status=?, finish_time=?, root_pwd=?, cimcpwd=?'
-        data = (status, time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime()), '', '', jobid)
-    else:
-        sql += ' status=?, finish_time=?'
-        data = (status, '', jobid)
-
-    sql += ' WHERE jobid=?'
-
-    global dbcon
-    # Verify DB is connected.
-    try:
-        dbcon.cursor()
-    except:
-        print('Creating new connection to DB.')
-        dbcon = sl.connect(eaidb)
-
-    # write changes to database
-    with dbcon:
-        dbcon.execute(sql, data)
-
-    logger.info(f"Job Status has been updated to: {status}")
-    if finished:
-        logger.info(f'Installation job (ID: {jobid}) finished.')
-
-
 def eaidb_get_status(eaidb=EAIDB):
     """
     Get all entries from EAISTATUS table, without cimcusr and cimcpwd

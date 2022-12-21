@@ -203,7 +203,7 @@ class EAIJob(Resource):
                 else:
                     status = status_dict[status_code]
                     logger = get_jobid_logger(jobid)
-                    logger.info(f'API received status code {status_code}: {status}\n')
+                    logger.info(f'API received status code {status_code}: {status}')
 
                     
                     # if status_code == 0:
@@ -233,8 +233,8 @@ class EAIJob(Resource):
 
                     if status_code != 17:
                         # update status in EAIDB
-                        # Do not want to set status for code 16 because it will set it's own status multiple times. Do not want a race condition.
-                        eaidb_update_job_status(jobid, status, logger, Finished)
+                        # Do not want to set status for code 17 because it will set it's own status. Do not want a race condition by setting it multiple times.
+                        update_job_status(jobid, status, logger, Finished)
 
                 eaidb_dict = eaidb_get(jobid, ('hostname', 'ipaddr', 'cimcip', 'start_time', 'finish_time', 'status', 'macaddr', 'netmask', 'gateway'))
                 return eaidb_dict

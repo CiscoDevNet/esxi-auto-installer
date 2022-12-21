@@ -399,14 +399,14 @@ def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, ea
     if not dryrun:
         # login to CIMC
         try:
-            eaidb_update_job_status(jobid, 'Connecting to CIMC', logger)
+            update_job_status(jobid, 'Connecting to CIMC', logger)
             cimchandle = cimc_login(logger, cimcip, cimcusr, cimcpwd)
         except Exception as e:
             mainlog.error(f'{jobid} Error when trying to login to CIMC: {str(e)}')
             logger.error(f'Error when trying to login to CIMC: {format_message_for_web(e)}\n')
             # if cimc_login failed - run cleanup tasks (with unmount_iso=False), update EAIDB with error message and abort
             job_cleanup(jobid, logger, mainlog, unmount_iso=False)
-            eaidb_update_job_status(jobid, 'Error: Failed to login to CIMC', logger, True)
+            update_job_status(jobid, 'Error: Failed to login to CIMC', logger, True)
             return 1
 
         # set VMEDIA on Boot Order
@@ -414,7 +414,7 @@ def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, ea
             if cimc_vmedia_set(cimchandle, logger) == 33:
                 job_cleanup(jobid, logger, mainlog, unmount_iso=False)
                 cimc_logout(logger, cimchandle, cimcip)
-                eaidb_update_job_status(jobid, 'Error: UEFI Secure Boot Mode enabled', logger, True)
+                update_job_status(jobid, 'Error: UEFI Secure Boot Mode enabled', logger, True)
                 return 33
         except Exception as e:
             mainlog.error(f'{jobid} : {str(e)}')
@@ -424,7 +424,7 @@ def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, ea
         # mount custom ISO and reboot the server to start the installation
         try:
             # update status in EAIDB to 'Mounting installation ISO'
-            eaidb_update_job_status(jobid, 'Mounting installation ISO', logger)
+            update_job_status(jobid, 'Mounting installation ISO', logger)
 
             logger.info('')
             logger.info(f'Mount custom installation ISO on CIMC')
@@ -447,7 +447,7 @@ def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, ea
             logger.info(f'Open KVM console to follow the installation process or wait for the job status update to [Finished].\n')
 
             # update status in EAIDB to 'Server is booting'
-            eaidb_update_job_status(jobid, status_dict[15], logger)
+            update_job_status(jobid, status_dict[15], logger)
 
         except Exception as e:
             mainlog.error(f'{jobid} : {str(e)}')
@@ -456,7 +456,7 @@ def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, ea
             # if mounting ISO failed - run cleanup tasks, update EAIDB with error message and abort
             job_cleanup(jobid, logger, mainlog)
             cimc_logout(logger, cimchandle, cimcip)
-            eaidb_update_job_status(jobid, 'Error: Failed to mount installation ISO', logger, True)
+            update_job_status(jobid, 'Error: Failed to mount installation ISO', logger, True)
             return 2
 
         # logout from CIMC
@@ -507,7 +507,7 @@ def job_cleanup(jobid, logger, mainlog, unmount_iso=True, cleanroot=True, dryrun
         try:
             eaidb_dict = eaidb_get_status()
             
-            eaidb_update_job_status(jobid, 'Running cleanup tasks', logger)
+            update_job_status(jobid, 'Running cleanup tasks', logger)
 
             mainlog.info(f'{jobid} Starting cleanup')
             logger.info('')
@@ -668,7 +668,7 @@ def process_submission(jobid_list, logger_list, mainlog, form_data):
 
             mainlog.info(f'{jobid} Generating DHCP configuration for server {hostname}')
             generate_dhcp_config(jobid, logger, mainlog)
-            eaidb_update_job_status(jobid, 'Ready to deploy', logger)
+            update_job_status(jobid, 'Ready to deploy', logger)
 
             mainlog.info(f'{jobid} Ready to start PXE Boot installation for server {hostname}')
             logger.info(f'Ready to start PXE Boot installation - power on or restart the server to initialize installation process.\n')
@@ -754,6 +754,27 @@ def get_logs(jobid, basedir=LOGDIR):
         with open(abs_path, 'r') as log_file:
             return log_file.read(), 200, {'Content-Type': 'text/plain; charset=utf-8'}
 
+def update_job_status(jobid, status, logger, finished=False):
+    """
+    Update 'status' and 'finish_time' columns in EAISTATUS table for 'jobid'.
+
+    :param jobid: (str) job ID
+    :param status:
+    :param logger:
+    :param finished:
+    :return:
+    """
+
+    if finished:
+        data = {'status': status, 'finish_time': time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime()), 'root_pwd':'', 'cimcpwd':''}
+    else:
+        data = {'status': status, 'finish_time': ''}
+
+    eaidb_set(jobid, data)
+
+    logger.info(f"Job Status has been updated to: {status}")
+    if finished:
+        logger.info(f'Installation job (ID: {jobid}) finished.')
 
 def cimc_get_mo_property(cimchandle, mo_dn, mo_property):
     """
@@ -1006,7 +1027,7 @@ def final_reboot(jobid, ssh, logger, mainlog, sleeptimer=60, timeoutminutes=45, 
     job_cleanup(jobid, logger, mainlog, cleanroot=False)
 
     ### Wait for host to boot
-    eaidb_update_job_status(jobid, status_dict[17], logger)
+    update_job_status(jobid, status_dict[17], logger)
     # Collect required data
     eaidb_dict = eaidb_get(jobid, ('ipaddr','root_pwd'))
     url = "https://" + eaidb_dict['ipaddr'] + "/sdk"
@@ -1025,7 +1046,7 @@ def final_reboot(jobid, ssh, logger, mainlog, sleeptimer=60, timeoutminutes=45, 
             if datetime.datetime.now() > timeout:
                 logger.error("ESXi API Connection timeout. Unable to start SSH service.")
                 mainlog.error("ESXi API Connection timeout. Unable to start SSH service.")
-                eaidb_update_job_status(jobid, status_dict[35], logger, True)
+                update_job_status(jobid, status_dict[35], logger, True)
                 return
             mainlog.debug(f"Sleeping for {sleeptimer} seconds.")
             time.sleep(sleeptimer)
@@ -1046,9 +1067,9 @@ def final_reboot(jobid, ssh, logger, mainlog, sleeptimer=60, timeoutminutes=45, 
             # Close session
             session.close()
     except:
-        eaidb_update_job_status(jobid, status_dict[34], logger, True)
+        update_job_status(jobid, status_dict[34], logger, True)
     else:
-        eaidb_update_job_status(jobid, status_dict[20], logger, True)
+        update_job_status(jobid, status_dict[20], logger, True)
 
 def enable_ssh(ipaddr, esxipass, mainlog, logger, session=None, esxiuser='root'):
     # https://developer.vmware.com/apis/1355/vsphere
@@ -1060,7 +1081,7 @@ def enable_ssh(ipaddr, esxipass, mainlog, logger, session=None, esxiuser='root')
     # Request SOAP API
     response = None
 
-    logger.info("Request API Namespace.")
+    logger.info("Requesting VMware API Namespace")
     try:
         response = session.get(f"{url}/vimServiceVersions.xml", verify=False)
         # mainlog.debug(response.text)
