@@ -34,7 +34,6 @@ def get_host_network_settings():
             break
         return nic_ip, gw_ip, gw_subnet, netmask
 
-
 def generate_dhcp_config(jobid, logger, mainlog, eai_ip=EAIHOST_IP, eai_gw=EAIHOST_GW, eai_subnet=EAIHOST_SUBNET, eai_mask=EAIHOST_NETMASK, dhcpd_tpl=DHCPD_CONF_TPL, dhcpd_conf_path=DHCPD_CONF):
     """
     Generate dhcpd.conf configuration file main configuration file and custom host entries
@@ -57,14 +56,40 @@ def generate_dhcp_config(jobid, logger, mainlog, eai_ip=EAIHOST_IP, eai_gw=EAIHO
     with open(dhcpd_tpl, 'r') as f:
         dhcpd_conf_template = Template(f.read())
 
-    with open(dhcpd_conf_path, 'w+') as dhcpd_conf:
-        dhcpd_conf.write(dhcpd_conf_template.render(nextserver=eai_ip, subnet=eai_subnet, netmask=eai_mask, ipaddr=eai_ip, gateway=eai_gw))
+    dhcpd_content = dhcpd_conf_template.render(nextserver=eai_ip, subnet=eai_subnet, netmask=eai_mask, ipaddr=eai_ip, gateway=eai_gw)
 
-        # dhcpd.conf host entries
-        host_entries = generate_dhcp_host_entries(mainlog)
-        if len(host_entries):
-            for entry in host_entries:
-                dhcpd_conf.write(entry)
+    # Render subnets
+    dhcpd_content += generate_dhcp_subnet_entries(mainlog, ip_network(f'{eai_subnet}/{eai_mask}').with_netmask)
+
+    # Render host entries
+    host_entries = generate_dhcp_host_entries(mainlog)
+    if len(host_entries):
+        for entry in host_entries:
+            dhcpd_content += entry
+
+    with open(dhcpd_conf_path, 'w+') as dhcpd_conf:
+        dhcpd_conf.write(dhcpd_content)
+
+def generate_dhcp_subnet_entries(mainlog, filtersubnet, eaidb=EAIDB, dhcp_subnet_tpl=DHCP_SUBNET_TPL):
+    # read EAIDB
+    eaidb_dict = eaidb_get_status(eaidb)
+    subnets = []
+    for job_entry in eaidb_dict.items():
+        # Since the eaidb_get_status command returns all records, not just the records want, it has to be filtered.
+        # If this is a DHCP installation
+        if job_entry[1]['macaddr']:
+            # Calculate the IP subnet address
+            subnet = ip_network(f"{job_entry[1]['ipaddr']}/{job_entry[1]['netmask']}", strict=False).with_netmask
+            # Check if it's unique
+            if subnet not in subnets and subnet != filtersubnet:
+                # Add to the list of subnets to generate
+                subnets.append(subnet)
+    # If we found any subnets, generate the subnets.
+    if len(subnets) > 0:
+        with open(dhcp_subnet_tpl, 'r') as f:
+            dhcpd_conf_subnets = Template(f.read())
+        mainlog.debug(f'Generated {len(subnets)} subnet entries for dhcpd.conf')
+        return dhcpd_conf_subnets.render(subnets=subnets)
 
 
 def generate_dhcp_host_entries(mainlog, eaidb=EAIDB, dhcp_host_tpl=DHCP_HOST_TPL, status_dict=STATUS_CODES):
