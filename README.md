@@ -171,15 +171,8 @@ It is normal to see warnings on the ESXi Console screen during the installation 
 As long as they are **warnings** and not **errors**, the installation will continue.\
 There may also be prompts that say "Press ENTER to continue", but it is recommended that you do not press any keys. Again, as long there are no actual errors, the installation will continue and the warning/prompt will go away momentarily.
 
-### Error related to SecureBoot
-When you install using either CIMC or DHCP, you get an error related to SecureBoot.\
-SecureBoot is a BIOS feature.\
-Currently ESXi Auto-Installer is incompatible with SecureBoot.\
-Workaround: Disable SecureBoot in BIOS before using ESXi Auto-Installer. After ESXi has been installed, you can reenable secure boot.\
-**NOTE**: This issue will be fixed in an upcoming release.
-
 ### There is a problem with the kickstart file, how do I troubleshoot it?
-If you get the error similar to:
+If you get the error similar to:\
 ![Kickstart Error](doc_images/kickstarterror.png)
 ```
 An error has occurred while parsing the installation script
@@ -208,12 +201,6 @@ The MAC address you add to Auto-Installer should be the MAC address of the NIC t
 ### PXE Install: After submitting a job to ESXi Auto-Installer, nothing happens to my server.
 Unlike the OOB install methods like CIMC, when using the PXE Installation method you must reboot the host yourself. In PXE Installs, Auto-Installer passively waits for the DHCP request from the host when the host attempts to PXE boot.
 
-### PXE Install: My ESXi host is in a install-reboot loop.
-If PXE is the first boot option in the BIOS, you server will continually pickup the PXE reinstall command from the Auto-Installer.
-Workaround: In BIOS, set the PXE boot option below your primary boot drive. If you don't have an OS, the boot drive will be skipped the first time. This allows Auto-Installer to run over PXE and then the system will boot to it's primary drive.
-If there is a pre-existing OS, use a one-time boot option, or manually catch the BIOS boot prompt menu and select PXE.\
-**NOTE**: This issue will be fixed in an upcoming release.
-
 ### PXE Install: My ESXi host is on a different subnet, can I still use the PXE install method?
 On it's own, a DHCP broadcast only works on the local layer-2 subnet. However, routers/gateways have a feature called `IP Helper` or `DHCP Relay`. This feature can forward the DHCP request from a host in one subnet to a DHCP server in another subnet. If you configure this feature on the subnet where your host is located with the IP address of your ESXi Auto-Installer, Auto-Installer will be able to install into any host on that subnet.
 
@@ -232,6 +219,8 @@ For Virtual Nested ESXi hosts, as long as you are not trunking down to the VM, y
 ### Using the Static Routes feature causes my installation to fail.
 Currently, the static routes feature is not meant for routes related to the management IP address after the ESXi host is installed. It's designed to help with certain storage connectivity issues that can come up during the ESXi installation process.
 For now, "standard" IP Static Routing will need to apply those outside of the ESXi Auto-Installer after your installation is complete.
+
+NOTE: The Static Route feature is incompatible with Secure Boot. If you plan to use the Static Route feature, ensure Secure Boot is disabled on the server before you start.
 
 Here is a more in-depth explanation:\
 The static routes are applied during the %pre phase of the kickstart process. This is before the Mgmt IP address is assigned. Thus, you cannot use a static route that references a gateway accessible only by the Mgmt IP address.

@@ -1,5 +1,7 @@
 .idea/*
-esxi-iso/
 auto-installer_docker/auto-installer_flask/__pycache__
+custom-iso/
+esxi-iso/
 logs/jobs/
 venv
+www/__pycache__/

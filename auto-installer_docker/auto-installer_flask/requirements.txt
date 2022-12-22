@@ -6,3 +6,4 @@ imcsdk
 ipaddress
 netifaces
 jinja2
+requests

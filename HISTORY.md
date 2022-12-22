@@ -1,5 +1,8 @@
 History
 =====================
+2.2 (2022-12-19)
+---------------------
+* Make installer compatible with Secure Boot. Added additional status update when installer starts.
 
 2.1 (2022-11-28)
 ---------------------

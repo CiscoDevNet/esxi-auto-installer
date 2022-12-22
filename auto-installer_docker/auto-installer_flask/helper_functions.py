@@ -67,7 +67,7 @@ def generate_dhcp_config(jobid, logger, mainlog, eai_ip=EAIHOST_IP, eai_gw=EAIHO
                 dhcpd_conf.write(entry)
 
 
-def generate_dhcp_host_entries(mainlog, eaidb=EAIDB, dhcp_host_tpl=DHCP_HOST_TPL):
+def generate_dhcp_host_entries(mainlog, eaidb=EAIDB, dhcp_host_tpl=DHCP_HOST_TPL, status_dict=STATUS_CODES):
     """
     Generate host entries part of dhcpd.conf based on entries in EAIDB in state 'Ready to deploy'.
     This function get's called by generate_dhcp_config() which first generates mains dhcpd.conf configuration section.
@@ -91,11 +91,11 @@ def generate_dhcp_host_entries(mainlog, eaidb=EAIDB, dhcp_host_tpl=DHCP_HOST_TPL
 
     # read EAIDB
     eaidb_dict = eaidb_get_status(eaidb)
-
     hosts = []
     for job_entry in eaidb_dict.items():
         # ignore jobs that finished/errored
-        if job_entry[1]['macaddr'] and job_entry[1]['status'] == 'Ready to deploy':
+        # Techincally do not need code 15 since as of Dec 2022 it is only used by CIMC.
+        if job_entry[1]['macaddr'] and (job_entry[1]['status'] == status_dict[0] or job_entry[1]['status'] == status_dict[15] or job_entry[1]['status'] == status_dict[16]):
             if any(f"host {job_entry[1]['hostname']}" in s for s in hosts):
                 # hostname has to be unique in dhcpd.conf - skip entries with same hostname
                 print(f"[SKIPPING] {job_entry[0]} Skipping host entry - hostname {job_entry[1]['hostname']} already in use")

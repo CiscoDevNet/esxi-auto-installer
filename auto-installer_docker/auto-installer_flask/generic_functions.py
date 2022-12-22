@@ -6,7 +6,6 @@ import time
 import logging
 import sqlite3 as sl
 
-
 def generate_jobid(cimcip='no_ip_address_provided'):
     """
     Return jobid in format cimcip_timestamp, eg. 192.168.1.111_1617701465.718063
@@ -86,12 +85,11 @@ def get_main_logger(log_file=EAILOG):
     return main_logger
 
 
-def eaidb_create_job_entry(jobid, timestamp, hostname, ipaddr, cimcip, cimcusr, cimcpwd, macaddr, netmask, gateway, eaidb=EAIDB):
+def eaidb_create_job_entry(jobid, hostname, ipaddr, root_pwd, cimcip, cimcusr, cimcpwd, macaddr, netmask, gateway, eaidb=EAIDB):
     """
     Create new entry in EAIDB database EAISTATUS table.
 
     :param jobid: (str) jobid
-    :param timestamp: (str) current time
     :param hostname: (str) ESXi server hostname
     :param eaidb: (str) sqlite3 DB filename
     :return: n/a
@@ -100,34 +98,15 @@ def eaidb_create_job_entry(jobid, timestamp, hostname, ipaddr, cimcip, cimcusr, 
     con = sl.connect(eaidb)
 
     # set values
-    start_time = timestamp
+    start_time = time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime())
     finish_time = ''
     status = 'Ready to deploy'
 
     # create new DB record
     with con:
-        sql = 'INSERT INTO EAISTATUS (jobid, hostname, ipaddr, cimcip, start_time, finish_time, status, cimcusr, cimcpwd, macaddr, netmask, gateway) ' \
-              'values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        data = (jobid, hostname, ipaddr, cimcip, start_time, finish_time, status, cimcusr, cimcpwd, macaddr, netmask, gateway)
-        con.execute(sql, data)
-
-
-def eaidb_update_job_status(jobid, status, finish_time, eaidb=EAIDB):
-    """
-    Update 'status' and 'finish_time' columns in EAISTATUS table for 'jobid'.
-
-    :param jobid: (str) job ID
-    :param status:
-    :param finish_time:
-    :param eaidb:
-    :return:
-    """
-    con = sl.connect(eaidb)
-
-    # write changes to database
-    sql = 'UPDATE EAISTATUS SET finish_time=?, status = ? WHERE jobid=?'
-    data = (finish_time, status, jobid)
-    with con:
+        sql = 'INSERT INTO EAISTATUS (jobid, hostname, ipaddr, root_pwd, cimcip, start_time, finish_time, status, cimcusr, cimcpwd, macaddr, netmask, gateway) ' \
+              'values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        data = (jobid, hostname, ipaddr, root_pwd, cimcip, start_time, finish_time, status, cimcusr, cimcpwd, macaddr, netmask, gateway)
         con.execute(sql, data)
 
 def eaidb_get_status(eaidb=EAIDB):
@@ -151,18 +130,17 @@ def eaidb_get_status(eaidb=EAIDB):
     con = sl.connect(eaidb)
     eaidb_dict = {}
     with con:
-        for row in con.execute("SELECT * FROM EAISTATUS"):
-            eaidb_dict[row[0]] = {}
-            eaidb_dict[row[0]]['hostname'] = row[1]
-            eaidb_dict[row[0]]['ipaddr'] = row[2]
-            eaidb_dict[row[0]]['cimcip'] = row[3]
-            eaidb_dict[row[0]]['start_time'] = row[4]
-            eaidb_dict[row[0]]['finish_time'] = row[5]
-            eaidb_dict[row[0]]['status'] = row[6]
-            # skipping columns 7 and 8 (cimcusr and cimcpwd)
-            eaidb_dict[row[0]]['macaddr'] = row[9]
-            eaidb_dict[row[0]]['netmask'] = row[10]
-            eaidb_dict[row[0]]['gateway'] = row[11]
+        for columns in con.execute("SELECT jobid, hostname, ipaddr, cimcip, start_time, finish_time, status, macaddr, netmask, gateway FROM EAISTATUS"):
+            eaidb_dict[columns[0]] = {}
+            eaidb_dict[columns[0]]['hostname'] = columns[1]
+            eaidb_dict[columns[0]]['ipaddr'] = columns[2]
+            eaidb_dict[columns[0]]['cimcip'] = columns[3]
+            eaidb_dict[columns[0]]['start_time'] = columns[4]
+            eaidb_dict[columns[0]]['finish_time'] = columns[5]
+            eaidb_dict[columns[0]]['status'] = columns[6]
+            eaidb_dict[columns[0]]['macaddr'] = columns[7]
+            eaidb_dict[columns[0]]['netmask'] = columns[8]
+            eaidb_dict[columns[0]]['gateway'] = columns[9]
     return eaidb_dict
 
 
@@ -176,7 +154,7 @@ def eaidb_get_cimc_credentials(jobid, eaidb=EAIDB):
     """
     con = sl.connect(eaidb)
     with con:
-        for cimc_data in con.execute(f"SELECT cimcip, cimcusr, cimcpwd FROM EAISTATUS WHERE jobid is '{jobid}';"):
+        for cimc_data in con.execute(f"SELECT cimcip, cimcusr, cimcpwd FROM EAISTATUS WHERE jobid is ?;", (jobid,)):
             cimcip = cimc_data[0]
             cimcusr = cimc_data[1]
             cimcpwd = cimc_data[2]
@@ -193,23 +171,53 @@ def eaidb_check_jobid_exists(jobid, eaidb=EAIDB):
     """
     con = sl.connect(eaidb)
     with con:
-        if con.execute(f"SELECT * FROM EAISTATUS WHERE jobid='{jobid}';").fetchone() is not None:
+        if con.execute(f"SELECT jobid FROM EAISTATUS WHERE jobid=?;", (jobid,)).fetchone() is not None:
             return True
         else:
             return False
+def eaidb_connect(eaidb=EAIDB):
+    # Verify DB is connected.
+    global dbcon
+    try:
+        dbcon.cursor()
+    except:
+        print('Creating new connection to DB.')
+        dbcon = sl.connect(eaidb)
+    return dbcon
 
+def eaidb_get(jobid, fields):
+    global allowed_fields
+    dbcon = eaidb_connect()
 
-def eaidb_remove_cimc_password(jobid, eaidb=EAIDB):
+    if 'allowed_fields' not in globals():
+        allowed_fields = [columns[1] for columns in dbcon.execute("PRAGMA table_info(EAISTATUS)")]
+    # check fields
+    if type(fields) is not tuple:
+        raise Exception("Fields must be an array of type tuple.")
+    for field in fields:
+        if field not in allowed_fields:
+            raise Exception("field supplied was not a valid table column.")
+    eaidb_dict = {}
+    for columns in dbcon.execute(f"SELECT {', '.join(fields)} FROM EAISTATUS WHERE jobid=?", (jobid,)):
+        for field in fields:
+            eaidb_dict[field] = columns[fields.index(field)]
+    # Decrypt encrypted fields here.
+    return eaidb_dict
+
+def eaidb_set(jobid, fieldsdict):
     """
-    Remove (i.e. replace with empty string) CIMC password from EAIDB for specific job ID.
+    Remove (i.e. replace with empty string) ESXi password from EAIDB for specific job ID.
 
     :param jobid: (str) job ID
     :param eaidb: sqlite3 database filename
     :return: n/a
     """
-    con = sl.connect(eaidb)
-    with con:
-        # update cimcpwd to empty string for given job ID
-        sql = 'UPDATE EAISTATUS SET cimcpwd=? WHERE jobid=?'
-        data = ('', jobid)
-        con.execute(sql, data)
+    if type(fieldsdict) is not dict:
+        raise Exception("fieldsdict must be a dictionary object.")
+    dbcon = eaidb_connect()
+
+    fields = [item for item in fieldsdict.keys()]
+    data = tuple([item for item in fieldsdict.values()])
+    with dbcon:
+        sql = f'UPDATE EAISTATUS SET {"=?, ".join(fields)}=? WHERE jobid=?'
+        dbcon.execute(sql, data + (jobid,))

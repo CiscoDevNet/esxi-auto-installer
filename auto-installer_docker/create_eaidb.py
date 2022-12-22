@@ -45,6 +45,7 @@ def eaidb_create_db(eaidb=EAIDB, required_columns=EAISTATUS_COLUMNS):
                             status TEXT,
                             cimcusr TEXT,
                             cimcpwd TEXT,
+                            root_pwd TEXT,
                             macaddr TEXT,
                             netmask TEXT,
                             gateway TEXT
