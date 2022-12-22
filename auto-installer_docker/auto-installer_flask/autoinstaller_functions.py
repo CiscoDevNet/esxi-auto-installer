@@ -1039,6 +1039,7 @@ def final_reboot(jobid, ssh, logger, mainlog, sleeptimer=60, timeoutminutes=45, 
     logger.info("Waiting for ESXi to become responsive.")
     while getattr(response, "status_code", 0) != 200:
         try:
+            time.sleep(sleeptimer)
             mainlog.debug("Attempting to connect to ESXi API at " + eaidb_dict['ipaddr'])
             response = session.get(f"{url}/vimServiceVersions.xml", verify=False)
             # mainlog.debug(response.text)
@@ -1048,8 +1049,6 @@ def final_reboot(jobid, ssh, logger, mainlog, sleeptimer=60, timeoutminutes=45, 
                 mainlog.error("ESXi API Connection timeout. Unable to start SSH service.")
                 update_job_status(jobid, status_dict[35], logger, True)
                 return
-            mainlog.debug(f"Sleeping for {sleeptimer} seconds.")
-            time.sleep(sleeptimer)
             continue
 
 
