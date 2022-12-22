@@ -1056,11 +1056,9 @@ def final_reboot(jobid, ssh, logger, mainlog, sleeptimer=60, timeoutminutes=45, 
     ## After system has booted up, enable SSH if set.
     try:
         if ssh:
-            # TODO:
-            #### Ideally whether or not to enable ssh should be saved to the database.
+            # TODO: Ideally whether or not to enable ssh should be saved to the database.
             
-            # TODO:
-            #### Need to see if we can prevent multiple instances of enable_ssh running for the same ESXi host. ###
+            # TODO: Need to see if we can prevent multiple instances of enable_ssh running for the same ESXi host. ###
 
             enable_ssh(eaidb_dict['ipaddr'], eaidb_dict['root_pwd'], mainlog, logger, session=session)
         else:

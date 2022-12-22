@@ -160,6 +160,7 @@ def eaidb_get_cimc_credentials(jobid, eaidb=EAIDB):
             cimcpwd = cimc_data[2]
     return cimcip, cimcusr, cimcpwd
 
+
 def eaidb_check_jobid_exists(jobid, eaidb=EAIDB):
     """
     Check if job ID exists in EAIDB.
@@ -174,16 +175,19 @@ def eaidb_check_jobid_exists(jobid, eaidb=EAIDB):
             return True
         else:
             return False
-
-def eaidb_get(jobid, fields):
-    global dbcon
-    global allowed_fields
+def eaidb_connect(eaidb=EAIDB):
     # Verify DB is connected.
+    global dbcon
     try:
         dbcon.cursor()
     except:
         print('Creating new connection to DB.')
-        dbcon = sl.connect(EAIDB)
+        dbcon = sl.connect(eaidb)
+    return dbcon
+
+def eaidb_get(jobid, fields):
+    global allowed_fields
+    dbcon = eaidb_connect()
 
     if 'allowed_fields' not in globals():
         allowed_fields = [columns[1] for columns in dbcon.execute("PRAGMA table_info(EAISTATUS)")]
@@ -195,14 +199,12 @@ def eaidb_get(jobid, fields):
             raise Exception("field supplied was not a valid table column.")
     eaidb_dict = {}
     for columns in dbcon.execute(f"SELECT {', '.join(fields)} FROM EAISTATUS WHERE jobid=?", (jobid,)):
-        i = 0
         for field in fields:
-            eaidb_dict[field] = columns[i]
-            i+=1
+            eaidb_dict[field] = columns[fields.index(field)]
     # Decrypt encrypted fields here.
     return eaidb_dict
 
-def eaidb_set(jobid, fieldsdict, eaidb=EAIDB):
+def eaidb_set(jobid, fieldsdict):
     """
     Remove (i.e. replace with empty string) ESXi password from EAIDB for specific job ID.
 
@@ -212,12 +214,7 @@ def eaidb_set(jobid, fieldsdict, eaidb=EAIDB):
     """
     if type(fieldsdict) is not dict:
         raise Exception("fieldsdict must be a dictionary object.")
-    global dbcon
-    try:
-        dbcon.cursor()
-    except:
-        print('Creating new connection to DB.')
-        dbcon = sl.connect(eaidb)
+    dbcon = eaidb_connect()
 
     fields = [item for item in fieldsdict.keys()]
     data = tuple([item for item in fieldsdict.values()])

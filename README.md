@@ -172,7 +172,7 @@ As long as they are **warnings** and not **errors**, the installation will conti
 There may also be prompts that say "Press ENTER to continue", but it is recommended that you do not press any keys. Again, as long there are no actual errors, the installation will continue and the warning/prompt will go away momentarily.
 
 ### There is a problem with the kickstart file, how do I troubleshoot it?
-If you get the error similar to:
+If you get the error similar to:\
 ![Kickstart Error](doc_images/kickstarterror.png)
 ```
 An error has occurred while parsing the installation script
