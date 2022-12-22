@@ -85,11 +85,12 @@ def generate_dhcp_subnet_entries(mainlog, filtersubnet, eaidb=EAIDB, dhcp_subnet
                 # Add to the list of subnets to generate
                 subnets.append(subnet)
     # If we found any subnets, generate the subnets.
-    if len(subnets) > 0:
+    if subnets:
         with open(dhcp_subnet_tpl, 'r') as f:
             dhcpd_conf_subnets = Template(f.read())
         mainlog.debug(f'Generated {len(subnets)} subnet entries for dhcpd.conf')
         return dhcpd_conf_subnets.render(subnets=subnets)
+    return ''
 
 
 def generate_dhcp_host_entries(mainlog, eaidb=EAIDB, dhcp_host_tpl=DHCP_HOST_TPL, status_dict=STATUS_CODES):
