@@ -1,22 +1,24 @@
 # ESXi Auto-Installer
 
-ESXi Auto-Installer automates bare-metal ESXi hypervisor deployment, providing 100% hands-off installation on Cisco UCS physical servers. Installation on other server platforms, including Virtual Machines, is possible with standard PXE boot method, however it may require some additional network configuration, depending on your network setup.
+ESXi Auto-Installer makes it easy to mass install ESXi hosts while assigning each host a unique IP address and enables SSH through a simple web-based GUI or via automation APIs.\
+ESXi Auto-Installer can be used for both physical servers and virtual machines by leveraging PXE boot to install ESXi.\
+For Cisco UCS Severs (except B series) you can install ESXi using the Cisco IMC instead of PXE. This is simpler and generally more reliable than PXE boot installs. 
 
 ESXi Auto-Installer will:
 - Install the ESXi Operating System on a physical or virtual server.
-- Configure the ESXi Management interface with an IP address.
-- Enable SSH
+- Configure the ESXi Management interface with a unique IP address.
+- Enable SSH (optional).
 
-After Auto-Installer is complete, you can use your traditional automation methods to configure the ESXi Host.
+ESXi Auto-Installer API's enables you to completely automate host installations. The API's also allow you to query the installation progress so you can automatically launch your ESXi configuration scripts once the server installation is complete.
 
 ## Features
-- Start deployment on multiple servers in parallel
-- Supports custom ESXi installation ISO
-- Implements most kickstart parameters described in [VMWare's documentation](https://docs.vmware.com/en/VMware-vSphere/7.0/com.vmware.esxi.upgrade.doc/GUID-61A14EBB-5CF3-43EE-87EF-DB8EC6D83698.html)
-- Supports iSCSI boot installs
-- [API for additional automation](https://ciscodevnet.github.io/esxi-auto-installer/)
-- Fully automated installs on Cisco UCS Servers (Excluding B series)
-- Platform agnostic installations (including virtual machines) using PXE boot
+- Start deployment on multiple servers in parallel.
+- Supports custom ESXi installation ISOs.
+- Supports iSCSI boot installs.
+- [Web APIs for additional automation](https://ciscodevnet.github.io/esxi-auto-installer/).
+- Reports the installation progress for each server.
+- Fully automated installs on Cisco UCS Servers (excluding B series) via Cisco IMC.
+- Install ESXi into any platform, including virtual machines, using PXE boot.
 
 # Setup guide
 
@@ -65,12 +67,12 @@ Point a web browser at the system where ESXi Auto-Installer running.
 
 ## First task: Upload ISO
 
-ESXi Auto-Installer does not come bundled with an ESXi Installation ISO file. Before you can use ESXi Auto-Installer you must upload an ESXi Installation ISO file.\
-From the main page click on "Upload ISO" in the top menu bar.\
-Click Browse to locate an ISO on your local machine.\
+ESXi Auto-Installer does not come bundled with an ESXi Installation ISO file.\
+The first time you visit the ESXi Auto-Installer web page, you will be asked to upload an ESXi Installation ISO.
+Click the Browse button on this page to locate an ISO on your local machine.\
 After selecting a valid ESXi Installation ISO file, click Submit.
 
-Now that an ISO is uploaded, you can go back to the "Home Page".
+Once the ISO is uploaded, you will be directed to the Home page.
 
 ## Home page
 
@@ -150,12 +152,14 @@ CIMC: If you have a Cisco UCS Server (except UCS B series), generally the CIMC i
 - Do not need access to the ESXi Mgmt Interface, so it works even on VLAN Trunking ports.
 - Reliable, even if your ESXi host is in a different subnet.
 - Automatically reboots the host.
+- Can onl ybe used on Cisco Servers (Execpt UCS B series)
 
 PXE: For all other systems, including Virtual Machines and Cisco UCS B series servers, you can use the PXE boot method.
 - Sometimes requires network changes before DHCP works. This is where most problems with PXE install method come from.
 - Need to know the MAC address of your Mgmt NIC.
 - After submitting the request to ESXi Auto-Installer, you need to reboot the target host.
 - Fast installs, especially over 40GB NICs.
+- Can be used on any server, including virtual machines.
 
 ## Common issues / FAQ
 
@@ -191,12 +195,21 @@ During the installation, when you see the kickstart error, use the following ste
  6. `vi weasel.log`
  7. Review the file for clues about what went wrong.
 
-Here is an example of a bad route in the %pre section.
+Here is an example of a bad route in the %pre section:
 ![Kickstart Log](doc_images/kickstartlog.png)
+
+### Can I copy the ISO filename out (for automation)?
+At the moment, the easiest way to get the exact ISO filenames is to:\
+- Go to the API page on the top navigation bar.
+- Under the **iso** header, click on the "GET **/isos**" section to open it.
+- Click on the "Try it out" button.
+- Click on the blue "Execute" button.
+
+This will print a list of the current ISO files that you can copy or download.
 
 ### PXE Install: Which MAC address do I enter?
 Your servers often have multiple NICs, each with one or more MAC addresses.\
-The MAC address you add to Auto-Installer should be the MAC address of the NIC that will become your ESXi Mgmt Interface. This card to be configured to PXE Boot.
+The MAC address you add to Auto-Installer should be the MAC address of the NIC that will become your ESXi Mgmt Interface. This card needs to be configured to PXE Boot.
 
 ### PXE Install: After submitting a job to ESXi Auto-Installer, nothing happens to my server.
 Unlike the OOB install methods like CIMC, when using the PXE Installation method you must reboot the host yourself. In PXE Installs, Auto-Installer passively waits for the DHCP request from the host when the host attempts to PXE boot.
@@ -206,7 +219,7 @@ On it's own, a DHCP broadcast only works on the local layer-2 subnet. However, r
 
 ### PXE Install: My host does not PXE boot even though Auto-Installer is in the same subnet.
 Routers/gateways have a feature called `IP Helper` or `DHCP Relay`. If this is configured on the local subnet some multilayer switches will not broadcast the DHCP request onto the local subnet.\
-Workaround: Add ESXi Auto-Installer to the list of IP Helper or DHCP Relay addresses. Or remove the IP Helper/DHCP Relay feature all together.
+Workaround: Add ESXi Auto-Installer to the list of the IP Helper/DHCP Relay addresses. Or remove the IP Helper/DHCP Relay feature all together.
 
 ### PXE Install: My ESXi Mgmt interface is on a trunked port with VLAN tagging. Can I use Auto-Installer?
 For physical hosts, if you need VLAN tagging on your ESXi Mgmt Interface, you can configure your VLAN Trunk with a Native VLAN. If you set the Native VLAN to the ESXi Mgmt Interfaces VLAN, then the ESXi Mgmt Interface will operate without a VLAN tag (while still permitting tagging for other VLANs).\
