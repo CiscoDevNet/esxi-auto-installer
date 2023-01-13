@@ -21,6 +21,7 @@ import requests
 import xml.etree.ElementTree as ET
 import datetime
 
+
 def get_form_data(mainlog, form_result):
     """
     Takes FlaskForm result as an input and returns dictionary with kickstart configuration and network details
@@ -31,174 +32,239 @@ def get_form_data(mainlog, form_result):
     :return: form_data: (dict) dictionary with IP address(es) and task(s) as list items
     """
 
-    mainlog.info(f'Reading data from web form:')
+    mainlog.info(f"Reading data from web form:")
 
     form_data = {}
-    form_data['iso_image'] = form_result['iso_image']
-    form_data['root_pwd'] = form_result['root_pwd']
-    form_data['vmnic'] = form_result['vmnic']
-    form_data['vlan'] = form_result['vlan']
-    form_data['firstdisk'] = form_result['firstdisk']
-    form_data['firstdisktype'] = form_result['firstdisktype']
-    form_data['diskpath'] = form_result['diskpath']
-    form_data['enablessh'] = form_result.get('enablessh')
-    form_data['clearpart'] = form_result.get('clearpart')
+    form_data["iso_image"] = form_result["iso_image"]
+    form_data["root_pwd"] = form_result["root_pwd"]
+    form_data["vmnic"] = form_result["vmnic"]
+    form_data["vlan"] = form_result["vlan"]
+    form_data["firstdisk"] = form_result["firstdisk"]
+    form_data["firstdisktype"] = form_result["firstdisktype"]
+    form_data["diskpath"] = form_result["diskpath"]
+    form_data["enablessh"] = form_result.get("enablessh")
+    form_data["clearpart"] = form_result.get("clearpart")
 
     # get static routes (if provided)
-    form_data['static_routes'] = []
-    if form_result['static_routes_set'] == 'True':
+    form_data["static_routes"] = []
+    if form_result["static_routes_set"] == "True":
         for key, value in form_result.items():
-            if 'subnet_ip' in key:
-                seq = key.replace('subnet_ip', '')
-                form_data['static_routes'].append({'subnet_ip': form_result[key],
-                                                   'cidr': form_result['cidr' + seq],
-                                                   'gateway': form_result['gateway' + seq]})
+            if "subnet_ip" in key:
+                seq = key.replace("subnet_ip", "")
+                form_data["static_routes"].append(
+                    {
+                        "subnet_ip": form_result[key],
+                        "cidr": form_result["cidr" + seq],
+                        "gateway": form_result["gateway" + seq],
+                    }
+                )
 
     # get common settings - CIMC credentials and subnet/gateway
-    form_data['installmethod'] = form_result['installmethod']
-    if form_data['installmethod'] != 'pxeboot':
-        form_data['cimc_usr'] = form_result['cimc_usr']
-        form_data['cimc_pwd'] = form_result['cimc_pwd']
-    form_data['host_prefix'] = form_result['host_prefix']
-    form_data['host_suffix'] = form_result['host_suffix']
+    form_data["installmethod"] = form_result["installmethod"]
+    if form_data["installmethod"] != "pxeboot":
+        form_data["cimc_usr"] = form_result["cimc_usr"]
+        form_data["cimc_pwd"] = form_result["cimc_pwd"]
+    form_data["host_prefix"] = form_result["host_prefix"]
+    form_data["host_suffix"] = form_result["host_suffix"]
     # calculate subnet based on gateway IP address and netmask (needed for PXE booted installation)
-    form_data['host_subnet'] = ip_network(form_result['host_gateway'] + '/' + form_result['host_netmask'], strict=False).network_address
-    form_data['host_netmask'] = form_result['host_netmask']
-    form_data['host_gateway'] = form_result['host_gateway']
-    form_data['dns1'] = form_result['dns1']
-    form_data['dns2'] = form_result['dns2']
+    form_data["host_subnet"] = ip_network(
+        form_result["host_gateway"] + "/" + form_result["host_netmask"], strict=False
+    ).network_address
+    form_data["host_netmask"] = form_result["host_netmask"]
+    form_data["host_gateway"] = form_result["host_gateway"]
+    form_data["dns1"] = form_result["dns1"]
+    form_data["dns2"] = form_result["dns2"]
 
     # get ESXi host and CIMC IP address(es)
-    form_data['hosts'] = []
-    if form_data['installmethod'] == 'pxeboot':
+    form_data["hosts"] = []
+    if form_data["installmethod"] == "pxeboot":
         for key, value in form_result.items():
-            if 'hostname' in key:
-                seq = key.replace('hostname', '')
-                hostname = form_result['host_prefix'] + form_result[key] + form_result['host_suffix']
+            if "hostname" in key:
+                seq = key.replace("hostname", "")
+                hostname = (
+                    form_result["host_prefix"]
+                    + form_result[key]
+                    + form_result["host_suffix"]
+                )
                 macaddr = (
-                    form_result['macaddr' + seq]
+                    form_result["macaddr" + seq]
                     .replace(":", "")
                     .replace(".", "")
                     .replace("-", "")
                     .lower()
                 )
-                macaddr = ":".join(
-                    [macaddr[i:i + 2] for i in range(0, 12, 2)]
+                macaddr = ":".join([macaddr[i : i + 2] for i in range(0, 12, 2)])
+                form_data["hosts"].append(
+                    {
+                        "hostname": hostname,
+                        "host_ip": form_result["host_ip" + seq],
+                        "macaddr": macaddr,
+                    }
                 )
-                form_data['hosts'].append({'hostname': hostname,
-                                        'host_ip': form_result['host_ip' + seq],
-                                        'macaddr': macaddr})
     else:
         for key, value in form_result.items():
-            if 'hostname' in key:
-                seq = key.replace('hostname', '')
-                hostname = form_result['host_prefix'] + form_result[key] + form_result['host_suffix']
-                form_data['hosts'].append({'hostname': hostname,
-                                        'host_ip': form_result['host_ip' + seq],
-                                        'cimc_ip': form_result['cimc_ip' + seq]})
+            if "hostname" in key:
+                seq = key.replace("hostname", "")
+                hostname = (
+                    form_result["host_prefix"]
+                    + form_result[key]
+                    + form_result["host_suffix"]
+                )
+                form_data["hosts"].append(
+                    {
+                        "hostname": hostname,
+                        "host_ip": form_result["host_ip" + seq],
+                        "cimc_ip": form_result["cimc_ip" + seq],
+                    }
+                )
     # print(form_data)
     mainlog.debug(form_data)
     return form_data
 
 
-def generate_kickstart(jobid, form_data, index, logger, mainlog, eai_host_ip=EAIHOST_IP, dryrun=DRYRUN, ksjinja=KSTEMPLATE, ksdir=KSDIR):
-    logger.info(f'Generating kickstart file for server')
+def generate_kickstart(
+    jobid,
+    form_data,
+    index,
+    logger,
+    mainlog,
+    eai_host_ip=EAIHOST_IP,
+    dryrun=DRYRUN,
+    ksjinja=KSTEMPLATE,
+    ksdir=KSDIR,
+):
+    logger.info(f"Generating kickstart file for server")
 
     # set installation disk
-    if form_data['firstdisk'] == 'firstdiskfound':
+    if form_data["firstdisk"] == "firstdiskfound":
         # first disk found
-        firstdisk_install = 'firstdisk'
-        cleardisk = 'firstdisk'
-    elif form_data['firstdisk'] == 'firstdisk':
+        firstdisk_install = "firstdisk"
+        cleardisk = "firstdisk"
+    elif form_data["firstdisk"] == "firstdisk":
         # first disk: local, remote or usb
-        firstdisk_install = 'firstdisk=' + form_data['firstdisktype']
-        cleardisk = 'firstdisk=' + form_data['firstdisktype']
-    elif form_data['firstdisk'] == 'diskpath':
-        firstdisk_install = 'disk=' + form_data['diskpath']
-        cleardisk = 'drives=' + form_data['diskpath']
+        firstdisk_install = "firstdisk=" + form_data["firstdisktype"]
+        cleardisk = "firstdisk=" + form_data["firstdisktype"]
+    elif form_data["firstdisk"] == "diskpath":
+        firstdisk_install = "disk=" + form_data["diskpath"]
+        cleardisk = "drives=" + form_data["diskpath"]
 
     # customize install and (optionally) clearpart lines
-    install = 'install --' + firstdisk_install + ' --overwritevmfs'
-    if form_data['clearpart']:
-        clearline = 'clearpart --' + cleardisk + ' --overwritevmfs\n'
+    install = "install --" + firstdisk_install + " --overwritevmfs"
+    if form_data["clearpart"]:
+        clearline = "clearpart --" + cleardisk + " --overwritevmfs\n"
     else:
-        clearline = ''
+        clearline = ""
 
     # generate pre-section if static routes have been provided
     # i.e. 'localcli network ip route ipv4 add -n NET_CIDR -g GATEWAY'
-    static_routes = ''
+    static_routes = ""
     # if form_data['static_routes_set'] == 'True':
-    if form_data['static_routes']:
-        for route in form_data['static_routes']:
-            net_cidr = route['subnet_ip'] + '/' + str(route['cidr'])
-            static_routes += 'localcli network ip route ipv4 add -n ' + net_cidr + ' -g ' + route['gateway'] + '\n'
-        pre_section = '%pre --interpreter=busybox\n' + static_routes + '\n'
+    if form_data["static_routes"]:
+        for route in form_data["static_routes"]:
+            net_cidr = route["subnet_ip"] + "/" + str(route["cidr"])
+            static_routes += (
+                "localcli network ip route ipv4 add -n "
+                + net_cidr
+                + " -g "
+                + route["gateway"]
+                + "\n"
+            )
+        pre_section = "%pre --interpreter=busybox\n" + static_routes + "\n"
     else:
-        pre_section = ''
+        pre_section = ""
 
     # additional default route set when static route has been selected in %pre section
     if pre_section:
-        set_def_gw = '# Set Default Gateway\nesxcli network ip route ipv4 add --gateway ' + form_data['host_gateway'] + ' --network 0.0.0.0\n'
+        set_def_gw = (
+            "# Set Default Gateway\nesxcli network ip route ipv4 add --gateway "
+            + form_data["host_gateway"]
+            + " --network 0.0.0.0\n"
+        )
     else:
-        set_def_gw = ''
+        set_def_gw = ""
 
     # enable ssh
-    if form_data['enablessh']:
-        enable_ssh = '# enable & start remote ESXi Shell (SSH)\nvim-cmd hostsvc/enable_ssh\nvim-cmd hostsvc/start_ssh\n'
+    if form_data["enablessh"]:
+        enable_ssh = "# enable & start remote ESXi Shell (SSH)\nvim-cmd hostsvc/enable_ssh\nvim-cmd hostsvc/start_ssh\n"
     else:
-        enable_ssh = ''
+        enable_ssh = ""
 
     # process DNS
-    if form_data['dns1'] != '':
-        if form_data['dns2'] != '':
-            dnsservers = form_data['dns1'] + ',' + form_data['dns2']
+    if form_data["dns1"] != "":
+        if form_data["dns2"] != "":
+            dnsservers = form_data["dns1"] + "," + form_data["dns2"]
         else:
-            dnsservers = form_data['dns1']
+            dnsservers = form_data["dns1"]
     else:
-        dnsservers = ''
-
+        dnsservers = ""
 
     # remaining host data
     import crypt
-    rootpw_hash = crypt.crypt(form_data['root_pwd'], crypt.mksalt(crypt.METHOD_SHA512))
 
-    vmnicid = form_data['vmnic']
-    vlan = form_data['vlan']
-    netmask = form_data['host_netmask']
-    gateway = form_data['host_gateway']
-    hostname = form_data['hosts'][index]['hostname']
-    ipaddr = form_data['hosts'][index]['host_ip']
+    rootpw_hash = crypt.crypt(form_data["root_pwd"], crypt.mksalt(crypt.METHOD_SHA512))
+
+    vmnicid = form_data["vmnic"]
+    vlan = form_data["vlan"]
+    netmask = form_data["host_netmask"]
+    gateway = form_data["host_gateway"]
+    hostname = form_data["hosts"][index]["hostname"]
+    ipaddr = form_data["hosts"][index]["host_ip"]
 
     # read jinja template from file and render using read variables
-    with open(ksjinja, 'r') as kstemplate_file:
+    with open(ksjinja, "r") as kstemplate_file:
         kstemplate = Template(kstemplate_file.read())
-    kickstart = kstemplate.render(clearpart=clearline, install=install, rootpw_hash=rootpw_hash, vmnicid='vmnic' + vmnicid, vlan=vlan,
-                                  ipaddr=ipaddr, netmask=netmask, gateway=gateway, hostname=hostname, pre_section=pre_section, dnsservers=dnsservers,
-                                  set_def_gw=set_def_gw, enable_ssh=enable_ssh,
-                                  eai_host_ip=eai_host_ip, jobid=jobid)
+    kickstart = kstemplate.render(
+        clearpart=clearline,
+        install=install,
+        rootpw_hash=rootpw_hash,
+        vmnicid="vmnic" + vmnicid,
+        vlan=vlan,
+        ipaddr=ipaddr,
+        netmask=netmask,
+        gateway=gateway,
+        hostname=hostname,
+        pre_section=pre_section,
+        dnsservers=dnsservers,
+        set_def_gw=set_def_gw,
+        enable_ssh=enable_ssh,
+        eai_host_ip=eai_host_ip,
+        jobid=jobid,
+    )
     # remove password before saving kickstart to log file
-    logger.info(f"Generated kickstart configuration:\n{re.sub(r'rootpw.*', 'rootpw --iscrypted ***********', kickstart)}\n")
+    logger.info(
+        f"Generated kickstart configuration:\n{re.sub(r'rootpw.*', 'rootpw --iscrypted ***********', kickstart)}\n"
+    )
     if not dryrun:
-        kspath = path.join(ksdir, jobid + '_ks.cfg')
-        with open(kspath, 'w+') as ksfile:
+        kspath = path.join(ksdir, jobid + "_ks.cfg")
+        with open(kspath, "w+") as ksfile:
             ksfile.write(kickstart)
-            mainlog.debug(f'{jobid} Generated kickstart config for host: {hostname} saved to {kspath}')
-            logger.info(f'Kickstart config for host: {hostname} saved to {kspath}\n')
+            mainlog.debug(
+                f"{jobid} Generated kickstart config for host: {hostname} saved to {kspath}"
+            )
+            logger.info(f"Kickstart config for host: {hostname} saved to {kspath}\n")
         return kspath
     else:
-        mainlog.debug(f'{jobid} [DRYRUN] Generated kickstart config for host: {hostname}')
-        return 'not a real kscfg path'
+        mainlog.debug(
+            f"{jobid} [DRYRUN] Generated kickstart config for host: {hostname}"
+        )
+        return "not a real kscfg path"
 
 
-def iso_extract(mainlog, uploaded_file, uploaddir=UPLOADDIR, tmpisodir=MNTISODIR, extracted_iso_dir=ESXISODIR):
-    mainlog.info(f'Extracting uploaded ISO: {uploaded_file.filename}')
+def iso_extract(
+    mainlog,
+    uploaded_file,
+    uploaddir=UPLOADDIR,
+    tmpisodir=MNTISODIR,
+    extracted_iso_dir=ESXISODIR,
+):
+    mainlog.info(f"Extracting uploaded ISO: {uploaded_file.filename}")
 
     # get system commands paths
-    mkdir_cmd = which('mkdir')
-    mount_cmd = which('mount')
-    umount_cmd = which('umount')
-    chmod_cmd = which('chmod')
-    rmdir_cmd = which('rmdir')
+    mkdir_cmd = which("mkdir")
+    mount_cmd = which("mount")
+    umount_cmd = which("umount")
+    chmod_cmd = which("chmod")
+    rmdir_cmd = which("rmdir")
 
     # STEP 1: save ISO to uploaddir (default: /opt/eai/upload/<iso_filename>)
     iso_save_path = path.join(uploaddir, uploaded_file.filename)
@@ -207,150 +273,189 @@ def iso_extract(mainlog, uploaded_file, uploaddir=UPLOADDIR, tmpisodir=MNTISODIR
     # STEP 2: create mountpoint under tmpisodir (default: /opt/eai/upload/tmp/<iso_filebase>)
     filebase = path.splitext(uploaded_file.filename)[0]
     mountdir = path.join(tmpisodir, filebase)
-    mainlog.debug(f'Create mountpoint: {mountdir}')
-    system(f'{mkdir_cmd} -p {mountdir} 1>&2')
+    mainlog.debug(f"Create mountpoint: {mountdir}")
+    system(f"{mkdir_cmd} -p {mountdir} 1>&2")
 
     # STEP 3: mount the ISO
-    mainlog.debug(f'Mount the ISO: ')
-    command = f'{mount_cmd} -r -o loop {iso_save_path} {mountdir} 1>&2'
-    mainlog.debug(f'CMD: {command}')
+    mainlog.debug(f"Mount the ISO: ")
+    command = f"{mount_cmd} -r -o loop {iso_save_path} {mountdir} 1>&2"
+    mainlog.debug(f"CMD: {command}")
     system(command)
-    system(f'ls -la {mountdir} 1>&2')
+    system(f"ls -la {mountdir} 1>&2")
 
     # STEP 4: copy mounted ISO content to extracted_iso_dir (default: /opt/eai/exsi-iso/<iso_filebase>)
-    command = f'cp -R {mountdir} {extracted_iso_dir} 1>&2'
-    mainlog.debug(f'CMD: {command}')
+    command = f"cp -R {mountdir} {extracted_iso_dir} 1>&2"
+    mainlog.debug(f"CMD: {command}")
     system(command)
     # set boot.cfg to be writable, so that it can be modified per each installation job
     bootcfg_path = path.join(extracted_iso_dir, filebase, "boot.cfg")
-    mainlog.debug(f'bootcfg_path: {bootcfg_path}')
-    command = f'{chmod_cmd} 644 {path.join(extracted_iso_dir, filebase, "boot.cfg")} 1>&2'
-    mainlog.debug(f'CMD: {command}')
+    mainlog.debug(f"bootcfg_path: {bootcfg_path}")
+    command = (
+        f'{chmod_cmd} 644 {path.join(extracted_iso_dir, filebase, "boot.cfg")} 1>&2'
+    )
+    mainlog.debug(f"CMD: {command}")
     system(command)
 
     # STEP 5: cleanup - unmount and delete ISO and temporary mountpoint
-    system(f'{umount_cmd} {mountdir} 1>&2')
-    mainlog.debug(f'Cleanup - remove ISO: {iso_save_path} and mountdir: {mountdir}')
-    system(f'rm -f {iso_save_path} 1>&2')
-    system(f'{rmdir_cmd} {mountdir} 1>&2')
+    system(f"{umount_cmd} {mountdir} 1>&2")
+    mainlog.debug(f"Cleanup - remove ISO: {iso_save_path} and mountdir: {mountdir}")
+    system(f"rm -f {iso_save_path} 1>&2")
+    system(f"{rmdir_cmd} {mountdir} 1>&2")
 
     # INFO: check content of tftpisodir directory (INFO only)
-    mainlog.info(f'New ISO: {filebase}')
-    mainlog.debug(f'Listing {extracted_iso_dir} content:')
-    dirs = [f for f in listdir(extracted_iso_dir) if path.isdir(path.join(extracted_iso_dir, f))]
+    mainlog.info(f"New ISO: {filebase}")
+    mainlog.debug(f"Listing {extracted_iso_dir} content:")
+    dirs = [
+        f
+        for f in listdir(extracted_iso_dir)
+        if path.isdir(path.join(extracted_iso_dir, f))
+    ]
     mainlog.debug(dirs)
-    system(f'ls -la {extracted_iso_dir} 1>&2')
+    system(f"ls -la {extracted_iso_dir} 1>&2")
 
 
-def iso_prepare_tftp(mainlog, uploaded_file, extracted_iso_dir=ESXISODIR, tftpisodir=TFTPISODIR, tftpdir=TFTPBOOT, pxedir=PXEDIR):
+def iso_prepare_tftp(
+    mainlog,
+    uploaded_file,
+    extracted_iso_dir=ESXISODIR,
+    tftpisodir=TFTPISODIR,
+    tftpdir=TFTPBOOT,
+    pxedir=PXEDIR,
+):
     # prepare tftpboot directory structure on first run
-    mkdir_cmd = which('mkdir')
+    mkdir_cmd = which("mkdir")
     if not path.isdir(tftpisodir):
-        mainlog.info(f'tftpboot: creating {tftpisodir} directory')
-        system(f'{mkdir_cmd} {tftpisodir}')
-        
+        mainlog.info(f"tftpboot: creating {tftpisodir} directory")
+        system(f"{mkdir_cmd} {tftpisodir}")
+
     if not path.isdir(pxedir):
-        mainlog.info(f'tftpboot: creating {pxedir} directory')
-        system(f'{mkdir_cmd} {pxedir}')
+        mainlog.info(f"tftpboot: creating {pxedir} directory")
+        system(f"{mkdir_cmd} {pxedir}")
 
     # prepare uploaded ISO for PXE boot
     filebase = path.splitext(uploaded_file.filename)[0]
-    mainlog.info(f'tftpboot: copy and prepare {filebase} installation media.')
+    mainlog.info(f"tftpboot: copy and prepare {filebase} installation media.")
     source_iso_dir = path.join(extracted_iso_dir, filebase)
 
     # copy files from 'vanilla' ISO directory to target subdirectory under TFTPISODIR
-    mainlog.info(f'Copy ISO files to target subdirectory: {path.join(tftpisodir, filebase)}')
-    system(f'cp -R {source_iso_dir} {tftpisodir} 1>&2')
+    mainlog.info(
+        f"Copy ISO files to target subdirectory: {path.join(tftpisodir, filebase)}"
+    )
+    system(f"cp -R {source_iso_dir} {tftpisodir} 1>&2")
 
-    bootcfg_path = path.join(tftpisodir, filebase, 'boot.cfg')
-    mainlog.info(f'Modify {bootcfg_path} for PXE boot')
+    bootcfg_path = path.join(tftpisodir, filebase, "boot.cfg")
+    mainlog.info(f"Modify {bootcfg_path} for PXE boot")
     # read original boot.cfg
-    with open(bootcfg_path, 'r') as bootcfg_file:
+    with open(bootcfg_path, "r") as bootcfg_file:
         bootcfg = bootcfg_file.read()
     # customize boot.cfg file
-    title = f'title=Loading ESXi installer - {filebase}'
-    prefix = f'prefix=iso/{filebase}'
+    title = f"title=Loading ESXi installer - {filebase}"
+    prefix = f"prefix=iso/{filebase}"
     # customize 'title' and 'prefix'
     bootcfg = re.sub(r"title.*", title, bootcfg)
-    if 'prefix' in bootcfg:
+    if "prefix" in bootcfg:
         bootcfg = re.sub(r"prefix.*", prefix, bootcfg)
     else:
         # if there is no 'prefix=' line - add it just before 'kernel=' line
-        bootcfg = re.sub(r"kernel=", prefix + '\nkernel=', bootcfg)
+        bootcfg = re.sub(r"kernel=", prefix + "\nkernel=", bootcfg)
     # remove '/' from 'kernel=' and 'modules=' paths
     bootcfg = re.sub(r"kernel=/", "kernel=", bootcfg)
     # findall returns a list - extract string in position [0] to run replace() function
-    modules = re.findall("^modules=.*", bootcfg, re.MULTILINE)[0].replace('/', '')
+    modules = re.findall("^modules=.*", bootcfg, re.MULTILINE)[0].replace("/", "")
     bootcfg = re.sub(r"modules=.*", modules, bootcfg)
     # save customized boot.cfg
-    system(f'chmod +w {bootcfg_path}')
-    with open(bootcfg_path, 'w+') as bootcfg_file:
+    system(f"chmod +w {bootcfg_path}")
+    with open(bootcfg_path, "w+") as bootcfg_file:
         bootcfg_file.write(bootcfg)
-    mainlog.info(f'tftpboot: installation media for {filebase} ready.')
-    
+    mainlog.info(f"tftpboot: installation media for {filebase} ready.")
+
     # prepare mboot EFI file on first run
-    mbootefi = path.join(tftpdir, 'mboot.efi')
+    mbootefi = path.join(tftpdir, "mboot.efi")
     if not path.isfile(mbootefi):
-        mainlog.info(f'tftpboot: creating {mbootefi} file')
-        cp_cmd = which('cp')
-        system(f"{cp_cmd} {path.join(tftpisodir, filebase, 'efi', 'boot', 'bootx64.efi')} {mbootefi}")
+        mainlog.info(f"tftpboot: creating {mbootefi} file")
+        cp_cmd = which("cp")
+        system(
+            f"{cp_cmd} {path.join(tftpisodir, filebase, 'efi', 'boot', 'bootx64.efi')} {mbootefi}"
+        )
 
 
-def generate_custom_iso(jobid, logger, mainlog, hostname, iso_image, kscfg_path, dryrun=DRYRUN, isodir=ESXISODIR, customisodir=CUSTOMISODIR):
+def generate_custom_iso(
+    jobid,
+    logger,
+    mainlog,
+    hostname,
+    iso_image,
+    kscfg_path,
+    dryrun=DRYRUN,
+    isodir=ESXISODIR,
+    customisodir=CUSTOMISODIR,
+):
     if not dryrun:
-        mainlog.info(f'{jobid} Generating custom installation ISO for host: {hostname} using ESXi ISO {iso_image}')
-        logger.info(f'Generating custom installation ISO for host: {hostname} using ESXi ISO {iso_image}')
+        mainlog.info(
+            f"{jobid} Generating custom installation ISO for host: {hostname} using ESXi ISO {iso_image}"
+        )
+        logger.info(
+            f"Generating custom installation ISO for host: {hostname} using ESXi ISO {iso_image}"
+        )
 
         # copy mounted ISO content to customisodir (i.e. /opt/esxi-iso/<iso_filebase>)
         tmpisodir = path.join(customisodir, jobid)
-        command = f'cp -R {path.join(isodir, iso_image)} {tmpisodir} 1>&2'
-        mainlog.debug(f'{jobid} {command}')
+        command = f"cp -R {path.join(isodir, iso_image)} {tmpisodir} 1>&2"
+        mainlog.debug(f"{jobid} {command}")
         system(command)
 
-        system(f'chmod -R +w {tmpisodir} 1>&2')
+        system(f"chmod -R +w {tmpisodir} 1>&2")
         command = f'cp {kscfg_path} {path.join(tmpisodir, "ks.cfg")} 1>&2'
-        mainlog.debug(f'{jobid} {command}')
+        mainlog.debug(f"{jobid} {command}")
         system(command)
 
         # prepare boot.cfg
         # read original boot.cfg
-        bootcfg_path = path.join(tmpisodir, 'boot.cfg')
-        with open(bootcfg_path, 'r') as bootcfg_file:
+        bootcfg_path = path.join(tmpisodir, "boot.cfg")
+        with open(bootcfg_path, "r") as bootcfg_file:
             bootcfg = bootcfg_file.read()
 
         # customize boot.cfg file - title and kernelopt lines
-        title = 'title=Loading ESXi ' + iso_image + ' installer for server: ' + hostname
+        title = "title=Loading ESXi " + iso_image + " installer for server: " + hostname
         bootcfg = re.sub(r"title.*", title, bootcfg)
-        kernelopt = 'kernelopt=ks=cdrom:/KS.CFG'
+        kernelopt = "kernelopt=ks=cdrom:/KS.CFG"
         bootcfg = re.sub(r"kernelopt.*", kernelopt, bootcfg)
 
         # save customized boot.cfg
-        with open(bootcfg_path, 'w+') as bootcfg_file:
+        with open(bootcfg_path, "w+") as bootcfg_file:
             bootcfg_file.write(bootcfg)
 
         # copy boot.cfg for EFI boot
-        bootcfg_efi_path = path.join(tmpisodir, 'efi/boot/boot.cfg')
-        system(f'cp -f {bootcfg_path} {bootcfg_efi_path}')
+        bootcfg_efi_path = path.join(tmpisodir, "efi/boot/boot.cfg")
+        system(f"cp -f {bootcfg_path} {bootcfg_efi_path}")
 
         # generate custom iso
-        system(f'genisoimage -relaxed-filenames -J -R -o {path.join(tmpisodir + ".iso")} -b isolinux.bin -c boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -e efiboot.img -no-emul-boot {tmpisodir}')
+        system(
+            f'genisoimage -relaxed-filenames -J -R -o {path.join(tmpisodir + ".iso")} -b isolinux.bin -c boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -e efiboot.img -no-emul-boot {tmpisodir}'
+        )
 
-        mainlog.debug(f'rm -rf {tmpisodir} 1>&2')
-        system(f'rm -rf {tmpisodir} 1>&2')
+        mainlog.debug(f"rm -rf {tmpisodir} 1>&2")
+        system(f"rm -rf {tmpisodir} 1>&2")
 
-        mainlog.info(f'{jobid} Custom installation ISO for host {hostname} saved to: {path.join(tmpisodir + ".iso")}')
-        logger.info(f'Custom installation ISO for host {hostname} saved to: {path.join(tmpisodir + ".iso")}\n')
+        mainlog.info(
+            f'{jobid} Custom installation ISO for host {hostname} saved to: {path.join(tmpisodir + ".iso")}'
+        )
+        logger.info(
+            f'Custom installation ISO for host {hostname} saved to: {path.join(tmpisodir + ".iso")}\n'
+        )
     else:
-        mainlog.info(f'[DRYRUN] Running generate_custom_iso({jobid}, {logger}, {mainlog}, {hostname}, {iso_image})')
+        mainlog.info(
+            f"[DRYRUN] Running generate_custom_iso({jobid}, {logger}, {mainlog}, {hostname}, {iso_image})"
+        )
 
 
 def cimc_login(logger, cimcaddr, cimcusr, cimcpwd, dryrun=DRYRUN):
-    logger.info(f'Connecting to CIMC IP: {cimcaddr} using account: {cimcusr}')
+    logger.info(f"Connecting to CIMC IP: {cimcaddr} using account: {cimcusr}")
     if not dryrun:
         # check if custom port has been provided
-        if ':' in cimcaddr:
-            cimcip = cimcaddr.split(':')[0]
-            cimcport = int(cimcaddr.split(':')[1])
+        if ":" in cimcaddr:
+            cimcip = cimcaddr.split(":")[0]
+            cimcport = int(cimcaddr.split(":")[1])
         else:
             cimcip = cimcaddr
             cimcport = 443
@@ -363,20 +468,31 @@ def cimc_login(logger, cimcaddr, cimcusr, cimcpwd, dryrun=DRYRUN):
         cimchandle = ImcHandle(cimcip, cimcusr, cimcpwd, cimcport, cimcsecure)
         # Login to CIMC
         cimchandle.login()
-        logger.info(f'Connected to CIMC: {cimcaddr}')
+        logger.info(f"Connected to CIMC: {cimcaddr}")
         return cimchandle
     else:
-        return 'dummy_handle'
+        return "dummy_handle"
 
 
 def cimc_logout(logger, cimchandle, cimcip, dryrun=DRYRUN):
     if not dryrun:
         # Logout from the server
         cimchandle.logout()
-    logger.info(f'Disconnected from CIMC: {cimcip}')
+    logger.info(f"Disconnected from CIMC: {cimcip}")
 
 
-def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, eai_ip=EAIHOST_IP, dryrun=DRYRUN, status_dict=STATUS_CODES):
+def install_esxi(
+    jobid,
+    logger,
+    mainlog,
+    cimcip,
+    cimcusr,
+    cimcpwd,
+    iso_image,
+    eai_ip=EAIHOST_IP,
+    dryrun=DRYRUN,
+    status_dict=STATUS_CODES,
+):
     """
     Install ESXi hypervisor using custom installation ISO (iso_image):
     - login to CIMC
@@ -392,21 +508,25 @@ def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, ea
     :return: n/a
     """
 
-    isourl = f'http://{eai_ip}/custom-iso/{iso_image}'
-    mainlog.debug(f'{jobid} Starting ESXi hypervisor installation using custom ISO URL: {isourl}')
-    logger.info(f'Starting ESXi hypervisor installation using custom ISO URL: {isourl}')
+    isourl = f"http://{eai_ip}/custom-iso/{iso_image}"
+    mainlog.debug(
+        f"{jobid} Starting ESXi hypervisor installation using custom ISO URL: {isourl}"
+    )
+    logger.info(f"Starting ESXi hypervisor installation using custom ISO URL: {isourl}")
 
     if not dryrun:
         # login to CIMC
         try:
-            update_job_status(jobid, 'Connecting to CIMC', logger)
+            update_job_status(jobid, "Connecting to CIMC", logger)
             cimchandle = cimc_login(logger, cimcip, cimcusr, cimcpwd)
         except Exception as e:
-            mainlog.error(f'{jobid} Error when trying to login to CIMC: {str(e)}')
-            logger.error(f'Error when trying to login to CIMC: {format_message_for_web(e)}\n')
+            mainlog.error(f"{jobid} Error when trying to login to CIMC: {str(e)}")
+            logger.error(
+                f"Error when trying to login to CIMC: {format_message_for_web(e)}\n"
+            )
             # if cimc_login failed - run cleanup tasks (with unmount_iso=False), update EAIDB with error message and abort
             job_cleanup(jobid, logger, mainlog, unmount_iso=False)
-            update_job_status(jobid, 'Error: Failed to login to CIMC', logger, True)
+            update_job_status(jobid, "Error: Failed to login to CIMC", logger, True)
             return 1
 
         # set VMEDIA on Boot Order
@@ -414,55 +534,67 @@ def install_esxi(jobid, logger, mainlog, cimcip, cimcusr, cimcpwd, iso_image, ea
             if cimc_vmedia_set(cimchandle, logger) == 33:
                 job_cleanup(jobid, logger, mainlog, unmount_iso=False)
                 cimc_logout(logger, cimchandle, cimcip)
-                update_job_status(jobid, 'Error: UEFI Secure Boot Mode enabled', logger, True)
+                update_job_status(
+                    jobid, "Error: UEFI Secure Boot Mode enabled", logger, True
+                )
                 return 33
         except Exception as e:
-            mainlog.error(f'{jobid} : {str(e)}')
-            logger.error('Failed to set VMEDIA on Boot Order')
+            mainlog.error(f"{jobid} : {str(e)}")
+            logger.error("Failed to set VMEDIA on Boot Order")
             logger.error(format_message_for_web(e))
 
         # mount custom ISO and reboot the server to start the installation
         try:
             # update status in EAIDB to 'Mounting installation ISO'
-            update_job_status(jobid, 'Mounting installation ISO', logger)
+            update_job_status(jobid, "Mounting installation ISO", logger)
 
-            logger.info('')
-            logger.info(f'Mount custom installation ISO on CIMC')
+            logger.info("")
+            logger.info(f"Mount custom installation ISO on CIMC")
             vmedia_mount_iso_uri(cimchandle, isourl)
 
-            mainlog.debug(f'{jobid} vmedia_get_existing_uri: {vmedia_get_existing_uri(cimchandle)}')
-            mainlog.debug(f'{jobid} vmedia_get_existing_status: {vmedia_get_existing_status(cimchandle)}')
+            mainlog.debug(
+                f"{jobid} vmedia_get_existing_uri: {vmedia_get_existing_uri(cimchandle)}"
+            )
+            mainlog.debug(
+                f"{jobid} vmedia_get_existing_status: {vmedia_get_existing_status(cimchandle)}"
+            )
 
-            logger.info(f'Installation ISO mounted')
+            logger.info(f"Installation ISO mounted")
 
             # query CIMC CommVMediaMap Managed Object - useful for debugging
             # cimc_query_classid(cimchandle, 'CommVMediaMap')
 
-            mainlog.info(f'{jobid} Reboot the machine...')
-            logger.info(f'Rebooting the server to start the installation')
+            mainlog.info(f"{jobid} Reboot the machine...")
+            logger.info(f"Rebooting the server to start the installation")
             server_power_cycle(cimchandle)
             pwrstate = server_power_state_get(cimchandle)
-            mainlog.info(f'{jobid} Server power state: {pwrstate}')
-            logger.info(f'Server power state: {pwrstate}')
-            logger.info(f'Open KVM console to follow the installation process or wait for the job status update to [Finished].\n')
+            mainlog.info(f"{jobid} Server power state: {pwrstate}")
+            logger.info(f"Server power state: {pwrstate}")
+            logger.info(
+                f"Open KVM console to follow the installation process or wait for the job status update to [Finished].\n"
+            )
 
             # update status in EAIDB to 'Server is booting'
             update_job_status(jobid, status_dict[15], logger)
 
         except Exception as e:
-            mainlog.error(f'{jobid} : {str(e)}')
-            logger.error('Failed to mount installation ISO')
+            mainlog.error(f"{jobid} : {str(e)}")
+            logger.error("Failed to mount installation ISO")
             logger.error(format_message_for_web(e))
             # if mounting ISO failed - run cleanup tasks, update EAIDB with error message and abort
             job_cleanup(jobid, logger, mainlog)
             cimc_logout(logger, cimchandle, cimcip)
-            update_job_status(jobid, 'Error: Failed to mount installation ISO', logger, True)
+            update_job_status(
+                jobid, "Error: Failed to mount installation ISO", logger, True
+            )
             return 2
 
         # logout from CIMC
         cimc_logout(logger, cimchandle, cimcip)
     else:
-        mainlog.debug(f'{jobid} [DRYRUN] Running install_esxi({jobid}, {cimcip}, {cimcusr}, {cimcpwd}, {isourl})')
+        mainlog.debug(
+            f"{jobid} [DRYRUN] Running install_esxi({jobid}, {cimcip}, {cimcusr}, {cimcpwd}, {isourl})"
+        )
 
 
 def cimc_query_classid(cimchandle, mo_class):
@@ -490,7 +622,16 @@ def get_available_isos(isodir=ESXISODIR):
     return dirs
 
 
-def job_cleanup(jobid, logger, mainlog, unmount_iso=True, cleanroot=True, dryrun=DRYRUN, tftpboot=TFTPBOOT, pxedir=PXEDIR):
+def job_cleanup(
+    jobid,
+    logger,
+    mainlog,
+    unmount_iso=True,
+    cleanroot=True,
+    dryrun=DRYRUN,
+    tftpboot=TFTPBOOT,
+    pxedir=PXEDIR,
+):
     """
     Run post-installation cleanup tasks:
     - remove kickstart file
@@ -506,52 +647,56 @@ def job_cleanup(jobid, logger, mainlog, unmount_iso=True, cleanroot=True, dryrun
     if not dryrun:
         try:
             eaidb_dict = eaidb_get_status()
-            
-            update_job_status(jobid, 'Running cleanup tasks', logger)
 
-            mainlog.info(f'{jobid} Starting cleanup')
-            logger.info('')
-            logger.info(f'Starting cleanup:')
+            update_job_status(jobid, "Running cleanup tasks", logger)
 
-            logger.info(f'* kickstart file')
+            mainlog.info(f"{jobid} Starting cleanup")
+            logger.info("")
+            logger.info(f"Starting cleanup:")
+
+            logger.info(f"* kickstart file")
             remove_kickstart(jobid, logger, mainlog)
 
-            if eaidb_dict[jobid]['cimcip']:
-                logger.info(f'* custom installation ISO')
+            if eaidb_dict[jobid]["cimcip"]:
+                logger.info(f"* custom installation ISO")
                 if unmount_iso:
                     cimc_unmount_iso(jobid, logger, mainlog)
                 remove_custom_iso(jobid, logger, mainlog)
 
                 if cleanroot:
-                    logger.info(f'* remove server passwords from database')
-                    eaidb_set(jobid, {'root_pwd':'', 'cimcpwd': ''})            
+                    logger.info(f"* remove server passwords from database")
+                    eaidb_set(jobid, {"root_pwd": "", "cimcpwd": ""})
                 else:
-                    logger.info(f'* remove CIMC password from database')
-                    eaidb_set(jobid, {'cimcpwd': ''})
+                    logger.info(f"* remove CIMC password from database")
+                    eaidb_set(jobid, {"cimcpwd": ""})
 
-            elif eaidb_dict[jobid]['macaddr']:
-                rm_cmd = which('rm')
-                logger.info(f'* PXE boot config')
-                pxepath = path.join(pxedir, f"01-{eaidb_dict[jobid]['macaddr'].replace(':', '-')}")            
-                system(f'{rm_cmd} {pxepath}')
-                
-                logger.info(f'* EFI boot config')            
-                efidir = path.join(tftpboot, f"01-{eaidb_dict[jobid]['macaddr'].replace(':', '-')}")
-                system(f'{rm_cmd} -rf {efidir}')
-                
-                logger.info(f'* DHCP config')            
+            elif eaidb_dict[jobid]["macaddr"]:
+                rm_cmd = which("rm")
+                logger.info(f"* PXE boot config")
+                pxepath = path.join(
+                    pxedir, f"01-{eaidb_dict[jobid]['macaddr'].replace(':', '-')}"
+                )
+                system(f"{rm_cmd} {pxepath}")
+
+                logger.info(f"* EFI boot config")
+                efidir = path.join(
+                    tftpboot, f"01-{eaidb_dict[jobid]['macaddr'].replace(':', '-')}"
+                )
+                system(f"{rm_cmd} -rf {efidir}")
+
+                logger.info(f"* DHCP config")
                 generate_dhcp_config(jobid, logger, mainlog)
                 if cleanroot:
-                    logger.info(f'* remove root password from database')
-                    eaidb_set(jobid, {'root_pwd':''})            
+                    logger.info(f"* remove root password from database")
+                    eaidb_set(jobid, {"root_pwd": ""})
 
-            mainlog.info(f'{jobid} Cleanup finished.')
-            logger.info(f'Cleanup finished.\n')
+            mainlog.info(f"{jobid} Cleanup finished.")
+            logger.info(f"Cleanup finished.\n")
         except Exception as e:
-            logger.error(f'Errors during job cleanup: {format_message_for_web(e)}')
-            mainlog.error(f'{jobid} Errors during job cleanup: {str(e)}')            
+            logger.error(f"Errors during job cleanup: {format_message_for_web(e)}")
+            mainlog.error(f"{jobid} Errors during job cleanup: {str(e)}")
     else:
-        mainlog.debug(f'{jobid} [DRYRUN] Running job cleanup tasks)')
+        mainlog.debug(f"{jobid} [DRYRUN] Running job cleanup tasks)")
 
 
 def remove_kickstart(jobid, logger, mainlog, ksdir=KSDIR):
@@ -564,14 +709,14 @@ def remove_kickstart(jobid, logger, mainlog, ksdir=KSDIR):
     :param ksdir:  (str) path to kickstart directory
     :return: n/a
     """
-    kspath = path.join(ksdir, jobid + '_ks.cfg')
-    mainlog.info(f'{jobid} Removing kickstart file: {kspath}')
+    kspath = path.join(ksdir, jobid + "_ks.cfg")
+    mainlog.info(f"{jobid} Removing kickstart file: {kspath}")
     # logger.info(f'Removing kickstart file: {kspath}')
     try:
-        system(f'rm -f {kspath} 1>&2')
+        system(f"rm -f {kspath} 1>&2")
     except Exception as e:
-        mainlog.error(f'{jobid} : Failed to remove {kspath}: {str(e)}')
-        logger.error(f'Failed to remove {kspath}: {format_message_for_web(e)}')
+        mainlog.error(f"{jobid} : Failed to remove {kspath}: {str(e)}")
+        logger.error(f"Failed to remove {kspath}: {format_message_for_web(e)}")
 
 
 def cimc_unmount_iso(jobid, logger, mainlog):
@@ -583,37 +728,43 @@ def cimc_unmount_iso(jobid, logger, mainlog):
     :param mainlog: (logging.Handler) main Auto-Installer logger handler
     :return: (int) Error code
     """
-    mainlog.info(f'{jobid} Unmounting installation ISO from CIMC')
-    logger.info(f'Unmounting installation ISO from CIMC:')
+    mainlog.info(f"{jobid} Unmounting installation ISO from CIMC")
+    logger.info(f"Unmounting installation ISO from CIMC:")
     try:
         # get CIMC IP and credentials from DB
-        mainlog.info(f'{jobid} Get CIMC credentials for job ID')
+        mainlog.info(f"{jobid} Get CIMC credentials for job ID")
         cimcip, cimcusr, cimcpwd = eaidb_get_cimc_credentials(jobid)
     except Exception as e:
         # cimcdata = False
-        mainlog.error(f'{jobid} Failed to get CIMC credentials for job ID: {str(e)}')
-        logger.error(f'Failed to get CIMC credentials for job ID: {format_message_for_web(e)}')
-        logger.error(f'Unmount installation ISO aborted.\n')
+        mainlog.error(f"{jobid} Failed to get CIMC credentials for job ID: {str(e)}")
+        logger.error(
+            f"Failed to get CIMC credentials for job ID: {format_message_for_web(e)}"
+        )
+        logger.error(f"Unmount installation ISO aborted.\n")
         return 1
 
     try:
         # login to CIMC
-        mainlog.info(f'{jobid} Login to CIMC')
+        mainlog.info(f"{jobid} Login to CIMC")
         cimchandle = cimc_login(logger, cimcip, cimcusr, cimcpwd)
     except Exception as e:
-        mainlog.error(f'{jobid} Failed to login to CIMC: {str(e)}')
-        logger.error(f'Failed to login to CIMC: {format_message_for_web(e)}')
-        logger.error(f'Unmount installation ISO aborted.\n')
+        mainlog.error(f"{jobid} Failed to login to CIMC: {str(e)}")
+        logger.error(f"Failed to login to CIMC: {format_message_for_web(e)}")
+        logger.error(f"Unmount installation ISO aborted.\n")
         return 2
 
     try:
-        mainlog.info(f'{jobid} Unmounting installation ISO (vmedia_mount_delete, {jobid}.iso) on CIMC {cimcip}')
-        logger.info(f'Unmounting installation ISO ({jobid}.iso) on CIMC {cimcip}')
-        vmedia_mount_delete(cimchandle, f'{jobid}.iso')
+        mainlog.info(
+            f"{jobid} Unmounting installation ISO (vmedia_mount_delete, {jobid}.iso) on CIMC {cimcip}"
+        )
+        logger.info(f"Unmounting installation ISO ({jobid}.iso) on CIMC {cimcip}")
+        vmedia_mount_delete(cimchandle, f"{jobid}.iso")
         cimc_logout(logger, cimchandle, cimcip)
     except Exception as e:
-        mainlog.error(f'{jobid} Failed to unmount vmedia: {str(e)}')
-        logger.error(f'Failed to unmount installation ISO: {format_message_for_web(e)}\n')
+        mainlog.error(f"{jobid} Failed to unmount vmedia: {str(e)}")
+        logger.error(
+            f"Failed to unmount installation ISO: {format_message_for_web(e)}\n"
+        )
         return 3
 
     return 0
@@ -629,14 +780,14 @@ def remove_custom_iso(jobid, logger, mainlog, customisodir=CUSTOMISODIR):
     :param customisodir: (str) path to custom ISO directory
     :return: n/a
     """
-    iso_path = path.join(customisodir, jobid + '.iso')
-    mainlog.info(f'{jobid} Removing custom installation ISO: {iso_path}')
-    logger.info(f'Removing custom installation ISO: {iso_path}')
+    iso_path = path.join(customisodir, jobid + ".iso")
+    mainlog.info(f"{jobid} Removing custom installation ISO: {iso_path}")
+    logger.info(f"Removing custom installation ISO: {iso_path}")
     try:
-        system(f'rm -f {iso_path} 1>&2')
+        system(f"rm -f {iso_path} 1>&2")
     except Exception as e:
-        mainlog.error(f'{jobid} : Failed to remove {iso_path}: {str(e)}')
-        logger.error(f'Failed to remove {iso_path}: {format_message_for_web(e)}')
+        mainlog.error(f"{jobid} : Failed to remove {iso_path}: {str(e)}")
+        logger.error(f"Failed to remove {iso_path}: {format_message_for_web(e)}")
 
 
 def process_submission(jobid_list, logger_list, mainlog, form_data):
@@ -650,36 +801,68 @@ def process_submission(jobid_list, logger_list, mainlog, form_data):
     :return: n/a
     """
 
-    for index in range(len(form_data['hosts'])):
+    for index in range(len(form_data["hosts"])):
         jobid = jobid_list[index]
         logger = logger_list[index]
-        hostname = form_data['hosts'][index]['hostname']
+        hostname = form_data["hosts"][index]["hostname"]
 
         # customize kickstart config
-        mainlog.info(f'{jobid} Generating kickstart file for server {hostname}')
+        mainlog.info(f"{jobid} Generating kickstart file for server {hostname}")
         kscfg = generate_kickstart(jobid, form_data, index, logger, mainlog)
-        
-        if form_data['installmethod'] == 'pxeboot':
-            mainlog.info(f'{jobid} Generating PXE Boot files for server {hostname}')
-            generate_pxe_boot(jobid, logger, mainlog, form_data['iso_image'], form_data['hosts'][index]['macaddr'])
 
-            mainlog.info(f'{jobid} Generating EFI Boot files for server {hostname}')
-            generate_efi_boot(jobid, logger, mainlog, form_data['iso_image'], form_data['hosts'][index]['macaddr'])
+        if form_data["installmethod"] == "pxeboot":
+            mainlog.info(f"{jobid} Generating PXE Boot files for server {hostname}")
+            generate_pxe_boot(
+                jobid,
+                logger,
+                mainlog,
+                form_data["iso_image"],
+                form_data["hosts"][index]["macaddr"],
+            )
 
-            mainlog.info(f'{jobid} Generating DHCP configuration for server {hostname}')
+            mainlog.info(f"{jobid} Generating EFI Boot files for server {hostname}")
+            generate_efi_boot(
+                jobid,
+                logger,
+                mainlog,
+                form_data["iso_image"],
+                form_data["hosts"][index]["macaddr"],
+            )
+
+            mainlog.info(f"{jobid} Generating DHCP configuration for server {hostname}")
             generate_dhcp_config(jobid, logger, mainlog)
-            update_job_status(jobid, 'Ready to deploy', logger)
+            update_job_status(jobid, "Ready to deploy", logger)
 
-            mainlog.info(f'{jobid} Ready to start PXE Boot installation for server {hostname}')
-            logger.info(f'Ready to start PXE Boot installation - power on or restart the server to initialize installation process.\n')
+            mainlog.info(
+                f"{jobid} Ready to start PXE Boot installation for server {hostname}"
+            )
+            logger.info(
+                f"Ready to start PXE Boot installation - power on or restart the server to initialize installation process.\n"
+            )
 
         else:
             # generate custom installation ISO
-            mainlog.info(f'{jobid} Generating custom installation ISO for server {hostname}')
-            generate_custom_iso(jobid, logger, mainlog, hostname, form_data['iso_image'], kscfg)
+            mainlog.info(
+                f"{jobid} Generating custom installation ISO for server {hostname}"
+            )
+            generate_custom_iso(
+                jobid, logger, mainlog, hostname, form_data["iso_image"], kscfg
+            )
 
             # start ESXi hypervisor installation
-            Process(target=install_esxi, args=(jobid, logger, mainlog, form_data['hosts'][index]['cimc_ip'], form_data['cimc_usr'], form_data['cimc_pwd'], jobid + '.iso')).start()
+            Process(
+                target=install_esxi,
+                args=(
+                    jobid,
+                    logger,
+                    mainlog,
+                    form_data["hosts"][index]["cimc_ip"],
+                    form_data["cimc_usr"],
+                    form_data["cimc_pwd"],
+                    jobid + ".iso",
+                ),
+            ).start()
+
 
 def create_jobs(form_data, installmethod, mainlog):
     """
@@ -691,24 +874,24 @@ def create_jobs(form_data, installmethod, mainlog):
     """
 
     # interate over the list of ESXi hosts and run corresponding actions for each host
-    jobid_list  = []
+    jobid_list = []
     logger_list = []
-    for index in range(len(form_data['hosts'])):
-        hostname = form_data['hosts'][index]['hostname']
+    for index in range(len(form_data["hosts"])):
+        hostname = form_data["hosts"][index]["hostname"]
         # if form_data['hosts'][index]['cimc_ip']:
-        if installmethod == 'pxeboot':
-        # Installation method: PXE boot
-            cimcusr = ''
-            cimcip = ''
-            cimcpwd = ''
-            macaddr = form_data['hosts'][index]['macaddr']
+        if installmethod == "pxeboot":
+            # Installation method: PXE boot
+            cimcusr = ""
+            cimcip = ""
+            cimcpwd = ""
+            macaddr = form_data["hosts"][index]["macaddr"]
             jobid = generate_jobid(macaddr)
         else:
-        # Installation method: mount installation ISO with CIMC API (Cisco UCS servers only)
-            cimcusr = form_data['cimc_usr']
-            cimcip = form_data['hosts'][index]['cimc_ip']
-            cimcpwd = form_data['cimc_pwd']
-            macaddr = ''
+            # Installation method: mount installation ISO with CIMC API (Cisco UCS servers only)
+            cimcusr = form_data["cimc_usr"]
+            cimcip = form_data["hosts"][index]["cimc_ip"]
+            cimcpwd = form_data["cimc_pwd"]
+            macaddr = ""
             jobid = generate_jobid(cimcip)
 
         # cimcip = form_data['hosts'][index]['cimc_ip']
@@ -718,19 +901,31 @@ def create_jobs(form_data, installmethod, mainlog):
 
         # create logger handler
         logger = get_jobid_logger(jobid)
-        logger.info(f'Processing job ID: {jobid}, server {hostname}\n')
-        mainlog.info(f'{jobid} - processing job ID, server {hostname}')
+        logger.info(f"Processing job ID: {jobid}, server {hostname}\n")
+        mainlog.info(f"{jobid} - processing job ID, server {hostname}")
 
         # create entry in Auto-Installer DB
-        mainlog.info(f'{jobid} Saving installation data for server {hostname}')
+        mainlog.info(f"{jobid} Saving installation data for server {hostname}")
         # print(form_data)
-        eaidb_create_job_entry(jobid, hostname, form_data['hosts'][index]['host_ip'],
-                                form_data['root_pwd'], cimcip, cimcusr, cimcpwd, macaddr, form_data['host_netmask'], form_data['host_gateway'])
+        eaidb_create_job_entry(
+            jobid,
+            hostname,
+            form_data["hosts"][index]["host_ip"],
+            form_data["root_pwd"],
+            cimcip,
+            cimcusr,
+            cimcpwd,
+            macaddr,
+            form_data["host_netmask"],
+            form_data["host_gateway"],
+        )
 
         jobid_list.append(jobid)
         logger_list.append(logger)
     # Process data on seperate thread
-    Process(target=process_submission, args=(jobid_list, logger_list, mainlog, form_data)).start()
+    Process(
+        target=process_submission, args=(jobid_list, logger_list, mainlog, form_data)
+    ).start()
     return jobid_list
 
 
@@ -747,12 +942,13 @@ def get_logs(jobid, basedir=LOGDIR):
 
     # Return 404 if path doesn't exist
     if not os.path.exists(abs_path):
-        return 'File does not exist!', 404
+        return "File does not exist!", 404
 
     # Check if path is a file and serve
     if os.path.isfile(abs_path):
-        with open(abs_path, 'r') as log_file:
-            return log_file.read(), 200, {'Content-Type': 'text/plain; charset=utf-8'}
+        with open(abs_path, "r") as log_file:
+            return log_file.read(), 200, {"Content-Type": "text/plain; charset=utf-8"}
+
 
 def update_job_status(jobid, status, logger, finished=False):
     """
@@ -766,15 +962,21 @@ def update_job_status(jobid, status, logger, finished=False):
     """
 
     if finished:
-        data = {'status': status, 'finish_time': time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime()), 'root_pwd':'', 'cimcpwd':''}
+        data = {
+            "status": status,
+            "finish_time": time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime()),
+            "root_pwd": "",
+            "cimcpwd": "",
+        }
     else:
-        data = {'status': status, 'finish_time': ''}
+        data = {"status": status, "finish_time": ""}
 
     eaidb_set(jobid, data)
 
     logger.info(f"Job Status has been updated to: {status}")
     if finished:
-        logger.info(f'Installation job (ID: {jobid}) finished.')
+        logger.info(f"Installation job (ID: {jobid}) finished.")
+
 
 def cimc_get_mo_property(cimchandle, mo_dn, mo_property):
     """
@@ -797,7 +999,7 @@ def cimc_set_mo_property(cimchandle, mo_dn, mo_property, value):
     :param mo_property: (str) CIMC Managed Object property
     :param value: (str) Managed Object property new value
     :return: n/a
-    """    
+    """
     mo = cimchandle.query_dn(mo_dn)
     setattr(mo, mo_property, value)
     cimchandle.set_mo(mo)
@@ -813,42 +1015,53 @@ def cimc_vmedia_basic_set(cimchandle, logger, basic_boot_order):
         [{"order":'1', "device-type":"cdrom", "name":"cdrom0"},
         {"order":'2', "device-type":"lan", "name":"lan"}]
         as returned by boot_order_policy_get() IMC SDK function
-    :return: n/a    
+    :return: n/a
     """
     try:
 
-        vmedia = 'NULL'
+        vmedia = "NULL"
         # check if vmedia on configured boot order list
         for boot_device in basic_boot_order:
-            if boot_device['device-type'] == 'cdrom':
-                vmedia = boot_device['order']
+            if boot_device["device-type"] == "cdrom":
+                vmedia = boot_device["order"]
                 logger.info(f"Discovered VMEDIA on position: {vmedia}")
 
-        if vmedia == 'NULL':
-            logger.info('No valid VMEDIA on configured boot order list - adding...')
+        if vmedia == "NULL":
+            logger.info("No valid VMEDIA on configured boot order list - adding...")
             from imcsdk.apis.server.boot import _add_boot_device
-            _add_boot_device(cimchandle, 'sys/rack-unit-1/boot-policy', {"order": "1", "device-type": "cdrom", "name": "cdrom-eai"})
-            logger.info(f'Boot Order set to: {boot_order_policy_get(cimchandle)}')
-        elif vmedia != '1':
-            logger.info(f'VMEDIA found on configured boot order list at position: {vmedia} - moving to 1st position...')
+
+            _add_boot_device(
+                cimchandle,
+                "sys/rack-unit-1/boot-policy",
+                {"order": "1", "device-type": "cdrom", "name": "cdrom-eai"},
+            )
+            logger.info(f"Boot Order set to: {boot_order_policy_get(cimchandle)}")
+        elif vmedia != "1":
+            logger.info(
+                f"VMEDIA found on configured boot order list at position: {vmedia} - moving to 1st position..."
+            )
             new_boot_order = []
             for boot_device in basic_boot_order:
-                if boot_device['device-type'] != 'cdrom' and int(boot_device['order']) < int(vmedia):
+                if boot_device["device-type"] != "cdrom" and int(
+                    boot_device["order"]
+                ) < int(vmedia):
                     # devices on higher position than VMEDIA - move 1 position down
-                    boot_device['order'] = str(int(boot_device['order']) + 1)
+                    boot_device["order"] = str(int(boot_device["order"]) + 1)
                     new_boot_order.append(boot_device)
-                elif boot_device['device-type'] != 'cdrom' and int(boot_device['order']) > int(vmedia):
+                elif boot_device["device-type"] != "cdrom" and int(
+                    boot_device["order"]
+                ) > int(vmedia):
                     # devices on lower position than VMEDIA - move 1 position down
                     new_boot_order.append(boot_device)
                 else:
                     # move VMEDIA to position 1
-                    boot_device['order'] = '1'
+                    boot_device["order"] = "1"
                     new_boot_order.append(boot_device)
             # apply new boot order policy
             boot_order_policy_set(cimchandle, boot_devices=new_boot_order)
-            logger.info(f'Boot Order set to: {boot_order_policy_get(cimchandle)}')
+            logger.info(f"Boot Order set to: {boot_order_policy_get(cimchandle)}")
     except Exception as e:
-        logger.error(f'Error when running vmedia check:')
+        logger.error(f"Error when running vmedia check:")
         logger.error(format_message_for_web(e))
 
 
@@ -861,23 +1074,23 @@ def cimc_vmedia_advanced_check(cimchandle):
     :return: (dict) NULL if no valid VMEDIA found,
                     VMEDIA name, dn and state if valid VMEDIA found,
              (str)  Error otherwise.
-             
+
     """
 
-    vmedia_dict = {'name': 'NULL', 'dn': 'NULL', 'state': 'NULL'}
+    vmedia_dict = {"name": "NULL", "dn": "NULL", "state": "NULL"}
     try:
-        vmedia_list = cimchandle.query_classid('LsbootVMedia')
+        vmedia_list = cimchandle.query_classid("LsbootVMedia")
         if len(vmedia_list) > 0:
             for vmedia in vmedia_list:
-                if getattr(vmedia, 'subtype') != 'kvm-mapped-dvd':
-                    vmedia_dict['name'] = getattr(vmedia, 'name')
-                    vmedia_dict['dn'] = getattr(vmedia, 'dn')
-                    vmedia_dict['state'] = getattr(vmedia, 'state')
-                    break   # fvoudn valid vmedia - we can break the loop here
+                if getattr(vmedia, "subtype") != "kvm-mapped-dvd":
+                    vmedia_dict["name"] = getattr(vmedia, "name")
+                    vmedia_dict["dn"] = getattr(vmedia, "dn")
+                    vmedia_dict["state"] = getattr(vmedia, "state")
+                    break  # fvoudn valid vmedia - we can break the loop here
         return vmedia_dict
-        
+
     except Exception as e:
-        return f'Error when running vmedia check: {str(e)}'
+        return f"Error when running vmedia check: {str(e)}"
 
 
 def cimc_vmedia_advanced_set(cimchandle, logger):
@@ -886,63 +1099,95 @@ def cimc_vmedia_advanced_set(cimchandle, logger):
 
     :param cimchandle: (ImcHandle) CIMC connection handle
     :param logger: (logging.Handler) logger handler for jobid
-    :return: n/a    
+    :return: n/a
     """
     try:
-        logger.info('Checking for VMEDIA on Advanced Boot Order ...')
+        logger.info("Checking for VMEDIA on Advanced Boot Order ...")
         vmedia = cimc_vmedia_advanced_check(cimchandle)
-        if 'Error' in str(vmedia):
-            logger.error(f'{str(vmedia)}. Aborting.')
+        if "Error" in str(vmedia):
+            logger.error(f"{str(vmedia)}. Aborting.")
             return 33
-        elif vmedia['name'] == 'NULL':
-            logger.info('No valid VMEDIA on configured boot order list - adding')
+        elif vmedia["name"] == "NULL":
+            logger.info("No valid VMEDIA on configured boot order list - adding")
             # append vmedia to boot order list
             vmedia_order = str(len(boot_precision_configured_get(cimchandle)) + 1)
             from imcsdk.apis.server.boot import _add_boot_device
-            vmedia['name'] = "vmedia-eai"
-            _add_boot_device(cimchandle, 'sys/rack-unit-1/boot-precision', {"order": vmedia_order, "device-type": "vmedia", "name": vmedia['name']})
-            logger.info(f'Boot Order set to: {boot_precision_configured_get(cimchandle)}')
+
+            vmedia["name"] = "vmedia-eai"
+            _add_boot_device(
+                cimchandle,
+                "sys/rack-unit-1/boot-precision",
+                {
+                    "order": vmedia_order,
+                    "device-type": "vmedia",
+                    "name": vmedia["name"],
+                },
+            )
+            logger.info(
+                f"Boot Order set to: {boot_precision_configured_get(cimchandle)}"
+            )
         else:
             logger.info(f"VMEDIA found - using: {vmedia['name']}")
-            if vmedia['state'].casefold() != 'enabled':
-                logger.info(f"VMEDIA {vmedia['name']} disabled: changing state to Enabled")
-                cimc_set_mo_property(cimchandle, vmedia['dn'], 'state', 'Enabled')
+            if vmedia["state"].casefold() != "enabled":
+                logger.info(
+                    f"VMEDIA {vmedia['name']} disabled: changing state to Enabled"
+                )
+                cimc_set_mo_property(cimchandle, vmedia["dn"], "state", "Enabled")
 
         # set vmedia as OneTimePrecisionBootDevice
-        cimc_set_mo_property(cimchandle, 'sys/rack-unit-1/one-time-precision-boot', 'device', vmedia['name'])
+        cimc_set_mo_property(
+            cimchandle,
+            "sys/rack-unit-1/one-time-precision-boot",
+            "device",
+            vmedia["name"],
+        )
         logger.info(f"Configured One time boot device: {vmedia['name']}")
     except Exception as e:
-        logger.error(f'Error when trying to set One time boot device:')
+        logger.error(f"Error when trying to set One time boot device:")
         logger.error(format_message_for_web(e))
 
-    
+
 def cimc_vmedia_set(cimchandle, logger):
     """
     Set VMEDIA on Boot Order.
 
     :param cimchandle: (ImcHandle) CIMC connection handle
     :param logger: (logging.Handler) logger handler for jobid
-    :return: n/a    
+    :return: n/a
     """
     try:
         # check Basic vs Advanced Boot mode
         basic_boot_order = boot_order_policy_get(cimchandle)
         if len(basic_boot_order) > 0:
             # set VMEDIA as first device on Basic Boot Order list
-            logger.info(f'Discovered Basic Boot Order: {len(basic_boot_order)} devices, {basic_boot_order}')
+            logger.info(
+                f"Discovered Basic Boot Order: {len(basic_boot_order)} devices, {basic_boot_order}"
+            )
             cimc_vmedia_basic_set(cimchandle, logger, basic_boot_order)
         else:
             # ad VMEDIA to Advanced Boot Order and set it as One Time Boot Device
             adv_boot_order = boot_precision_configured_get(cimchandle)
-            logger.info(f'Discovered Advanced Boot Order: {len(adv_boot_order)} devices, {adv_boot_order}')
+            logger.info(
+                f"Discovered Advanced Boot Order: {len(adv_boot_order)} devices, {adv_boot_order}"
+            )
             cimc_vmedia_advanced_set(cimchandle, logger)
 
     except Exception as e:
-        logger.error(f'Error when setting VMedia:')
+        logger.error(f"Error when setting VMedia:")
         logger.error(format_message_for_web(e))
 
 
-def generate_pxe_boot(jobid, logger, mainlog, iso_image, macaddr, dryrun=DRYRUN, pxejinja=PXETEMPLATE, pxedir=PXEDIR, eai_ip=EAIHOST_IP):
+def generate_pxe_boot(
+    jobid,
+    logger,
+    mainlog,
+    iso_image,
+    macaddr,
+    dryrun=DRYRUN,
+    pxejinja=PXETEMPLATE,
+    pxedir=PXEDIR,
+    eai_ip=EAIHOST_IP,
+):
     """
     Build custom PXE config based on provided parameters and PXETEMPLATE.
 
@@ -952,33 +1197,48 @@ def generate_pxe_boot(jobid, logger, mainlog, iso_image, macaddr, dryrun=DRYRUN,
     :param iso_image: (str) installation ISO name
     :param dryrun: (bool) Toggle Auto-Installer "dry-run" mode
     :param pxejinja: (str) PXE boot jinja template file name
-    :param pxedir: (str) Destination directory to save XPE boot file 
+    :param pxedir: (str) Destination directory to save XPE boot file
     :param eai_ip: (str) Auto-Installer host system IP address
     :return n/a
     """
     if not dryrun:
         try:
-            with open(pxejinja, 'r') as pxetemplate_file:
+            with open(pxejinja, "r") as pxetemplate_file:
                 pxetemplate = Template(pxetemplate_file.read())
 
             # generate PXE config file name based on MAC address (add prefix + replace ':' with '-')
             pxecfg_path = path.join(pxedir, f"01-{macaddr.replace(':', '-')}")
 
-            logger.info(f'Saving PXE boot file as: {pxecfg_path}')
+            logger.info(f"Saving PXE boot file as: {pxecfg_path}")
 
             # read jinja template from file and render using read variables
-            with open(pxecfg_path, 'w+') as pxefile:
-                pxefile.write(pxetemplate.render(iso_image=f'iso/{iso_image}', ksurl=f'http://{eai_ip}/ks/{jobid}_ks.cfg'))
+            with open(pxecfg_path, "w+") as pxefile:
+                pxefile.write(
+                    pxetemplate.render(
+                        iso_image=f"iso/{iso_image}",
+                        ksurl=f"http://{eai_ip}/ks/{jobid}_ks.cfg",
+                    )
+                )
 
         except Exception as e:
-            logger.error(f'Failed to save PXE boot file: {format_message_for_web(e)}')
-            mainlog.error(f'{jobid} Failed to save PXE boot file: {str(e)}')
+            logger.error(f"Failed to save PXE boot file: {format_message_for_web(e)}")
+            mainlog.error(f"{jobid} Failed to save PXE boot file: {str(e)}")
     else:
-        logger.info(f'[DRYRUN] Generating PXE boot file')
-        mainlog.info(f'{jobid} [DRYRUN] Generating PXE boot file')
+        logger.info(f"[DRYRUN] Generating PXE boot file")
+        mainlog.info(f"{jobid} [DRYRUN] Generating PXE boot file")
 
 
-def generate_efi_boot(jobid, logger, mainlog, iso_image, macaddr, dryrun=DRYRUN, tftpboot=TFTPBOOT, tftpisodir=TFTPISODIR, eai_ip=EAIHOST_IP):
+def generate_efi_boot(
+    jobid,
+    logger,
+    mainlog,
+    iso_image,
+    macaddr,
+    dryrun=DRYRUN,
+    tftpboot=TFTPBOOT,
+    tftpisodir=TFTPISODIR,
+    eai_ip=EAIHOST_IP,
+):
     """
     Generate EFI boot structure:
     - subdirectory in tftpboot directory (example: /tftboot/01-aa-bb-cc-dd-ee-ff)
@@ -993,73 +1253,99 @@ def generate_efi_boot(jobid, logger, mainlog, iso_image, macaddr, dryrun=DRYRUN,
     :param tftpboot: (str) TFTPBOOT directory path (default: /tftpboot/)
     :param tftpisodir: (str) ISO subdirectory in TFTPBOOT directory (default: /tftpboot/iso)
     :param eai_ip: (str) Auto-Installer host system IP address
-    :return n/a     
+    :return n/a
     """
     if not dryrun:
         try:
-            mkdir_cmd = which('mkdir')
+            mkdir_cmd = which("mkdir")
             efidir = path.join(tftpboot, f"01-{macaddr.replace(':', '-')}")
-            system(f'{mkdir_cmd} {efidir}')
+            system(f"{mkdir_cmd} {efidir}")
 
             # read original boot.cfg
-            bootcfg_orig_path = path.join(tftpisodir, iso_image, 'boot.cfg')
-            with open(bootcfg_orig_path, 'r') as bootcfg_file:
+            bootcfg_orig_path = path.join(tftpisodir, iso_image, "boot.cfg")
+            with open(bootcfg_orig_path, "r") as bootcfg_file:
                 bootcfg = bootcfg_file.read()
 
             # search for kernelopt line and replace parameters with ksurl
-            bootcfg = re.sub(r"kernelopt.*", f'kernelopt=ks=http://{eai_ip}/ks/{jobid}_ks.cfg', bootcfg)
+            bootcfg = re.sub(
+                r"kernelopt.*",
+                f"kernelopt=ks=http://{eai_ip}/ks/{jobid}_ks.cfg",
+                bootcfg,
+            )
 
-            bootcfg_path = path.join(efidir, 'boot.cfg')
-            logger.info(f'Saving EFI boot file as: {bootcfg_path}')
+            bootcfg_path = path.join(efidir, "boot.cfg")
+            logger.info(f"Saving EFI boot file as: {bootcfg_path}")
 
-            with open(bootcfg_path, 'w+') as bootcfg_custom_file:
+            with open(bootcfg_path, "w+") as bootcfg_custom_file:
                 bootcfg_custom_file.write(bootcfg)
 
         except Exception as e:
-            logger.error(f'Failed to save EFI boot.cfg file: {format_message_for_web(e)}')
-            mainlog.error(f'{jobid} Failed to save EFI boot.cfg file: {str(e)}')
+            logger.error(
+                f"Failed to save EFI boot.cfg file: {format_message_for_web(e)}"
+            )
+            mainlog.error(f"{jobid} Failed to save EFI boot.cfg file: {str(e)}")
     else:
-        logger.info(f'[DRYRUN] Generating EFI boot file')
-        mainlog.info(f'{jobid} [DRYRUN] Generating EFI boot file')
+        logger.info(f"[DRYRUN] Generating EFI boot file")
+        mainlog.info(f"{jobid} [DRYRUN] Generating EFI boot file")
 
-def final_reboot(jobid, ssh, logger, mainlog, sleeptimer=60, timeoutminutes=45, status_dict=STATUS_CODES):
+
+def final_reboot(
+    jobid,
+    ssh,
+    logger,
+    mainlog,
+    sleeptimer=60,
+    timeoutminutes=45,
+    status_dict=STATUS_CODES,
+):
     # Server is in final reboot, does not need files anymore. Also prevents PXE reboot loop.
     job_cleanup(jobid, logger, mainlog, cleanroot=False)
 
     ### Wait for host to boot
     update_job_status(jobid, status_dict[17], logger)
     # Collect required data
-    eaidb_dict = eaidb_get(jobid, ('ipaddr','root_pwd'))
-    url = "https://" + eaidb_dict['ipaddr'] + "/sdk"
+    eaidb_dict = eaidb_get(jobid, ("ipaddr", "root_pwd"))
+    url = "https://" + eaidb_dict["ipaddr"] + "/sdk"
     # Create Session
     session = requests.Session()
     # Request SOAP API
     response = None
-    timeout = datetime.datetime.now() + datetime.timedelta(minutes = timeoutminutes)
+    timeout = datetime.datetime.now() + datetime.timedelta(minutes=timeoutminutes)
     logger.info("Waiting for ESXi to become responsive.")
     while getattr(response, "status_code", 0) != 200:
         try:
             time.sleep(sleeptimer)
-            mainlog.debug("Attempting to connect to ESXi API at " + eaidb_dict['ipaddr'])
+            mainlog.debug(
+                "Attempting to connect to ESXi API at " + eaidb_dict["ipaddr"]
+            )
             response = session.get(f"{url}/vimServiceVersions.xml", verify=False)
             # mainlog.debug(response.text)
         except:
             if datetime.datetime.now() > timeout:
-                logger.error("ESXi API Connection timeout. Unable to start SSH service.")
-                mainlog.error("ESXi API Connection timeout. Unable to start SSH service.")
+                logger.error(
+                    "ESXi API Connection timeout. Unable to start SSH service."
+                )
+                mainlog.error(
+                    "ESXi API Connection timeout. Unable to start SSH service."
+                )
                 update_job_status(jobid, status_dict[35], logger, True)
                 return
             continue
-
 
     ## After system has booted up, enable SSH if set.
     try:
         if ssh:
             # TODO: Ideally whether or not to enable ssh should be saved to the database.
-            
+
             # TODO: Need to see if we can prevent multiple instances of enable_ssh running for the same ESXi host. ###
 
-            enable_ssh(eaidb_dict['ipaddr'], eaidb_dict['root_pwd'], mainlog, logger, session=session)
+            enable_ssh(
+                eaidb_dict["ipaddr"],
+                eaidb_dict["root_pwd"],
+                mainlog,
+                logger,
+                session=session,
+            )
         else:
             # Close session
             session.close()
@@ -1068,7 +1354,8 @@ def final_reboot(jobid, ssh, logger, mainlog, sleeptimer=60, timeoutminutes=45, 
     else:
         update_job_status(jobid, status_dict[20], logger, True)
 
-def enable_ssh(ipaddr, esxipass, mainlog, logger, session=None, esxiuser='root'):
+
+def enable_ssh(ipaddr, esxipass, mainlog, logger, session=None, esxiuser="root"):
     # https://developer.vmware.com/apis/1355/vsphere
 
     url = "https://" + ipaddr + "/sdk"
@@ -1091,36 +1378,56 @@ def enable_ssh(ipaddr, esxipass, mainlog, logger, session=None, esxiuser='root')
     try:
         xml = ET.fromstring(response.text)
         xmlns = xml[0][0].text
-        session.headers.update({'Content-Type': 'application/xml', 'SOAPAction': f'"{xmlns}/{xml[0][1].text}"'})
+        session.headers.update(
+            {
+                "Content-Type": "application/xml",
+                "SOAPAction": f'"{xmlns}/{xml[0][1].text}"',
+            }
+        )
     except:
         logger.error("Unable to parse ESXi API Response. Unable to start SSH service.")
         mainlog.error("Unable to parse ESXi API Response")
         raise Exception("Failed to parse vimServiceVersions.xml")
 
-
     # Request Authentication
-    payload = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<soapenv:Envelope xmlns:soapenc=\"http://schemas.xmlsoap.org/soap/encoding/\" xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\">\n<soapenv:Body><Login xmlns=\"" + xmlns + "\"><_this type=\"SessionManager\">ha-sessionmgr</_this><userName>" + esxiuser + "</userName><password>" + esxipass + "</password></Login></soapenv:Body>\n</soapenv:Envelope>"
+    payload = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n<soapenv:Envelope xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">\n<soapenv:Body><Login xmlns="'
+        + xmlns
+        + '"><_this type="SessionManager">ha-sessionmgr</_this><userName>'
+        + esxiuser
+        + "</userName><password>"
+        + esxipass
+        + "</password></Login></soapenv:Body>\n</soapenv:Envelope>"
+    )
     try:
         response = session.post(url, data=payload, verify=False)
     except:
         raise Exception("Failed to log into the ESXi host.")
     # mainlog.debug(response.text)
-    if response.text.count("xsi:type=\"InvalidLogin\""):
+    if response.text.count('xsi:type="InvalidLogin"'):
         # Throw an error because the username or password is incorrect.
         # This should never happen because we just installed ESXi and set the password.
         logger.error("Unable to log into ESXi API. Unable to start SSH service.")
         mainlog.error("Unable to log into ESXi API.")
-        raise Exception('Username and password was rejected by ESXi host.')
+        raise Exception("Username and password was rejected by ESXi host.")
 
     try:
         # Set SSH policy to "on"
-        payload = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<soapenv:Envelope xmlns:soapenc=\"http://schemas.xmlsoap.org/soap/encoding/\" xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\">\n<soapenv:Body><UpdateServicePolicy xmlns=\"" + xmlns + "\"><_this type=\"HostServiceSystem\">serviceSystem</_this><id>TSM-SSH</id><policy>on</policy></UpdateServicePolicy></soapenv:Body>\n</soapenv:Envelope>"
+        payload = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n<soapenv:Envelope xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">\n<soapenv:Body><UpdateServicePolicy xmlns="'
+            + xmlns
+            + '"><_this type="HostServiceSystem">serviceSystem</_this><id>TSM-SSH</id><policy>on</policy></UpdateServicePolicy></soapenv:Body>\n</soapenv:Envelope>'
+        )
         response = session.post(url, data=payload, verify=False)
         logger.info("Set SSH policy to 'on'.")
         # mainlog.debug(response.text)
 
         # Start the SSH Service
-        payload = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<soapenv:Envelope xmlns:soapenc=\"http://schemas.xmlsoap.org/soap/encoding/\" xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\">\n<soapenv:Body><StartService xmlns=\"" + xmlns + "\"><_this type=\"HostServiceSystem\">serviceSystem</_this><id>TSM-SSH</id></StartService></soapenv:Body>\n</soapenv:Envelope>"
+        payload = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n<soapenv:Envelope xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">\n<soapenv:Body><StartService xmlns="'
+            + xmlns
+            + '"><_this type="HostServiceSystem">serviceSystem</_this><id>TSM-SSH</id></StartService></soapenv:Body>\n</soapenv:Envelope>'
+        )
         response = session.post(url, data=payload, verify=False)
         logger.info("Started SSH service.")
         # mainlog.debug(response.text)
@@ -1128,7 +1435,11 @@ def enable_ssh(ipaddr, esxipass, mainlog, logger, session=None, esxiuser='root')
         raise Exception("Failed to start ssh service.")
 
     # Logout
-    payload = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<soapenv:Envelope xmlns:soapenc=\"http://schemas.xmlsoap.org/soap/encoding/\" xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\">\n<soapenv:Body><Logout xmlns=\"" + xmlns + "\"><_this type=\"SessionManager\">ha-sessionmgr</_this></Logout></soapenv:Body>\n</soapenv:Envelope>"
+    payload = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n<soapenv:Envelope xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">\n<soapenv:Body><Logout xmlns="'
+        + xmlns
+        + '"><_this type="SessionManager">ha-sessionmgr</_this></Logout></soapenv:Body>\n</soapenv:Envelope>'
+    )
     try:
         response = session.post(url, data=payload, verify=False)
     except:

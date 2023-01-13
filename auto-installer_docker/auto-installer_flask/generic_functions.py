@@ -6,28 +6,29 @@ import time
 import logging
 import sqlite3 as sl
 
-def generate_jobid(cimcip='no_ip_address_provided'):
+
+def generate_jobid(cimcip="no_ip_address_provided"):
     """
     Return jobid in format cimcip_timestamp, eg. 192.168.1.111_1617701465.718063
 
     :param cimcip: (str) CIMC IP or MAC address
     :return: jobid (str)
     """
-    return cimcip.replace(':','-') + '_' + str(time.time())
+    return cimcip.replace(":", "-") + "_" + str(time.time())
 
 
 def check_service_status(service_name):
-    return_code = system('/usr/bin/systemctl status ' + service_name + '>/dev/null')
+    return_code = system("/usr/bin/systemctl status " + service_name + ">/dev/null")
     if return_code == 0:
-        service_status = 'Running.'
+        service_status = "Running."
     else:
-        service_status = 'Stopped. Check details.'
+        service_status = "Stopped. Check details."
     return service_status
 
 
 def format_message_for_web(message):
     # remove '<' and '>' from string as it renders issues when displayed in web browser
-    return str(message).replace('<', '"').replace('>', '"')
+    return str(message).replace("<", '"').replace(">", '"')
 
 
 def get_jobid_logger(jobid=generate_jobid(), logdir=LOGDIR):
@@ -40,14 +41,16 @@ def get_jobid_logger(jobid=generate_jobid(), logdir=LOGDIR):
     """
 
     # Get/create a logger
-    logger = logging.getLogger(jobid.replace('.','_'))
+    logger = logging.getLogger(jobid.replace(".", "_"))
     if not logger.hasHandlers():
         # set log level
         logger.setLevel(logging.DEBUG)
         # define file handler and set formatter
         log_file = os.path.join(logdir, jobid)
         file_handler = logging.FileHandler(log_file)
-        formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S %Z')
+        formatter = logging.Formatter(
+            "%(asctime)s [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S %Z"
+        )
         file_handler.setFormatter(formatter)
         # add file handler to logger
         logger.addHandler(file_handler)
@@ -63,11 +66,14 @@ def get_main_logger(log_file=EAILOG):
     """
 
     # Get/create main application logger
-    main_logger = logging.getLogger('main')
+    main_logger = logging.getLogger("main")
     # set log level
     main_logger.setLevel(logging.DEBUG)
     # define formatter
-    formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(funcName)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S %Z')
+    formatter = logging.Formatter(
+        "%(asctime)s [%(levelname)s] %(funcName)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S %Z",
+    )
 
     if not main_logger.hasHandlers():
         # configure logging to log file (define file handler and set formatter)
@@ -85,7 +91,19 @@ def get_main_logger(log_file=EAILOG):
     return main_logger
 
 
-def eaidb_create_job_entry(jobid, hostname, ipaddr, root_pwd, cimcip, cimcusr, cimcpwd, macaddr, netmask, gateway, eaidb=EAIDB):
+def eaidb_create_job_entry(
+    jobid,
+    hostname,
+    ipaddr,
+    root_pwd,
+    cimcip,
+    cimcusr,
+    cimcpwd,
+    macaddr,
+    netmask,
+    gateway,
+    eaidb=EAIDB,
+):
     """
     Create new entry in EAIDB database EAISTATUS table.
 
@@ -98,16 +116,33 @@ def eaidb_create_job_entry(jobid, hostname, ipaddr, root_pwd, cimcip, cimcusr, c
     con = sl.connect(eaidb)
 
     # set values
-    start_time = time.strftime('%Y-%m-%d %H:%M:%S %Z', time.localtime())
-    finish_time = ''
-    status = 'Ready to deploy'
+    start_time = time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime())
+    finish_time = ""
+    status = "Ready to deploy"
 
     # create new DB record
     with con:
-        sql = 'INSERT INTO EAISTATUS (jobid, hostname, ipaddr, root_pwd, cimcip, start_time, finish_time, status, cimcusr, cimcpwd, macaddr, netmask, gateway) ' \
-              'values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        data = (jobid, hostname, ipaddr, root_pwd, cimcip, start_time, finish_time, status, cimcusr, cimcpwd, macaddr, netmask, gateway)
+        sql = (
+            "INSERT INTO EAISTATUS (jobid, hostname, ipaddr, root_pwd, cimcip, start_time, finish_time, status, cimcusr, cimcpwd, macaddr, netmask, gateway) "
+            "values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        data = (
+            jobid,
+            hostname,
+            ipaddr,
+            root_pwd,
+            cimcip,
+            start_time,
+            finish_time,
+            status,
+            cimcusr,
+            cimcpwd,
+            macaddr,
+            netmask,
+            gateway,
+        )
         con.execute(sql, data)
+
 
 def eaidb_get_status(eaidb=EAIDB):
     """
@@ -130,17 +165,19 @@ def eaidb_get_status(eaidb=EAIDB):
     con = sl.connect(eaidb)
     eaidb_dict = {}
     with con:
-        for columns in con.execute("SELECT jobid, hostname, ipaddr, cimcip, start_time, finish_time, status, macaddr, netmask, gateway FROM EAISTATUS"):
+        for columns in con.execute(
+            "SELECT jobid, hostname, ipaddr, cimcip, start_time, finish_time, status, macaddr, netmask, gateway FROM EAISTATUS"
+        ):
             eaidb_dict[columns[0]] = {}
-            eaidb_dict[columns[0]]['hostname'] = columns[1]
-            eaidb_dict[columns[0]]['ipaddr'] = columns[2]
-            eaidb_dict[columns[0]]['cimcip'] = columns[3]
-            eaidb_dict[columns[0]]['start_time'] = columns[4]
-            eaidb_dict[columns[0]]['finish_time'] = columns[5]
-            eaidb_dict[columns[0]]['status'] = columns[6]
-            eaidb_dict[columns[0]]['macaddr'] = columns[7]
-            eaidb_dict[columns[0]]['netmask'] = columns[8]
-            eaidb_dict[columns[0]]['gateway'] = columns[9]
+            eaidb_dict[columns[0]]["hostname"] = columns[1]
+            eaidb_dict[columns[0]]["ipaddr"] = columns[2]
+            eaidb_dict[columns[0]]["cimcip"] = columns[3]
+            eaidb_dict[columns[0]]["start_time"] = columns[4]
+            eaidb_dict[columns[0]]["finish_time"] = columns[5]
+            eaidb_dict[columns[0]]["status"] = columns[6]
+            eaidb_dict[columns[0]]["macaddr"] = columns[7]
+            eaidb_dict[columns[0]]["netmask"] = columns[8]
+            eaidb_dict[columns[0]]["gateway"] = columns[9]
     return eaidb_dict
 
 
@@ -154,7 +191,10 @@ def eaidb_get_cimc_credentials(jobid, eaidb=EAIDB):
     """
     con = sl.connect(eaidb)
     with con:
-        for cimc_data in con.execute(f"SELECT cimcip, cimcusr, cimcpwd FROM EAISTATUS WHERE jobid is ?;", (jobid,)):
+        for cimc_data in con.execute(
+            f"SELECT cimcip, cimcusr, cimcpwd FROM EAISTATUS WHERE jobid is ?;",
+            (jobid,),
+        ):
             cimcip = cimc_data[0]
             cimcusr = cimc_data[1]
             cimcpwd = cimc_data[2]
@@ -171,26 +211,36 @@ def eaidb_check_jobid_exists(jobid, eaidb=EAIDB):
     """
     con = sl.connect(eaidb)
     with con:
-        if con.execute(f"SELECT jobid FROM EAISTATUS WHERE jobid=?;", (jobid,)).fetchone() is not None:
+        if (
+            con.execute(
+                f"SELECT jobid FROM EAISTATUS WHERE jobid=?;", (jobid,)
+            ).fetchone()
+            is not None
+        ):
             return True
         else:
             return False
+
+
 def eaidb_connect(eaidb=EAIDB):
     # Verify DB is connected.
     global dbcon
     try:
         dbcon.cursor()
     except:
-        print('Creating new connection to DB.')
+        print("Creating new connection to DB.")
         dbcon = sl.connect(eaidb)
     return dbcon
+
 
 def eaidb_get(jobid, fields):
     global allowed_fields
     dbcon = eaidb_connect()
 
-    if 'allowed_fields' not in globals():
-        allowed_fields = [columns[1] for columns in dbcon.execute("PRAGMA table_info(EAISTATUS)")]
+    if "allowed_fields" not in globals():
+        allowed_fields = [
+            columns[1] for columns in dbcon.execute("PRAGMA table_info(EAISTATUS)")
+        ]
     # check fields
     if type(fields) is not tuple:
         raise Exception("Fields must be an array of type tuple.")
@@ -198,11 +248,14 @@ def eaidb_get(jobid, fields):
         if field not in allowed_fields:
             raise Exception("field supplied was not a valid table column.")
     eaidb_dict = {}
-    for columns in dbcon.execute(f"SELECT {', '.join(fields)} FROM EAISTATUS WHERE jobid=?", (jobid,)):
+    for columns in dbcon.execute(
+        f"SELECT {', '.join(fields)} FROM EAISTATUS WHERE jobid=?", (jobid,)
+    ):
         for field in fields:
             eaidb_dict[field] = columns[fields.index(field)]
     # Decrypt encrypted fields here.
     return eaidb_dict
+
 
 def eaidb_set(jobid, fieldsdict):
     """
