@@ -170,11 +170,6 @@ If the ESXi host installed successfully, but the status on Auto-Installer did no
 Common reasons are wrong IP Address, Gateway, VLAN or VMNIC settings. Or the ESXi host may require a static route.
 If the ESXi host is in an isolated network and there is no way for it to contact the Auto-Installer, then it cannot update the status to finished.
 
-### I saw warnings on the ESXi Console during the installation phase!
-It is normal to see warnings on the ESXi Console screen during the installation phase.\
-As long as they are **warnings** and not **errors**, the installation will continue.\
-There may also be prompts that say "Press ENTER to continue", but it is recommended that you do not press any keys. Again, as long there are no actual errors, the installation will continue and the warning/prompt will go away momentarily.
-
 ### There is a problem with the kickstart file, how do I troubleshoot it?
 If you get the error similar to:\
 ![Kickstart Error](doc_images/kickstarterror.png)
@@ -205,7 +200,7 @@ At the moment, the easiest way to get the exact ISO filenames is to:\
 - Click on the "Try it out" button.
 - Click on the blue "Execute" button.
 
-This will print a list of the current ISO files that you can copy or download.
+This will print a list of the current ISO file names that you can copy.
 
 ### PXE Install: Which MAC address do I enter?
 Your servers often have multiple NICs, each with one or more MAC addresses.\

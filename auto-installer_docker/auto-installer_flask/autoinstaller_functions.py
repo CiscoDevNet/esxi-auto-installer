@@ -149,7 +149,7 @@ def generate_kickstart(
         cleardisk = "drives=" + form_data["diskpath"]
 
     # customize install and (optionally) clearpart lines
-    install = "install --" + firstdisk_install + " --overwritevmfs"
+    install = f"install --{firstdisk_install} --overwritevmfs --ignoreprereqwarnings --ignoreprereqerrors --forceunsupportedinstall"
     if form_data["clearpart"]:
         clearline = "clearpart --" + cleardisk + " --overwritevmfs\n"
     else:
