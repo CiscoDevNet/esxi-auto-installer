@@ -162,32 +162,31 @@ def generate_kickstart(
     if form_data["static_routes"]:
         for route in form_data["static_routes"]:
             net_cidr = route["subnet_ip"] + "/" + str(route["cidr"])
-            static_routes += (
-                "localcli network ip route ipv4 add -n "
-                + net_cidr
-                + " -g "
-                + route["gateway"]
-                + "\n"
-            )
-        pre_section = "%pre --interpreter=busybox\n" + static_routes + "\n"
-    else:
-        pre_section = ""
+            static_routes += (f"localcli network ip route ipv4 add -n {net_cidr} -g {route['gateway']}\n")
+        static_routes = "# Set static routes\n" + static_routes
 
     # additional default route set when static route has been selected in %pre section
-    if pre_section:
+    if static_routes:
         set_def_gw = (
-            "# Set Default Gateway\nesxcli network ip route ipv4 add --gateway "
-            + form_data["host_gateway"]
-            + " --network 0.0.0.0\n"
+            "# Set Default Gateway\n"
+            + f"esxcli network ip route ipv4 add --gateway {form_data['host_gateway']} --network 0.0.0.0\n"
         )
     else:
         set_def_gw = ""
 
+    # Add IP addressing during the pre stage if this is an ISO boot.
+    # This allows non-DHCP boots to get an address so they can update
+    # the installer status.
+    if form_data["installmethod"] != "pxeboot":
+        pre_network = True
+    else:
+        pre_network = False
+
     # enable ssh
     if form_data["enablessh"]:
-        enable_ssh = "# enable & start remote ESXi Shell (SSH)\nvim-cmd hostsvc/enable_ssh\nvim-cmd hostsvc/start_ssh\n"
+        enable_ssh = True
     else:
-        enable_ssh = ""
+        enable_ssh = False
 
     # process DNS
     if form_data["dns1"] != "":
@@ -223,8 +222,9 @@ def generate_kickstart(
         netmask=netmask,
         gateway=gateway,
         hostname=hostname,
-        pre_section=pre_section,
         dnsservers=dnsservers,
+        pre_network=pre_network,
+        static_routes=static_routes,
         set_def_gw=set_def_gw,
         enable_ssh=enable_ssh,
         eai_host_ip=eai_host_ip,
