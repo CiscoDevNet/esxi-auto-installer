@@ -3,7 +3,7 @@ from platform import system_alias
 from imcsdk.imchandle import ImcHandle
 from imcsdk.apis.server.vmedia import *
 from imcsdk.apis.server.boot import *
-from imcsdk.apis.server.serveractions import server_power_cycle, server_power_state_get
+from imcsdk.apis.server.serveractions import server_power_state_get, server_power_up, server_power_cycle
 
 from generic_functions import *
 from helper_functions import *
@@ -564,9 +564,14 @@ def install_esxi(
             # query CIMC CommVMediaMap Managed Object - useful for debugging
             # cimc_query_classid(cimchandle, 'CommVMediaMap')
 
-            mainlog.info(f"{jobid} Reboot the machine...")
-            logger.info(f"Rebooting the server to start the installation")
-            server_power_cycle(cimchandle)
+            mainlog.info(f"{jobid} Boot the machine...")
+            pwrstate = server_power_state_get(cimchandle)
+            if pwrstate == 'off':
+                logger.info(f"Powering on the server to start the installation")
+                server_power_up(cimchandle)
+            else:
+                logger.info(f"Rebooting the server to start the installation")
+                server_power_cycle(cimchandle)
             pwrstate = server_power_state_get(cimchandle)
             mainlog.info(f"{jobid} Server power state: {pwrstate}")
             logger.info(f"Server power state: {pwrstate}")
