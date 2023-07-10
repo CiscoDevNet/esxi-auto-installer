@@ -111,6 +111,7 @@ class EAIJobs(Resource):
             args = self.reqparse.parse_args()
             mainlog.debug(f"API /jobs endpoint called with args: {args}")
 
+            # Verify fields that are common to all install types.
             if args["installmethod"] not in ("pxeboot", "cimc"):
                 mainlog.error(
                     f"API POST /jobs error - Unknown installation method. Request aborted."
@@ -119,7 +120,28 @@ class EAIJobs(Resource):
                     "status": "error",
                     "message": "Unknown installation method",
                 }, 400
-            # Verify fields that are common to all install types.
+            try:
+                ipaddress.ip_address(args["host_gateway"])
+            except ValueError:
+                return {
+                    "status": "error",
+                    "message": "Required field is not valid: host_gateway",
+                }, 400
+            try:
+                ipaddress.ip_address(args["host_netmask"])
+            except ValueError:
+                return {
+                    "status": "error",
+                    "message": "Required field is not valid: host_netmask",
+                }, 400
+            try:
+                # Cached for later use in the host address checkcheck.
+                ipsubnetobj = ipaddress.ip_network(f'{args["host_gateway"]}/{args["host_netmask"]}', strict=False)
+            except ValueError:
+                return {
+                    "status": "error",
+                    "message": "Field is not a valid netmask: host_netmask",
+                }, 400
             p = re.compile("^[A-Za-z\d\-_]{1,63}$")
             for host_data in args["hosts"]:
                 print(f"[DEBUG] Host data: {host_data}")
@@ -142,6 +164,12 @@ class EAIJobs(Resource):
                             "status": "error",
                             "message": "Required hosts field is not valid: host_ip",
                         }, 400
+                    if args["host_gateway"]:
+                        if not (ipaddress.ip_address(host_data["host_ip"]) in ipsubnetobj):
+                            return {
+                                "status": "error",
+                                "message": f'Host IP {host_data["host_ip"]} and Host Gateway {args["host_gateway"]} are not in the same Host Netmask {args["host_netmask"]}'
+                            }, 400
                 else:
                     mainlog.error(
                         f"API POST /jobs error - missing host data. Request aborted."
