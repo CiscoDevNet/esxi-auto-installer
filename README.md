@@ -163,11 +163,24 @@ PXE: For all other systems, including Virtual Machines and Cisco UCS B series se
 
 ## Common issues / FAQ
 
+### What network ports are required?
+
+Inbound to AutoInstaller:
+- TCP 80 for HTTP access to the Web GUI and APIs, plus ISO downloads for OOBM/CIMC.
+- UDP 67 for DHCP during PXE installations.
+- UDP 69 for TFTP access to download ISO and install files during PXE installations.\
+Note, TFTP data transfer happens on a random UDP port number.
+
+Outbound from AutoInstaller:
+- UDP 68 for DHCP during PXE installations.
+- TCP 443 for HTTPS to enable SSH service on ESXi Host and to connect to OOBM/CIMC.
+- UDP Random Port for TFTP data transfer.
+
 ### ESXi hosts status does not change to finished.
 The kickstart file instructs the host to contact the ESXi Auto-Installer via the /api/v1/jobs PUT API to update its status to "Finished".\
 If the ESXi host installed successfully, but the status on Auto-Installer did not update to "Finished", it could be because the ESXi host was unable to contact the Auto-Installer during the initial ESXi boot.
 
-Common reasons are wrong IP Address, Gateway, VLAN or VMNIC settings. Or the ESXi host may require a static route.
+Common reasons are wrong IP Address, Gateway, VLAN or VMNIC settings. Or the ESXi host may require a static route, or you may be required to open a port on your firewall.
 If the ESXi host is in an isolated network and there is no way for it to contact the Auto-Installer, then it cannot update the status to finished.
 
 ### There is a problem with the kickstart file, how do I troubleshoot it?
@@ -194,7 +207,7 @@ Here is an example of a bad route in the %pre section:
 ![Kickstart Log](doc_images/kickstartlog.png)
 
 ### Can I copy the ISO filename out (for automation)?
-At the moment, the easiest way to get the exact ISO filenames is to:\
+At the moment, the easiest way to get the exact ISO filenames is to:
 - Go to the API page on the top navigation bar.
 - Under the **iso** header, click on the "GET **/isos**" section to open it.
 - Click on the "Try it out" button.
