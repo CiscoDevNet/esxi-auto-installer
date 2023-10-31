@@ -5,9 +5,16 @@ rootpw --iscrypted {{rootpw_hash}}
 network --bootproto=static --addvmportgroup=true --device={{vmnicid}} {% if vlan not in '0' %}--vlanid={{vlan}} {% endif %}--ip={{ipaddr}} --netmask={{netmask}} --gateway={{gateway}} --hostname={{hostname}}{% if dnsservers != '' %} --nameserver={{dnsservers}}{% endif %}
 reboot
 
-{% if pre_section %}{{pre_section}}{% endif -%}
-
 %pre --interpreter=busybox
+{%- if static_routes %}
+{{static_routes}}
+{% endif -%}{%- if pre_network %}{% if vmnicid != 'vmnic0' %}
+localcli network vswitch standard uplink remove -v vSwitch0 -u `localcli network vswitch standard list -v vSwitch0 | awk -F": " '/Uplinks/ { print $2 }'` || true;
+localcli network vswitch standard uplink add -u {{vmnicid}} -v vSwitch0 || true;{% endif %}
+{%- if vlan not in '0' %}
+localcli network vswitch standard portgroup set -p "Management Network" -v {{vlan}} || true;{% endif %}
+localcli network ip interface ipv4 set -i vmk0 -t static --ipv4={{ipaddr}} -N {{netmask}} || true;
+localcli network ip route ipv4 add -n default -g {{gateway}} || true;{% endif %}
 echo -ne "PUT /api/v1/jobs/{{jobid}}?state=16 HTTP/1.0\r\nHost: {{eai_host_ip}}\r\n\r\n" | nc {{eai_host_ip}} 80 >/dev/null 2>&1 || true
 
 %post --interpreter=busybox
