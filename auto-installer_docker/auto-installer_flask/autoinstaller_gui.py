@@ -130,7 +130,7 @@ def upload_iso():
                 iso_extract(mainlog, uploaded_iso)
                 # copy extracted ISO and prepare it for tftpboot
                 iso_prepare_tftp(mainlog, uploaded_iso)
-        return redirect(url_for("autoinstaller_gui"))
+                # redirect to home page (done with JavaScript on /upload page)
     return render_template("upload.html")
 
 

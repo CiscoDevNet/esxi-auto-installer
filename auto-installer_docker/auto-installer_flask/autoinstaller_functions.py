@@ -270,6 +270,8 @@ def iso_extract(
     iso_save_path = path.join(uploaddir, uploaded_file.filename)
     uploaded_file.save(iso_save_path)
 
+    mainlog.info(f'Extracting uploaded ISO: {uploaded_file.filename}')
+
     # STEP 2: create mountpoint under tmpisodir (default: /opt/eai/upload/tmp/<iso_filebase>)
     filebase = path.splitext(uploaded_file.filename)[0]
     mountdir = path.join(tmpisodir, filebase)
