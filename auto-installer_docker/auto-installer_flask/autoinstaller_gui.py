@@ -41,7 +41,7 @@ def autoinstaller_gui():
     # if request.method == 'POST' and form.validate_on_submit():
     # TODO: server side data validation
 
-    if request.method == 'POST' and form.is_submitted():        
+    if request.method == 'POST' and form.is_submitted():
         mainlog.debug(result)
         # interate over the list of ESXi hosts and run corresponding actions for each host
         create_jobs(get_form_data(mainlog, result), result['installmethod'], mainlog)
@@ -113,7 +113,7 @@ def upload_iso():
                 iso_extract(mainlog, uploaded_iso)
                 # copy extracted ISO and prepare it for tftpboot
                 iso_prepare_tftp(mainlog, uploaded_iso)
-        return redirect(url_for('autoinstaller_gui'))
+                # redirect to home page (done with JavaScript on /upload page)
     return render_template('upload.html')
 
 

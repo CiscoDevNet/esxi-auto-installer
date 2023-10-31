@@ -1,5 +1,9 @@
 History
 =====================
+2.3 (2023-11-01)
+---------------------
+* Added progress indicator on /upload page
+
 2.2 (2022-12-19)
 ---------------------
 * Make installer compatible with Secure Boot. Added additional status update when installer starts.

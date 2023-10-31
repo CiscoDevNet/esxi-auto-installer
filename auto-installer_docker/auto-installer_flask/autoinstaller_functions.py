@@ -191,7 +191,7 @@ def generate_kickstart(jobid, form_data, index, logger, mainlog, eai_host_ip=EAI
 
 
 def iso_extract(mainlog, uploaded_file, uploaddir=UPLOADDIR, tmpisodir=MNTISODIR, extracted_iso_dir=ESXISODIR):
-    mainlog.info(f'Extracting uploaded ISO: {uploaded_file.filename}')
+    mainlog.info(f'Uploading ISO: {uploaded_file.filename}')
 
     # get system commands paths
     mkdir_cmd = which('mkdir')
@@ -203,6 +203,8 @@ def iso_extract(mainlog, uploaded_file, uploaddir=UPLOADDIR, tmpisodir=MNTISODIR
     # STEP 1: save ISO to uploaddir (default: /opt/eai/upload/<iso_filename>)
     iso_save_path = path.join(uploaddir, uploaded_file.filename)
     uploaded_file.save(iso_save_path)
+
+    mainlog.info(f'Extracting uploaded ISO: {uploaded_file.filename}')
 
     # STEP 2: create mountpoint under tmpisodir (default: /opt/eai/upload/tmp/<iso_filebase>)
     filebase = path.splitext(uploaded_file.filename)[0]
@@ -248,7 +250,7 @@ def iso_prepare_tftp(mainlog, uploaded_file, extracted_iso_dir=ESXISODIR, tftpis
     if not path.isdir(tftpisodir):
         mainlog.info(f'tftpboot: creating {tftpisodir} directory')
         system(f'{mkdir_cmd} {tftpisodir}')
-        
+
     if not path.isdir(pxedir):
         mainlog.info(f'tftpboot: creating {pxedir} directory')
         system(f'{mkdir_cmd} {pxedir}')
@@ -287,7 +289,7 @@ def iso_prepare_tftp(mainlog, uploaded_file, extracted_iso_dir=ESXISODIR, tftpis
     with open(bootcfg_path, 'w+') as bootcfg_file:
         bootcfg_file.write(bootcfg)
     mainlog.info(f'tftpboot: installation media for {filebase} ready.')
-    
+
     # prepare mboot EFI file on first run
     mbootefi = path.join(tftpdir, 'mboot.efi')
     if not path.isfile(mbootefi):
