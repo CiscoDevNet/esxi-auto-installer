@@ -127,10 +127,19 @@ def upload_iso():
             else:
                 mainlog.info(f"Starting ISO upload")
                 # extract ISO to ESXISODIR
-                iso_extract(mainlog, uploaded_iso)
-                # copy extracted ISO and prepare it for tftpboot
-                iso_prepare_tftp(mainlog, uploaded_iso)
-                # redirect to home page (done with JavaScript on /upload page)
+                iso_extract_msg = iso_extract(mainlog, uploaded_iso)
+                if  iso_extract_msg == "OK":
+                    # copy extracted ISO and prepare it for tftpboot - only when ISO was successfully extracted
+                    iso_prepare_tftp_msg = iso_prepare_tftp(mainlog, uploaded_iso)
+                    if iso_prepare_tftp_msg == "OK":
+                        # redirect to home page (done with JavaScript on /upload page)
+                        mainlog.info("ISO Upload successful.")
+                    else:
+                        mainlog.error(f"Failed to prepare PXE boot: {iso_prepare_tftp_msg}")
+                        return jsonify({"error": iso_prepare_tftp_msg})
+                else:
+                    mainlog.error(f"Extracting ISO failed: {iso_extract_msg}")
+                    return jsonify({"error": iso_extract_msg})
     return render_template("upload.html")
 
 
