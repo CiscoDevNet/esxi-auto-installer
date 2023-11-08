@@ -443,12 +443,6 @@ def iso_prepare_tftp(
 
     except Exception as err_msg:
         mainlog.error(f"Errors during preparing tftpboot: {str(err_msg)}")
-        # mainlog.info(f"Running cleanup")
-        # if path.isdir(target_iso_dir):
-        #     mainlog.info(f"Cleanup: removing target TFTP ISO subdirectory {target_iso_dir}")
-        #     system(f"{chmod_cmd} -R 777 {target_iso_dir} 1>&2")
-        #     system(f"{rm_cmd} -rf {target_iso_dir} 1>&2")
-        # mainlog.info(f"Cleaning up after ISO extract")
         iso_cleanup_on_failed_extract(mainlog, uploaded_file)
         return str(err_msg)
 
