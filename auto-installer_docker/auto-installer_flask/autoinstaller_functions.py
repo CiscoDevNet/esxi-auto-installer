@@ -9,7 +9,7 @@ from generic_functions import *
 from helper_functions import *
 from config import *
 
-from os import system, path, listdir
+from os import system, path, listdir, WEXITSTATUS
 from jinja2 import Template
 import re
 from ipaddress import ip_network
@@ -257,63 +257,97 @@ def iso_extract(
     tmpisodir=MNTISODIR,
     extracted_iso_dir=ESXISODIR,
 ):
-    mainlog.info(f"Extracting uploaded ISO: {uploaded_file.filename}")
+    """
+    Saves uploaded ISO file, mounts it and extracts files to subdirectory in ESXISODIR.
 
-    # get system commands paths
-    mkdir_cmd = which("mkdir")
-    mount_cmd = which("mount")
-    umount_cmd = which("umount")
-    chmod_cmd = which("chmod")
-    rmdir_cmd = which("rmdir")
+    :param mainlog: application main logger handler
+    :param uploaded_file: (str) ISO file name
+    :param uploaddir: (str) path to directory where uploaded ISO file is saved
+    :param tmpisodir: (str) path to directory where uploaded ISO gets mounted
+    :param extracted_iso_dir: (str) path to directory with extracted ESXi ISOs
+    :return: (str) status message (OK or errore message in case of failure)
+    """
 
-    # STEP 1: save ISO to uploaddir (default: /opt/eai/upload/<iso_filename>)
-    iso_save_path = path.join(uploaddir, uploaded_file.filename)
-    uploaded_file.save(iso_save_path)
+    try:
 
-    mainlog.info(f'Extracting uploaded ISO: {uploaded_file.filename}')
+        # get system commands paths
+        mkdir_cmd = which("mkdir")
+        mount_cmd = which("mount")
+        umount_cmd = which("umount")
+        chmod_cmd = which("chmod")
+        rmdir_cmd = which("rmdir")
+        cp_cmd = which("cp")
+        rm_cmd = which("rm")
+        ls_cmd = which("ls")
 
-    # STEP 2: create mountpoint under tmpisodir (default: /opt/eai/upload/tmp/<iso_filebase>)
-    filebase = path.splitext(uploaded_file.filename)[0]
-    mountdir = path.join(tmpisodir, filebase)
-    mainlog.debug(f"Create mountpoint: {mountdir}")
-    system(f"{mkdir_cmd} -p {mountdir} 1>&2")
+        # pre-check if this ISO is not already available in ESXISODIR
+        filebase = path.splitext(uploaded_file.filename)[0]
+        if path.isdir(path.join(extracted_iso_dir, filebase)):
+            mainlog.error(f"ISO {filebase} already available for installation - upload aborted")
+            return f"ISO {filebase} already available for installation"
 
-    # STEP 3: mount the ISO
-    mainlog.debug(f"Mount the ISO: ")
-    command = f"{mount_cmd} -r -o loop {iso_save_path} {mountdir} 1>&2"
-    mainlog.debug(f"CMD: {command}")
-    system(command)
-    system(f"ls -la {mountdir} 1>&2")
+        # STEP 1: save ISO to uploaddir (default: /opt/eai/upload/<iso_filename>)
+        mainlog.info(f"Saving ISO: {uploaded_file.filename}")
+        iso_save_path = path.join(uploaddir, uploaded_file.filename)
+        uploaded_file.save(iso_save_path)
 
-    # STEP 4: copy mounted ISO content to extracted_iso_dir (default: /opt/eai/exsi-iso/<iso_filebase>)
-    command = f"cp -R {mountdir} {extracted_iso_dir} 1>&2"
-    mainlog.debug(f"CMD: {command}")
-    system(command)
-    # set boot.cfg to be writable, so that it can be modified per each installation job
-    bootcfg_path = path.join(extracted_iso_dir, filebase, "boot.cfg")
-    mainlog.debug(f"bootcfg_path: {bootcfg_path}")
-    command = (
-        f'{chmod_cmd} 644 {path.join(extracted_iso_dir, filebase, "boot.cfg")} 1>&2'
-    )
-    mainlog.debug(f"CMD: {command}")
-    system(command)
+        mainlog.info(f"Extracting uploaded ISO: {uploaded_file.filename}")
 
-    # STEP 5: cleanup - unmount and delete ISO and temporary mountpoint
-    system(f"{umount_cmd} {mountdir} 1>&2")
-    mainlog.debug(f"Cleanup - remove ISO: {iso_save_path} and mountdir: {mountdir}")
-    system(f"rm -f {iso_save_path} 1>&2")
-    system(f"{rmdir_cmd} {mountdir} 1>&2")
+        # STEP 2: create mountpoint under tmpisodir (default: /opt/eai/upload/tmp/<iso_filebase>)
+        mountdir = path.join(tmpisodir, filebase)
+        mainlog.info(f"Create mountpoint: {mountdir}")
+        system(f"{mkdir_cmd} -p {mountdir} 1>&2")
 
-    # INFO: check content of tftpisodir directory (INFO only)
-    mainlog.info(f"New ISO: {filebase}")
-    mainlog.debug(f"Listing {extracted_iso_dir} content:")
-    dirs = [
-        f
-        for f in listdir(extracted_iso_dir)
-        if path.isdir(path.join(extracted_iso_dir, f))
-    ]
-    mainlog.debug(dirs)
-    system(f"ls -la {extracted_iso_dir} 1>&2")
+        # STEP 3: mount the ISO
+        mainlog.info(f"Mount the ISO: ")
+        command = f"{mount_cmd} -r -o loop {iso_save_path} {mountdir} 1>&2"
+        mainlog.debug(f"CMD: {command}")
+        if WEXITSTATUS(system(command)):
+            raise Exception("Failed to mount ISO")
+        system(f"{ls_cmd} -la {mountdir} 1>&2")
+
+        # STEP 4: copy mounted ISO content to extracted_iso_dir (default: /opt/eai/exsi-iso/<iso_filebase>)
+        command = f"{cp_cmd} -R {mountdir} {extracted_iso_dir} 1>&2"
+        mainlog.debug(f"CMD: {command}")
+        if WEXITSTATUS(system(command)):
+            raise Exception("Failed to copy ISO files to target directory")
+
+        # set boot.cfg to be writable, so that it can be modified per each installation job
+        bootcfg_path = path.join(extracted_iso_dir, filebase, "boot.cfg")
+        mainlog.info(f"Checking for boot.cfg file: {bootcfg_path}")
+        if not path.isfile(bootcfg_path):
+            mainlog.error(f"{bootcfg_path} file does not exist - aborting")
+            err_msg = "Missing boot.cfg file"
+            raise Exception("Missing boot.cfg file")
+        command = (
+            f'{chmod_cmd} 644 {path.join(extracted_iso_dir, filebase, "boot.cfg")} 1>&2'
+        )
+        mainlog.debug(f"CMD: {command}")
+        if WEXITSTATUS(system(command)):
+            raise Exception("Failed to change boot.cfg file permissions")
+
+        # STEP 5: cleanup - unmount and delete ISO and temporary mountpoint
+        system(f"{umount_cmd} {mountdir} 1>&2")
+        mainlog.info(f"Cleanup - remove ISO: {iso_save_path} and mountdir: {mountdir}")
+        system(f"{rm_cmd} -f {iso_save_path} 1>&2")
+        system(f"{rmdir_cmd} {mountdir} 1>&2")
+
+        # INFO: check content of ESXISODIR directory (INFO only)
+        mainlog.info(f"New ISO: {filebase}")
+        mainlog.debug(f"Listing {extracted_iso_dir} content:")
+        dirs = [
+            f
+            for f in listdir(extracted_iso_dir)
+            if path.isdir(path.join(extracted_iso_dir, f))
+        ]
+        mainlog.debug(dirs)
+        system(f"{ls_cmd} -la {extracted_iso_dir} 1>&2")
+        return "OK"
+
+    except Exception as err_msg:
+        mainlog.error(f"Errors during extracting ISO: {str(err_msg)}")
+        iso_cleanup_on_failed_extract(mainlog, uploaded_file)
+        return str(err_msg)
 
 
 def iso_prepare_tftp(
@@ -324,61 +358,142 @@ def iso_prepare_tftp(
     tftpdir=TFTPBOOT,
     pxedir=PXEDIR,
 ):
-    # prepare tftpboot directory structure on first run
-    mkdir_cmd = which("mkdir")
-    if not path.isdir(tftpisodir):
-        mainlog.info(f"tftpboot: creating {tftpisodir} directory")
-        system(f"{mkdir_cmd} {tftpisodir}")
+    """
+    Copy files extracted from uploaded ESXi ISO to TFTPBOOT directory and prepare PXE boot structure.
 
-    if not path.isdir(pxedir):
-        mainlog.info(f"tftpboot: creating {pxedir} directory")
-        system(f"{mkdir_cmd} {pxedir}")
+    :param mainlog: application main logger handler
+    :param uploaded_file: (str) ISO file name
+    :param extracted_iso_dir: (str) path to directory with extracted ESXi ISOs (default: /opt/eai/esxi-iso)
+    :param tftpisodir: (str) path to iso subdirectory in tftpboot directory (default: /opt/eai/tftpboot/iso)
+    :param tftpdir: (str) path to tftpboot directory (default: /opt/eai/tftpboot)
+    :param pxedir: (str) path to directory where PXE boot configuration files are saved (default: /opt/eai/tftpboot/pxelinux.cfg)
+    """
 
-    # prepare uploaded ISO for PXE boot
-    filebase = path.splitext(uploaded_file.filename)[0]
-    mainlog.info(f"tftpboot: copy and prepare {filebase} installation media.")
-    source_iso_dir = path.join(extracted_iso_dir, filebase)
-
-    # copy files from 'vanilla' ISO directory to target subdirectory under TFTPISODIR
-    mainlog.info(
-        f"Copy ISO files to target subdirectory: {path.join(tftpisodir, filebase)}"
-    )
-    system(f"cp -R {source_iso_dir} {tftpisodir} 1>&2")
-
-    bootcfg_path = path.join(tftpisodir, filebase, "boot.cfg")
-    mainlog.info(f"Modify {bootcfg_path} for PXE boot")
-    # read original boot.cfg
-    with open(bootcfg_path, "r") as bootcfg_file:
-        bootcfg = bootcfg_file.read()
-    # customize boot.cfg file
-    title = f"title=Loading ESXi installer - {filebase}"
-    prefix = f"prefix=iso/{filebase}"
-    # customize 'title' and 'prefix'
-    bootcfg = re.sub(r"title.*", title, bootcfg)
-    if "prefix" in bootcfg:
-        bootcfg = re.sub(r"prefix.*", prefix, bootcfg)
-    else:
-        # if there is no 'prefix=' line - add it just before 'kernel=' line
-        bootcfg = re.sub(r"kernel=", prefix + "\nkernel=", bootcfg)
-    # remove '/' from 'kernel=' and 'modules=' paths
-    bootcfg = re.sub(r"kernel=/", "kernel=", bootcfg)
-    # findall returns a list - extract string in position [0] to run replace() function
-    modules = re.findall("^modules=.*", bootcfg, re.MULTILINE)[0].replace("/", "")
-    bootcfg = re.sub(r"modules=.*", modules, bootcfg)
-    # save customized boot.cfg
-    system(f"chmod +w {bootcfg_path}")
-    with open(bootcfg_path, "w+") as bootcfg_file:
-        bootcfg_file.write(bootcfg)
-    mainlog.info(f"tftpboot: installation media for {filebase} ready.")
-
-    # prepare mboot EFI file on first run
-    mbootefi = path.join(tftpdir, "mboot.efi")
-    if not path.isfile(mbootefi):
-        mainlog.info(f"tftpboot: creating {mbootefi} file")
+    try:
         cp_cmd = which("cp")
-        system(
-            f"{cp_cmd} {path.join(tftpisodir, filebase, 'efi', 'boot', 'bootx64.efi')} {mbootefi}"
+        rm_cmd = which("rm")
+        mkdir_cmd = which("mkdir")
+        chmod_cmd = which("chmod")
+
+        filebase = path.splitext(uploaded_file.filename)[0]
+        target_iso_dir = path.join(tftpisodir, filebase)
+
+        # initial check for PXE boot files
+        if not path.isfile(path.join(tftpdir, 'pxelinux.0')):
+            raise Exception(f"Missing PXE boot files in {tftpdir} directory")
+
+        # prepare tftpboot directory structure on first run
+        if not path.isdir(tftpisodir):
+            mainlog.info(f"tftpboot: creating {tftpisodir} directory")
+            if WEXITSTATUS(system(f"{mkdir_cmd} {tftpisodir}")):
+                raise Exception(f"Failed to create {tftpisodir} directory")
+
+        if not path.isdir(pxedir):
+            mainlog.info(f"tftpboot: creating {pxedir} directory")
+            if WEXITSTATUS(system(f"{mkdir_cmd} {pxedir}")):
+                raise Exception(f"Failed to create {pxedir} directory")
+
+        # prepare uploaded ISO for PXE boot
+        mainlog.info(f"tftpboot: copy and prepare {filebase} installation media.")
+        source_iso_dir = path.join(extracted_iso_dir, filebase)
+
+        # copy files from 'vanilla' ISO directory to target subdirectory under TFTPISODIR
+        mainlog.info(
+            f"Copy ISO files to target subdirectory: {target_iso_dir}"
         )
+        if WEXITSTATUS(system(f"{cp_cmd} -R {source_iso_dir} {tftpisodir} 1>&2")):
+            raise Exception(f"Failed to copy ISO files to {tftpisodir} directory")
+
+        bootcfg_path = path.join(target_iso_dir, "boot.cfg")
+        mainlog.info(f"Modify {bootcfg_path} for PXE boot")
+        # read original boot.cfg
+        with open(bootcfg_path, "r") as bootcfg_file:
+            bootcfg = bootcfg_file.read()
+        # customize boot.cfg file
+        title = f"title=Loading ESXi installer - {filebase}"
+        prefix = f"prefix=iso/{filebase}"
+        # customize 'title' and 'prefix'
+        bootcfg = re.sub(r"title.*", title, bootcfg)
+        if "prefix" in bootcfg:
+            bootcfg = re.sub(r"prefix.*", prefix, bootcfg)
+        else:
+            # if there is no 'prefix=' line - add it just before 'kernel=' line
+            bootcfg = re.sub(r"kernel=", prefix + "\nkernel=", bootcfg)
+        # remove '/' from 'kernel=' and 'modules=' paths
+        bootcfg = re.sub(r"kernel=/", "kernel=", bootcfg)
+        # findall returns a list - extract string in position [0] to run replace() function
+        modules = re.findall("^modules=.*", bootcfg, re.MULTILINE)[0].replace("/", "")
+        bootcfg = re.sub(r"modules=.*", modules, bootcfg)
+
+        # save customized boot.cfg
+        if WEXITSTATUS(system(f"chmod +w {bootcfg_path}")):
+            raise Exception(f"Failed to make {bootcfg_path} file writeable")
+        with open(bootcfg_path, "w+") as bootcfg_file:
+            bootcfg_file.write(bootcfg)
+        mainlog.info(f"tftpboot: installation media for {filebase} ready.")
+
+        # prepare mboot EFI file on first run
+        mbootefi = path.join(tftpdir, "mboot.efi")
+        if not path.isfile(mbootefi):
+            mainlog.info(f"tftpboot: creating {mbootefi} file")
+            command=f"{cp_cmd} {path.join(target_iso_dir, 'efi', 'boot', 'bootx64.efi')} {mbootefi}"
+            if WEXITSTATUS(system(command)):
+                raise Exception(f"Failed to create {mbootefi} file")
+        return "OK"
+
+    except Exception as err_msg:
+        mainlog.error(f"Errors during preparing tftpboot: {str(err_msg)}")
+        iso_cleanup_on_failed_extract(mainlog, uploaded_file)
+        return str(err_msg)
+
+
+def iso_cleanup_on_failed_extract(
+    mainlog,
+    uploaded_file,
+    uploaddir=UPLOADDIR,
+    tmpisodir=MNTISODIR,
+    extracted_iso_dir=ESXISODIR,
+    tftpisodir=TFTPISODIR,
+):
+    """
+    Clean up files and directories in case on an error during iso_extract() or iso_prepare_tftp() execution.
+
+    :param mainlog: application main logger handler
+    :param uploaded_file: (str) ISO file name
+    :param uploaddir: (str) path to directory where uploaded ISO file is saved (default: /opt/eai/upload)
+    :param tmpisodir: (str) path to directory where uploaded ISO gets mounted (default: /opt/eai/upload/mnt)
+    :param extracted_iso_dir: (str) path to directory with extracted ESXi ISOs (default: /opt/eai/esxi-iso)
+    :param tftpisodir: (str) path to iso subdirectory in tftpboot directory (default: /opt/eai/tftpboot/iso)
+    """
+
+    # get system commands paths
+    umount_cmd = which("umount")
+    chmod_cmd = which("chmod")
+    rmdir_cmd = which("rmdir")
+    rm_cmd = which("rm")
+
+    # target paths
+    iso_save_path = path.join(uploaddir, uploaded_file.filename)
+    filebase = path.splitext(uploaded_file.filename)[0]
+    mountdir = path.join(tmpisodir, filebase)
+    target_iso_dir = path.join(tftpisodir, filebase)
+    target_iso_subdirectory = path.join(extracted_iso_dir, filebase)
+
+    mainlog.info(f"Running cleanup")
+    if path.isdir(target_iso_dir):
+        mainlog.info(f"Cleanup: removing target TFTP ISO subdirectory {target_iso_dir}")
+        system(f"{chmod_cmd} -R 777 {target_iso_dir} 1>&2")
+        system(f"{rm_cmd} -rf {target_iso_dir} 1>&2")
+    if path.isdir(target_iso_subdirectory):
+        mainlog.info(f"Cleanup: removing ISO directory {target_iso_subdirectory}")
+        system(f"{chmod_cmd} -R 777 {target_iso_subdirectory} 1>&2")
+        system(f"{rm_cmd} -rf {target_iso_subdirectory} 1>&2")
+    mainlog.info(f"Cleanup: unmounting ISO from {mountdir}")
+    system(f"{umount_cmd} {mountdir} 1>&2")
+    mainlog.info(f"Cleanup: removing ISO: {iso_save_path} and mountdir: {mountdir}")
+    system(f"{rm_cmd} -f {iso_save_path} 1>&2")
+    system(f"{rmdir_cmd} {mountdir} 1>&2")
+    mainlog.info(f"Cleanup: finished.")
 
 
 def generate_custom_iso(

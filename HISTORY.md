@@ -1,5 +1,11 @@
 History
 =====================
+2.4 (2023-11-08)
+---------------------
+* Fix: cleanup after failed ISO upload
+* Fix: progress bar visibility
+* Added message after saving ISO while waiting on backend functions to finish extracting files and preparing tftpboot
+
 2.3 (2023-11-01)
 ---------------------
 * Added progress indicator on /upload page

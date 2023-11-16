@@ -2,29 +2,31 @@
 
 {% block stylesheet %}
 <link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/styles.css') }}">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 {% endblock stylesheet %}
 
 {% block content %}
 
-        <div class="content_section">
-          <h1>Upload ESXi installation ISO</h1>
-            <div class="content_section_text">
-            <form id="upload-form" action="" method="POST" enctype="multipart/form-data">
-            <p><input type="file" name="file"></p>
-            <p><input type="submit" value="Submit"></p>
-            </form>
-            <div id="progress-container" style="display: none;">
-              <div id="progress-bar"></div>
-              <div id="progress-label">0%</div>
-            </div>
-           </div>
-	    </div>
+<div class="content_section">
+  <h1>Upload ESXi installation ISO</h1>
+  <div class="content_section_text">
+    <form id="upload-form" action="" method="POST" enctype="multipart/form-data">
+      <p><input type="file" name="file"></p>
+      <p><input type="submit" value="Submit"></p>
+    </form>
+    <div id="progress-container" style="display: none;">
+      <div id="progress-bar">
+        <div id="progress-label">0%</div>
+      </div>
+      <div id="progress-message"></div>
+    </div>
+  </div>
+</div>
 
 {% endblock %}
 
 {% block scripts %}
-
-  <script>
+<script>
   $(document).ready(function () {
     $("#upload-form").submit(function (e) {
       e.preventDefault();
@@ -38,22 +40,39 @@
               var percent = (e.loaded / e.total) * 100;
               $("#progress-bar").css("width", percent + "%");
               $("#progress-label").text(percent.toFixed(2) + "%");
+
+              if (percent === 100) {
+                // File is 100% uploaded, notify user about stuff happening on the backend (extracting files, etc.)
+                $("#progress-message").text("ISO saved, extracting files - this may take a moment...");
+              }
             }
           };
-
           return xhr;
         },
+
         url: "/upload",
         type: "POST",
         data: formData,
         processData: false,
         contentType: false,
+
         success: function (response) {
           $("#progress-container").hide();
           $("#file-input").val("");
-          // Redirect to the home page upon successful upload
-          window.location.href = "/";
+          try {
+            if (response.error) {
+              alert("Upload failed: " + response.error);
+            } else {
+              // alert(response.message);
+              alert("ISO uploaded successfully")
+              // Redirect to the home page upon successful upload
+              window.location.href = "/";
+            }
+          } catch (e) {
+            alert("An error occurred: " + e);
+          }
         },
+
         error: function (xhr, status, error) {
           $("#progress-container").hide();
           alert("Upload failed: " + error);
@@ -63,6 +82,6 @@
       $("#progress-container").show();
     });
   });
-  </script>
+</script>
 
 {% endblock %}
