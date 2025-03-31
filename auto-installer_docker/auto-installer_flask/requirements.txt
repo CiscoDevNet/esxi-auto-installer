@@ -2,7 +2,7 @@ flask
 flask_wtf
 flask_restful
 gunicorn
-imcsdk
+imcsdk==0.9.16 # Specific version so it can be patched
 ipaddress
 netifaces
 jinja2
