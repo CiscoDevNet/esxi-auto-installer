@@ -1,3 +1,4 @@
+#!/bin/bash
 echo "*** Checking pre-requisites ***"
 # check pre-requisites: docker-compose
 which docker-compose >/dev/null
