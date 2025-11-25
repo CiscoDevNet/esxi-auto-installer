@@ -1,20 +1,20 @@
 # ESXi Auto-Installer
 
-ESXi Auto-Installer makes it easy to mass install ESXi hosts while assigning each host a unique IP address and enables SSH through a simple web-based GUI or via automation APIs.\
+ESXi Auto-Installer makes it easy to mass install ESXi and Proxmox hosts while assigning each host a unique IP address and enables SSH through a simple web-based GUI or via automation APIs.\
 ESXi Auto-Installer can be used for both physical servers and virtual machines by leveraging PXE boot to install ESXi.\
 For Cisco UCS Severs (except B series) you can install ESXi using the Cisco IMC instead of PXE. This is simpler and generally more reliable than PXE boot installs. 
 
 ESXi Auto-Installer will:
 - Install the ESXi Operating System on a physical or virtual server.
-- Configure the ESXi Management interface with a unique IP address.
-- Enable SSH (optional).
+- Configure the ESXi or Proxmox Management interface with a unique IP address.
+- Enable SSH (optional) on ESXi.
 
-ESXi Auto-Installer API's enables you to completely automate host installations. The API's also allow you to query the installation progress so you can automatically launch your ESXi configuration scripts once the server installation is complete.
+ESXi Auto-Installer API's enables you to completely automate host installations. The API's also allow you to query the installation progress so you can automatically launch your configuration scripts once the server installation is complete.
 
 ## Features
 - Start deployment on multiple servers in parallel.
 - Supports custom ESXi installation ISOs.
-- Supports iSCSI boot installs.
+- Supports iSCSI boot installs (ESXi only).
 - [Web APIs for additional automation](https://ciscodevnet.github.io/esxi-auto-installer/).
 - Reports the installation progress for each server.
 - Fully automated installs on Cisco UCS Servers (excluding B series) via Cisco IMC.
@@ -67,10 +67,10 @@ Point a web browser at the system where ESXi Auto-Installer running.
 
 ## First task: Upload ISO
 
-ESXi Auto-Installer does not come bundled with an ESXi Installation ISO file.\
-The first time you visit the ESXi Auto-Installer web page, you will be asked to upload an ESXi Installation ISO.
+ESXi Auto-Installer does not come bundled with an ESXi or Proxmox Installation ISO file.\
+The first time you visit the ESXi Auto-Installer web page, you will be asked to upload an ESXi or Proxmox Installation ISO.
 Click the Browse button on this page to locate an ISO on your local machine.\
-After selecting a valid ESXi Installation ISO file, click Submit.
+After selecting a valid ESXi or Proxmox Installation ISO file, click Submit.
 
 Once the ISO is uploaded, you will be directed to the Home page.
 
@@ -152,14 +152,14 @@ CIMC: If you have a Cisco UCS Server (except UCS B series), generally the CIMC i
 - Do not need access to the ESXi Mgmt Interface, so it works even on VLAN Trunking ports.
 - Reliable, even if your ESXi host is in a different subnet.
 - Automatically reboots the host.
-- Can onl ybe used on Cisco Servers (Execpt UCS B series)
+- Can only be used on Cisco Servers (Execpt UCS B series)
 
 PXE: For all other systems, including Virtual Machines and Cisco UCS B series servers, you can use the PXE boot method.
 - Sometimes requires network changes before DHCP works. This is where most problems with PXE install method come from.
 - Need to know the MAC address of your Mgmt NIC.
 - After submitting the request to ESXi Auto-Installer, you need to reboot the target host.
 - Fast installs, especially over 40GB NICs.
-- Can be used on any server, including virtual machines.
+- Is hardware agnostic, even works with virtual machines.
 
 ## Common issues / FAQ
 

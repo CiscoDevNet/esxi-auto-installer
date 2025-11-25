@@ -10,6 +10,8 @@ services:
       - /opt/eai/eaidb.sqlite3:/opt/eai/eaidb.sqlite3
       - /opt/eai/logs:/opt/eai/logs
       - /opt/eai/esxi-iso:/opt/eai/esxi-iso
+      - /opt/eai/proxmox-iso:/opt/eai/proxmox-iso
+      - /opt/eai/answerfiles:/opt/eai/answerfiles
       - /opt/eai/custom-iso:/opt/eai/custom-iso
       - /opt/eai/ks:/opt/eai/ks
       - /opt/eai/tftpboot:/opt/eai/tftpboot

@@ -58,6 +58,19 @@ def autoinstaller_gui():
     return render_template("index.html", form=form, isodirs=dirs)
 
 
+@app.route("/proxmox", methods=["GET"])
+def proxmox_gui():
+    mainlog = get_main_logger()
+
+    # check if there is at least one Proxmox installation ISO
+    dirs = get_proxmox_isos()
+    if len(dirs) == 0:
+        # redirect to welcome page when no installation ISO is found
+        return render_template("no_iso.html")
+
+    return render_template("proxmox.html", isodirs=dirs)
+
+
 # route for serving kickstart files from KSDIR directory
 @app.route("/ks/<path:filename>")
 def send_ks(filename):
@@ -115,7 +128,8 @@ def upload_iso():
     if request.method == "POST":
         # read file name
         uploaded_iso = request.files["file"]
-        mainlog.info(f"Request to upload ISO: {uploaded_iso.filename}")
+        iso_type = request.form.get("iso_type", "auto")  # Get ISO type selection
+        mainlog.info(f"Request to upload ISO: {uploaded_iso.filename} (type: {iso_type})")
         if uploaded_iso.filename != "":
             file_ext = path.splitext(uploaded_iso.filename)[1]
             if file_ext not in app.config["UPLOAD_EXTENSIONS"]:
@@ -126,20 +140,47 @@ def upload_iso():
                 return f"ERROR: Incorrect file extension - not an ISO: {uploaded_iso.filename}"
             else:
                 mainlog.info(f"Starting ISO upload")
-                # extract ISO to ESXISODIR
-                iso_extract_msg = iso_extract(mainlog, uploaded_iso)
-                if  iso_extract_msg == "OK":
-                    # copy extracted ISO and prepare it for tftpboot - only when ISO was successfully extracted
-                    iso_prepare_tftp_msg = iso_prepare_tftp(mainlog, uploaded_iso)
-                    if iso_prepare_tftp_msg == "OK":
-                        # redirect to home page (done with JavaScript on /upload page)
-                        mainlog.info("ISO Upload successful.")
+                
+                # Determine if this is a Proxmox ISO
+                is_proxmox = False
+                if iso_type == "proxmox":
+                    is_proxmox = True
+                    mainlog.info(f"Manually specified as Proxmox ISO")
+                elif iso_type == "esxi":
+                    is_proxmox = False
+                    mainlog.info(f"Manually specified as ESXi ISO")
+                else:  # auto-detect
+                    is_proxmox = is_proxmox_iso(uploaded_iso.filename)
+                    mainlog.info(f"Auto-detected ISO type: {'Proxmox' if is_proxmox else 'ESXi'}")
+                
+                if is_proxmox:
+                    mainlog.info(f"Processing as Proxmox ISO: {uploaded_iso.filename}")
+                    # Save Proxmox ISO directly without extraction
+                    save_msg = save_proxmox_iso(mainlog, uploaded_iso)
+                    if save_msg == "OK":
+                        mainlog.info("Proxmox ISO upload successful.")
+                        return jsonify({"message": "Proxmox ISO uploaded successfully", "iso_type": "proxmox"})
                     else:
-                        mainlog.error(f"Failed to prepare PXE boot: {iso_prepare_tftp_msg}")
-                        return jsonify({"error": iso_prepare_tftp_msg})
+                        mainlog.error(f"Failed to save Proxmox ISO: {save_msg}")
+                        return jsonify({"error": save_msg})
                 else:
-                    mainlog.error(f"Extracting ISO failed: {iso_extract_msg}")
-                    return jsonify({"error": iso_extract_msg})
+                    # Handle ESXi ISO (extract and prepare for PXE boot)
+                    mainlog.info(f"Processing as ESXi ISO: {uploaded_iso.filename}")
+                    # extract ISO to ESXISODIR
+                    iso_extract_msg = iso_extract(mainlog, uploaded_iso)
+                    if  iso_extract_msg == "OK":
+                        # copy extracted ISO and prepare it for tftpboot - only when ISO was successfully extracted
+                        iso_prepare_tftp_msg = iso_prepare_tftp(mainlog, uploaded_iso)
+                        if iso_prepare_tftp_msg == "OK":
+                            # redirect to home page (done with JavaScript on /upload page)
+                            mainlog.info("ESXi ISO Upload successful.")
+                            return jsonify({"message": "ESXi ISO uploaded successfully", "iso_type": "esxi"})
+                        else:
+                            mainlog.error(f"Failed to prepare PXE boot: {iso_prepare_tftp_msg}")
+                            return jsonify({"error": iso_prepare_tftp_msg})
+                    else:
+                        mainlog.error(f"Extracting ISO failed: {iso_extract_msg}")
+                        return jsonify({"error": iso_extract_msg})
     return render_template("upload.html")
 
 
@@ -154,6 +195,8 @@ api.add_resource(EAIJobs, "/api/v1/jobs", methods=["GET", "POST"])
 api.add_resource(EAIJob, "/api/v1/jobs/<jobid>", methods=["GET", "PUT"])
 api.add_resource(EAILogs, "/api/v1/logs/<jobid>", methods=["GET"])
 api.add_resource(EAIISOs, "/api/v1/isos", methods=["GET"])
+api.add_resource(ProxmoxISOs, "/api/v1/proxmox-isos", methods=["GET"])
+api.add_resource(ProxmoxJobs, "/api/v1/proxmox-jobs", methods=["POST"])
 
 
 if __name__ == "__main__":

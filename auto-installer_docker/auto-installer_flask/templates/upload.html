@@ -8,10 +8,21 @@
 {% block content %}
 
 <div class="content_section">
-  <h1>Upload ESXi installation ISO</h1>
+  <h1>Upload Installation ISO</h1>
   <div class="content_section_text">
+    Upload ESXi or Proxmox installation ISO files.<br/>
+    <strong>ESXi ISOs</strong> will be extracted and prepared for PXE boot.<br/>
+    <strong>Proxmox ISOs</strong> will be saved directly for CIMC mounting.<br/><br/>
     <form id="upload-form" action="" method="POST" enctype="multipart/form-data">
-      <p><input type="file" name="file"></p>
+      <p><input type="file" name="file" accept=".iso" required></p>
+      <p>
+        <label for="iso_type">ISO Type:</label>
+        <select name="iso_type" id="iso_type">
+          <option value="auto" selected>Auto-detect</option>
+          <option value="esxi">ESXi</option>
+          <option value="proxmox">Proxmox</option>
+        </select>
+      </p>
       <p><input type="submit" value="Submit"></p>
     </form>
     <div id="progress-container" style="display: none;">
@@ -65,8 +76,12 @@
             } else {
               // alert(response.message);
               alert("ISO uploaded successfully")
-              // Redirect to the home page upon successful upload
-              window.location.href = "/";
+              // Redirect based on ISO type
+              if (response.iso_type === "proxmox") {
+                window.location.href = "/proxmox";
+              } else {
+                window.location.href = "/";
+              }
             }
           } catch (e) {
             alert("An error occurred: " + e);

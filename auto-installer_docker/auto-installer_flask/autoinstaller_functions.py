@@ -770,7 +770,10 @@ def job_cleanup(
         try:
             eaidb_dict = eaidb_get_status()
 
-            update_job_status(jobid, "Running cleanup tasks", logger)
+            # Only update status to "Running cleanup tasks" if not already in an error or finished state
+            current_status = eaidb_dict[jobid]["status"]
+            if not current_status.startswith("Error") and current_status != "Finished":
+                update_job_status(jobid, "Running cleanup tasks", logger)
 
             mainlog.info(f"{jobid} Starting cleanup")
             logger.info("")
@@ -778,6 +781,13 @@ def job_cleanup(
 
             logger.info(f"* kickstart file")
             remove_kickstart(jobid, logger, mainlog)
+
+            # Remove Proxmox answer file and first-boot script if they exist
+            logger.info(f"* answer file")
+            remove_answerfile(jobid, logger, mainlog)
+            
+            logger.info(f"* first-boot script")
+            remove_first_boot_script(jobid, logger, mainlog)
 
             if eaidb_dict[jobid]["cimcip"]:
                 logger.info(f"* custom installation ISO")
@@ -839,6 +849,46 @@ def remove_kickstart(jobid, logger, mainlog, ksdir=KSDIR):
     except Exception as e:
         mainlog.error(f"{jobid} : Failed to remove {kspath}: {str(e)}")
         logger.error(f"Failed to remove {kspath}: {format_message_for_web(e)}")
+
+
+def remove_answerfile(jobid, logger, mainlog, answerfile_dir=ANSWERFILEDIR):
+    """
+    Remove Proxmox answer file from ANSWERFILEDIR.
+
+    :param jobid: (str) job ID
+    :param logger: (logging.Handler) logger handler for jobid
+    :param mainlog: (logging.Handler) main Auto-Installer logger handler
+    :param answerfile_dir: (str) path to answer files directory
+    :return: n/a
+    """
+    answer_path = path.join(answerfile_dir, jobid + "_answer.toml")
+    if path.exists(answer_path):
+        mainlog.info(f"{jobid} Removing answer file: {answer_path}")
+        try:
+            system(f"rm -f {answer_path} 1>&2")
+        except Exception as e:
+            mainlog.error(f"{jobid} : Failed to remove {answer_path}: {str(e)}")
+            logger.error(f"Failed to remove {answer_path}: {format_message_for_web(e)}")
+
+
+def remove_first_boot_script(jobid, logger, mainlog, answerfile_dir=ANSWERFILEDIR):
+    """
+    Remove first-boot script from ANSWERFILEDIR.
+
+    :param jobid: (str) job ID
+    :param logger: (logging.Handler) logger handler for jobid
+    :param mainlog: (logging.Handler) main Auto-Installer logger handler
+    :param answerfile_dir: (str) path to answer files directory
+    :return: n/a
+    """
+    script_path = path.join(answerfile_dir, jobid + ".sh")
+    if path.exists(script_path):
+        mainlog.info(f"{jobid} Removing first-boot script: {script_path}")
+        try:
+            system(f"rm -f {script_path} 1>&2")
+        except Exception as e:
+            mainlog.error(f"{jobid} : Failed to remove {script_path}: {str(e)}")
+            logger.error(f"Failed to remove {script_path}: {format_message_for_web(e)}")
 
 
 def cimc_unmount_iso(jobid, logger, mainlog):
@@ -1570,3 +1620,541 @@ def enable_ssh(ipaddr, esxipass, mainlog, logger, session=None, esxiuser="root")
     mainlog.info("SSH was enabled.")
     # Close session
     session.close()
+
+
+##### Proxmox Installation Functions #####
+
+def generate_proxmox_answer(
+    jobid,
+    form_data,
+    index,
+    logger,
+    mainlog,
+    eai_host_ip=EAIHOST_IP,
+    dryrun=DRYRUN,
+    answer_template=PROXMOX_ANSWER_TEMPLATE,
+    answerfile_dir=ANSWERFILEDIR,
+):
+    """
+    Generate Proxmox answer file for automated installation.
+
+    :param jobid: (str) job ID
+    :param form_data: (dict) installation data
+    :param index: (int) index of host in hosts list
+    :param logger: (logging.Handler) logger handler for jobid
+    :param mainlog: (logging.Handler) main Auto-Installer logger handler
+    :param eai_host_ip: (str) EAI host IP address
+    :param dryrun: (bool) dry run flag
+    :param answer_template: (str) path to answer file Jinja template
+    :param answerfile_dir: (str) path to answer files directory
+    :return: (str) path to generated answer file
+    """
+    logger.info(f"Generating Proxmox answer file for server")
+    
+    import crypt
+    
+    # Hash the root password
+    root_password_hashed = crypt.crypt(form_data["root_pwd"], crypt.mksalt(crypt.METHOD_SHA512))
+    
+    # Get host data
+    hostname = form_data["hosts"][index]["hostname"]
+    ipaddr = form_data["hosts"][index]["host_ip"]
+    
+    # Prepare template variables
+    template_vars = {
+        "keyboard": form_data.get("keyboard", "en-us"),
+        "country": form_data.get("country", "us"),
+        "fqdn": hostname,
+        "timezone": form_data.get("timezone", "UTC"),
+        "root_password_hashed": root_password_hashed,
+        "mailto": form_data.get("mailto", "admin@example.com"),
+        "ipaddr": ipaddr,
+        "cidr": form_data.get("cidr", "24"),
+        "gateway": form_data["host_gateway"],
+        "dns": form_data.get("dns", "8.8.8.8"),
+        "interface": form_data.get("interface", "eno1"),
+        "net_filter": form_data.get("net_filter", "ID_NET_NAME_SLOT"),
+        "filesystem": form_data.get("filesystem", "ext4"),
+        "disk_list": form_data.get("disk_list", "/dev/sda"),
+        "eai_host_ip": eai_host_ip,
+        "jobid": jobid,
+    }
+    
+    # Read jinja template from file and render using variables
+    with open(answer_template, "r") as template_file:
+        template = Template(template_file.read())
+    answer_content = template.render(**template_vars)
+    
+    # Remove password before saving to log file
+    logger.info(
+        f"Generated answer file configuration:\n{re.sub(r'root-password-hashed.*', 'root-password-hashed = ***********', answer_content)}\n"
+    )
+    
+    if not dryrun:
+        answer_path = path.join(answerfile_dir, jobid + "_answer.toml")
+        with open(answer_path, "w+") as answer_file:
+            answer_file.write(answer_content)
+            mainlog.debug(
+                f"{jobid} Generated answer file for host: {hostname} saved to {answer_path}"
+            )
+            logger.info(f"Answer file for host: {hostname} saved to {answer_path}\n")
+        return answer_path
+    else:
+        mainlog.debug(
+            f"{jobid} [DRYRUN] Generated answer file for host: {hostname}"
+        )
+        return "not a real answer file path"
+
+
+def generate_first_boot_script(
+    jobid,
+    logger,
+    mainlog,
+    eai_host_ip=EAIHOST_IP,
+    answerfile_dir=ANSWERFILEDIR,
+    dryrun=DRYRUN,
+):
+    """
+    Generate first-boot script that will mark the job as finished.
+
+    :param jobid: (str) job ID
+    :param logger: (logging.Handler) logger handler for jobid
+    :param mainlog: (logging.Handler) main Auto-Installer logger handler
+    :param eai_host_ip: (str) EAI host IP address
+    :param answerfile_dir: (str) path to answer files directory
+    :param dryrun: (bool) dry run flag
+    :return: (str) path to generated script file
+    """
+    logger.info(f"Generating first-boot script for job completion")
+    
+    script_content = f"""#!/bin/bash
+# Proxmox first-boot script to mark installation as complete
+# Job ID: {jobid}
+
+# Wait for network to be available
+sleep 10
+
+# Update job status to Finished (status code 20)
+curl -X PUT "http://{eai_host_ip}/api/v1/jobs/{jobid}?state=20" -v
+
+# Log completion
+logger "Proxmox installation completed - Job ID: {jobid}"
+"""
+    
+    if not dryrun:
+        script_path = path.join(answerfile_dir, f"{jobid}.sh")
+        with open(script_path, "w+") as script_file:
+            script_file.write(script_content)
+        
+        # Make the script executable
+        system(f"chmod +x {script_path}")
+        
+        mainlog.debug(f"{jobid} Generated first-boot script saved to {script_path}")
+        logger.info(f"First-boot script saved to {script_path}\n")
+        return script_path
+    else:
+        mainlog.debug(f"{jobid} [DRYRUN] Generated first-boot script")
+        return "not a real script path"
+
+
+def validate_answer_file(jobid, answer_file_path, logger, mainlog):
+    """
+    Validate Proxmox answer file using proxmox-auto-install-assistant.
+
+    :param jobid: (str) job ID
+    :param answer_file_path: (str) path to answer file
+    :param logger: (logging.Handler) logger handler for jobid
+    :param mainlog: (logging.Handler) main Auto-Installer logger handler
+    :return: (bool) True if validation successful, False otherwise
+    """
+    logger.info(f"Validating answer file: {answer_file_path}")
+    
+    # Check if proxmox-auto-install-assistant is available
+    assistant_cmd = which("proxmox-auto-install-assistant")
+    if not assistant_cmd:
+        logger.error("proxmox-auto-install-assistant command not found")
+        mainlog.error(f"{jobid} proxmox-auto-install-assistant command not found")
+        return False
+    
+    # Run validation command
+    validate_cmd = f"{assistant_cmd} validate-answer {answer_file_path}"
+    logger.info(f"Running validation command: {validate_cmd}")
+    
+    exit_code = system(f"{validate_cmd} >> {path.join(LOGDIR, jobid)} 2>&1")
+    
+    if WEXITSTATUS(exit_code) == 0:
+        logger.info("Answer file validation successful\n")
+        mainlog.info(f"{jobid} Answer file validation successful")
+        return True
+    else:
+        logger.error(f"Answer file validation failed with exit code: {WEXITSTATUS(exit_code)}")
+        mainlog.error(f"{jobid} Answer file validation failed")
+        return False
+
+
+def prepare_proxmox_iso(
+    jobid,
+    logger,
+    mainlog,
+    iso_image,
+    answer_file_path,
+    first_boot_script_path=None,
+    custom_iso_dir=CUSTOMISODIR,
+    proxmox_iso_dir=PROXMOXISODIR,
+):
+    """
+    Prepare Proxmox ISO with answer file and first-boot script using proxmox-auto-install-assistant.
+
+    :param jobid: (str) job ID
+    :param logger: (logging.Handler) logger handler for jobid
+    :param mainlog: (logging.Handler) main Auto-Installer logger handler
+    :param iso_image: (str) name of the base ISO image
+    :param answer_file_path: (str) path to answer file
+    :param first_boot_script_path: (str) path to first-boot script (optional)
+    :param custom_iso_dir: (str) path to custom ISO directory
+    :param proxmox_iso_dir: (str) path to Proxmox ISO directory
+    :return: (str) path to prepared ISO file or None on failure
+    """
+    logger.info(f"Preparing Proxmox ISO with answer file")
+    
+    # Check if proxmox-auto-install-assistant is available
+    assistant_cmd = which("proxmox-auto-install-assistant")
+    if not assistant_cmd:
+        logger.error("proxmox-auto-install-assistant command not found")
+        mainlog.error(f"{jobid} proxmox-auto-install-assistant command not found")
+        return None
+    
+    # Build paths
+    source_iso_path = path.join(proxmox_iso_dir, iso_image)
+    output_iso_path = path.join(custom_iso_dir, f"{jobid}.iso")
+    
+    # Check if source ISO exists
+    if not path.exists(source_iso_path):
+        logger.error(f"Source ISO not found: {source_iso_path}")
+        mainlog.error(f"{jobid} Source ISO not found: {source_iso_path}")
+        return None
+    
+    # Prepare ISO command with first-boot script if provided
+    prepare_cmd = f"{assistant_cmd} prepare-iso {source_iso_path} --fetch-from iso --answer-file {answer_file_path}"
+    
+    if first_boot_script_path and path.exists(first_boot_script_path):
+        prepare_cmd += f" --on-first-boot {first_boot_script_path}"
+        logger.info(f"Including first-boot script: {first_boot_script_path}")
+        mainlog.info(f"{jobid} Including first-boot script in ISO")
+    
+    prepare_cmd += f" --output {output_iso_path}"
+    
+    logger.info(f"Running prepare-iso command")
+    mainlog.info(f"{jobid} Preparing ISO: {prepare_cmd}")
+    
+    # Execute command
+    exit_code = system(f"{prepare_cmd} >> {path.join(LOGDIR, jobid)} 2>&1")
+    
+    if WEXITSTATUS(exit_code) == 0:
+        logger.info(f"ISO preparation successful: {output_iso_path}\n")
+        mainlog.info(f"{jobid} ISO preparation successful")
+        return output_iso_path
+    else:
+        logger.error(f"ISO preparation failed with exit code: {WEXITSTATUS(exit_code)}")
+        mainlog.error(f"{jobid} ISO preparation failed")
+        return None
+
+
+def install_proxmox(
+    jobid,
+    logger,
+    mainlog,
+    cimcip,
+    cimcusr,
+    cimcpwd,
+    isoname,
+):
+    """
+    Install Proxmox on server via CIMC ISO mount and reboot.
+    
+    :param jobid: (str) job ID
+    :param logger: (logging.Handler) logger handler for jobid
+    :param mainlog: (logging.Handler) main Auto-Installer logger handler
+    :param cimcip: (str) CIMC IP address
+    :param cimcusr: (str) CIMC username
+    :param cimcpwd: (str) CIMC password
+    :param isoname: (str) ISO filename to mount
+    :return: n/a
+    """
+    logger.info(f"Starting Proxmox installation process")
+    mainlog.info(f"{jobid} Starting Proxmox installation on server with CIMC IP: {cimcip}")
+    
+    # Update job status
+    update_job_status(jobid, "Connecting to CIMC", logger)
+    
+    # Login to CIMC
+    try:
+        logger.info(f"Logging in to CIMC at {cimcip}")
+        cimchandle = ImcHandle(cimcip, cimcusr, cimcpwd)
+        cimchandle.login()
+        logger.info(f"Successfully logged in to CIMC\n")
+    except Exception as e:
+        logger.error(f"Failed to login to CIMC:")
+        logger.error(format_message_for_web(e))
+        job_cleanup(jobid, logger, mainlog, unmount_iso=False)
+        update_job_status(jobid, "Error: Failed to login to CIMC", logger, True)
+        return
+    
+    # Set VMEDIA on boot order
+    cimc_vmedia_set(cimchandle, logger)
+    
+    # Update job status
+    update_job_status(jobid, "Mounting installation ISO", logger)
+    
+    # Mount ISO
+    try:
+        logger.info(f"Mounting ISO: {isoname}")
+        iso_url = f"http://{EAIHOST_IP}/custom-iso/{isoname}"
+        
+        # Use vmedia_mount_create instead of vmedia_mount_iso_uri
+        # vmedia_mount_iso_uri waits for status='OK' which can timeout even when mount succeeds
+        mainlog.info(f"{jobid} Mounting ISO via vmedia_mount_create")
+        
+        # For map="www", split URL into remote_share (base URL) and remote_file (filename)
+        remote_share = f"http://{EAIHOST_IP}/custom-iso"
+        remote_file = isoname
+        
+        vmedia_mount_create(
+            cimchandle,
+            volume_name=jobid,
+            remote_share=remote_share,
+            remote_file=remote_file,
+            map="www",
+            mount_options="noauto",
+            username="",
+            password=""
+        )
+        
+        # Give CIMC a moment to process the mount
+        import time
+        time.sleep(2)
+        
+        # Check if mount exists (optional - doesn't verify status, just existence)
+        if vmedia_mount_exists(cimchandle, jobid):
+            mainlog.info(f"{jobid} vmedia_mount_exists: True")
+            existing_uri = vmedia_get_existing_uri(cimchandle)
+            mainlog.info(f"{jobid} vmedia_get_existing_uri: {existing_uri}")
+            existing_status = vmedia_get_existing_status(cimchandle)
+            mainlog.info(f"{jobid} vmedia_get_existing_status: {existing_status}")
+        
+        logger.info(f"ISO mount command sent successfully: {iso_url}")
+        logger.info(f"Note: CIMC may take a few moments to complete the mapping\n")
+    except Exception as e:
+        logger.error(f"Failed to mount ISO:")
+        logger.error(format_message_for_web(e))
+        cimchandle.logout()
+        job_cleanup(jobid, logger, mainlog, unmount_iso=False)
+        update_job_status(jobid, "Error: Failed to mount installation ISO", logger, True)
+        return
+    
+    # Power cycle server
+    update_job_status(jobid, "Server is booting", logger)
+    try:
+        logger.info(f"Power cycling server")
+        power_state = server_power_state_get(cimchandle)
+        logger.info(f"Current power state: {power_state}")
+        
+        if power_state == "off":
+            server_power_up(cimchandle)
+            logger.info(f"Server powered on")
+        else:
+            server_power_cycle(cimchandle)
+            logger.info(f"Server power cycled")
+        
+        logger.info(f"Server is rebooting. Installation will begin automatically.\n")
+    except Exception as e:
+        logger.error(f"Failed to power cycle server:")
+        logger.error(format_message_for_web(e))
+    
+    # Logout from CIMC
+    cimchandle.logout()
+    logger.info(f"Logged out from CIMC")
+    
+    # Update status
+    update_job_status(jobid, "Installer is running", logger)
+    logger.info(
+        f"Proxmox installation in progress. Waiting for installation completion webhook...\n"
+    )
+    mainlog.info(f"{jobid} Proxmox installation in progress")
+
+
+def process_proxmox_submission(jobid_list, logger_list, mainlog, form_data):
+    """
+    Generates installation data and starts Proxmox install process.
+
+    :param jobid_list: (list) List of (str) job ID
+    :param logger_list: (list) List of (logging.Handler) logger handler for jobid
+    :param mainlog: (logging.Handler) main Auto-Installer logger handler
+    :param form_data: (dict) dictionary with installation data
+    :return: n/a
+    """
+    
+    for index in range(len(form_data["hosts"])):
+        jobid = jobid_list[index]
+        logger = logger_list[index]
+        hostname = form_data["hosts"][index]["hostname"]
+        
+        # Generate answer file
+        mainlog.info(f"{jobid} Generating answer file for server {hostname}")
+        answer_file_path = generate_proxmox_answer(jobid, form_data, index, logger, mainlog)
+        
+        # Validate answer file
+        mainlog.info(f"{jobid} Validating answer file for server {hostname}")
+        if not validate_answer_file(jobid, answer_file_path, logger, mainlog):
+            logger.error("Answer file validation failed. Aborting installation.")
+            job_cleanup(jobid, logger, mainlog, unmount_iso=False)
+            update_job_status(jobid, "Error: Answer file validation failed", logger, True)
+            continue
+        
+        # Generate first-boot script
+        mainlog.info(f"{jobid} Generating first-boot script for server {hostname}")
+        first_boot_script_path = generate_first_boot_script(jobid, logger, mainlog)
+        
+        # Prepare ISO with answer file and first-boot script
+        mainlog.info(f"{jobid} Preparing Proxmox ISO for server {hostname}")
+        prepared_iso = prepare_proxmox_iso(
+            jobid,
+            logger,
+            mainlog,
+            form_data["iso_image"],
+            answer_file_path,
+            first_boot_script_path,
+        )
+        
+        if not prepared_iso:
+            logger.error("ISO preparation failed. Aborting installation.")
+            job_cleanup(jobid, logger, mainlog, unmount_iso=False)
+            update_job_status(jobid, "Error: ISO preparation failed", logger, True)
+            continue
+        
+        # Start Proxmox installation via CIMC
+        Process(
+            target=install_proxmox,
+            args=(
+                jobid,
+                logger,
+                mainlog,
+                form_data["hosts"][index]["cimc_ip"],
+                form_data["cimc_usr"],
+                form_data["cimc_pwd"],
+                jobid + ".iso",
+            ),
+        ).start()
+
+
+def create_proxmox_jobs(form_data, installmethod, mainlog):
+    """
+    Create Proxmox installation job for each server in form_data['hosts'] list.
+
+    :param form_data: (dict) installation data
+    :param installmethod: (str) installation method
+    :param mainlog: (logging.Handler) main Auto-Installer logger handler
+    :return: (list) list of job IDs
+    """
+    
+    jobid_list = []
+    logger_list = []
+    
+    for index in range(len(form_data["hosts"])):
+        hostname = form_data["hosts"][index]["hostname"]
+        cimcusr = form_data["cimc_usr"]
+        cimcip = form_data["hosts"][index]["cimc_ip"]
+        cimcpwd = form_data["cimc_pwd"]
+        macaddr = ""
+        jobid = generate_jobid(cimcip)
+        
+        # Create logger handler
+        logger = get_jobid_logger(jobid)
+        logger.info(f"Processing Proxmox job ID: {jobid}, server {hostname}\n")
+        mainlog.info(f"{jobid} - processing Proxmox job ID, server {hostname}")
+        
+        # Create entry in Auto-Installer DB
+        mainlog.info(f"{jobid} Saving installation data for server {hostname}")
+        eaidb_create_job_entry(
+            jobid,
+            hostname,
+            form_data["hosts"][index]["host_ip"],
+            form_data["root_pwd"],
+            cimcip,
+            cimcusr,
+            cimcpwd,
+            macaddr,
+            f"{form_data.get('cidr', '24')}",  # Store CIDR in netmask field
+            form_data["host_gateway"],
+        )
+        
+        jobid_list.append(jobid)
+        logger_list.append(logger)
+    
+    # Process data on separate thread
+    Process(
+        target=process_proxmox_submission,
+        args=(jobid_list, logger_list, mainlog, form_data)
+    ).start()
+    
+    return jobid_list
+
+
+def get_proxmox_isos(proxmox_iso_dir=PROXMOXISODIR):
+    """
+    Get list of available Proxmox ISO files.
+
+    :param proxmox_iso_dir: (str) path to Proxmox ISO directory
+    :return: (list) list of ISO filenames
+    """
+    if path.exists(proxmox_iso_dir):
+        iso_files = [f for f in listdir(proxmox_iso_dir) if f.endswith('.iso')]
+        return sorted(iso_files)
+    return []
+
+
+def is_proxmox_iso(filename):
+    """
+    Detect if uploaded ISO is a Proxmox ISO based on filename pattern.
+    
+    :param filename: (str) ISO filename
+    :return: (bool) True if Proxmox ISO, False otherwise
+    """
+    filename_lower = filename.lower()
+    # Check for proxmox patterns in filename
+    return 'proxmox' in filename_lower or filename_lower.startswith('pve-')
+
+
+def save_proxmox_iso(mainlog, uploaded_file, proxmox_iso_dir=PROXMOXISODIR):
+    """
+    Save uploaded Proxmox ISO directly to PROXMOXISODIR without extraction.
+    
+    :param mainlog: application main logger handler
+    :param uploaded_file: uploaded file object
+    :param proxmox_iso_dir: (str) path to Proxmox ISO directory
+    :return: (str) status message (OK or error message)
+    """
+    try:
+        from os import makedirs
+        
+        # Ensure proxmox-iso directory exists
+        if not path.exists(proxmox_iso_dir):
+            mainlog.info(f"Creating Proxmox ISO directory: {proxmox_iso_dir}")
+            makedirs(proxmox_iso_dir, exist_ok=True)
+        
+        # Check if ISO already exists
+        iso_path = path.join(proxmox_iso_dir, uploaded_file.filename)
+        if path.exists(iso_path):
+            mainlog.error(f"Proxmox ISO {uploaded_file.filename} already exists - upload aborted")
+            return f"ISO {uploaded_file.filename} already exists"
+        
+        # Save the ISO file
+        mainlog.info(f"Saving Proxmox ISO to: {iso_path}")
+        uploaded_file.save(iso_path)
+        mainlog.info(f"Proxmox ISO saved successfully: {uploaded_file.filename}")
+        
+        return "OK"
+        
+    except Exception as e:
+        mainlog.error(f"Failed to save Proxmox ISO: {str(e)}")
+        return f"Failed to save Proxmox ISO: {str(e)}"
