@@ -667,15 +667,31 @@ def install_esxi(
 
             logger.info("")
             logger.info(f"Mount custom installation ISO on CIMC")
-            vmedia_mount_iso_uri(cimchandle, isourl)
-
-            mainlog.debug(
-                f"{jobid} vmedia_get_existing_uri: {vmedia_get_existing_uri(cimchandle)}"
-            )
-            mainlog.debug(
-                f"{jobid} vmedia_get_existing_status: {vmedia_get_existing_status(cimchandle)}"
-            )
-
+            mainlog.info(f"{jobid} Attempting ISO mount with URL: {isourl}")
+            
+            try:
+                vmedia_mount_iso_uri(cimchandle, isourl)
+                mainlog.info(f"{jobid} vmedia_mount_iso_uri call completed without exception")
+            except Exception as mount_ex:
+                # Log the exception but don't fail immediately - check if mount actually succeeded
+                mainlog.warning(f"{jobid} vmedia_mount_iso_uri raised exception: {str(mount_ex)}")
+                mainlog.info(f"{jobid} Continuing to check if mount actually succeeded despite exception...")
+            
+            # Verify mount by checking existing URI
+            existing_uri = vmedia_get_existing_uri(cimchandle)
+            existing_status = vmedia_get_existing_status(cimchandle)
+            mainlog.info(f"{jobid} vmedia_get_existing_uri: {existing_uri}")
+            mainlog.info(f"{jobid} vmedia_get_existing_status: {existing_status}")
+            
+            # Check if mount actually succeeded
+            if existing_uri and (isourl in existing_uri or isourl.replace("/custom-iso/", "/custom-iso") in existing_uri):
+                mainlog.info(f"{jobid} Mount verification successful - URI matches")
+            # elif existing_status and existing_status.lower() in ['ok', 'in-progress']:
+            #     mainlog.info(f"{jobid} Mount verification successful - Status: {existing_status}")
+            else:
+                mainlog.error(f"{jobid} Mount verification failed - URI: {existing_uri}, Status: {existing_status}")
+                raise Exception(f"Mount verification failed - no valid mount found")
+            
             logger.info(f"Installation ISO mounted")
 
             # query CIMC CommVMediaMap Managed Object - useful for debugging
