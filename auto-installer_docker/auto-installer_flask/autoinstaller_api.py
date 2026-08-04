@@ -62,9 +62,9 @@ class BaseEAIJobs(Resource):
         # api endpoint for getting details for all jobs
         return eaidb_get_status(), 200
 
-    def _common_checks(self, args):
+    def _common_checks(self, args, mainlog=get_main_logger()):
         if args["installmethod"] not in ("pxeboot", "cimc"):
-            self.mainlog.error(
+            mainlog.error(
                 f"API POST error - Unknown installation method. Request aborted."
             )
             return {
@@ -103,7 +103,7 @@ class BaseEAIJobs(Resource):
                         }, 409
 
                 if not "macaddr" in host_data:
-                    self.mainlog.error(
+                    mainlog.error(
                         f"API POST /jobs error - missing host data. Request aborted."
                     )
                     return {
@@ -132,7 +132,7 @@ class BaseEAIJobs(Resource):
             # Installation method: mount installation ISO with OOBM
             # check if CIMC IP and credentials have been provided
             if not args["cimc_pwd"] or not args["cimc_usr"]:
-                self.mainlog.error(
+                mainlog.error(
                     f"API POST /jobs error - missing CIMC credentials. Request aborted."
                 )
                 return {
@@ -144,7 +144,7 @@ class BaseEAIJobs(Resource):
                 if "cimc_ip" not in host_data:
                     # if not host_data['hostname'] or not host_data['host_ip'] or not host_data['cimc_ip']:
                     # in case some data is missing KeyError is thrown and corresponding error returned
-                    self.mainlog.error(
+                    mainlog.error(
                         f"API POST /jobs error - missing host data. Request aborted."
                     )
                     return {
@@ -193,7 +193,9 @@ class BaseEAIJobs(Resource):
             )
         return ip_subnet_object, None
 
-    def _validate_hosts(self, hosts, ip_subnet_obj, fqdn=False):
+    def _validate_hosts(
+        self, hosts, ip_subnet_obj, mainlog=get_main_logger(), fqdn=False
+    ):
         if fqdn:
             regexcheck = re.compile("^[A-Za-z\d\-_.]{1,253}$")
         else:
@@ -228,7 +230,7 @@ class BaseEAIJobs(Resource):
                             "message": f'Host IP {host_data["host_ip"]} and Host Gateway are not in the same subnet {ip_subnet_obj.with_netmask}',
                         }, 400
             else:
-                self.mainlog.error(
+                mainlog.error(
                     f"API POST /jobs error - missing host data. Request aborted."
                 )
                 return {
@@ -283,13 +285,13 @@ class EAIJobs(BaseEAIJobs):
         # static_routes data validation (subnet_ip, cidr, gateway) handled in post() method
 
     def post(self):
-        self.mainlog = get_main_logger()
+        mainlog = get_main_logger()
         jobid_list = []
         install_data = {}
         try:
             args = self.reqparse.parse_args()
-            self.mainlog.debug(f"API /jobs endpoint called with args: {args}")
-            err = self._common_checks(args)
+            mainlog.debug(f"API /jobs endpoint called with args: {args}")
+            err = self._common_checks(args, mainlog)
             if err:
                 return err
 
@@ -307,7 +309,7 @@ class EAIJobs(BaseEAIJobs):
             if err:
                 return err
 
-            err = self._validate_hosts(args["hosts"], ip_subnet_obj)
+            err = self._validate_hosts(args["hosts"], ip_subnet_obj, mainlog)
             if err:
                 return err
 
@@ -318,7 +320,7 @@ class EAIJobs(BaseEAIJobs):
                     try:
                         ipaddress.ip_network(f"{item['subnet_ip']}/{item['cidr']}")
                     except ValueError:
-                        self.mainlog.error(
+                        mainlog.error(
                             f"Static route subnet '{item['subnet_ip']}/{item['cidr']}' is invalid"
                         )
                         return {
@@ -349,16 +351,14 @@ class EAIJobs(BaseEAIJobs):
 
             # if requested ISO is not valid - return an error
             if not install_data["iso_image"] in get_available_isos():
-                self.mainlog.error(
-                    f"Requested ISO {install_data['iso_image']} not found"
-                )
+                mainlog.error(f"Requested ISO {install_data['iso_image']} not found")
                 return {"status": "error", "message": "Requested ISO not found"}, 404
 
             # All data validated, print debug log
-            self.mainlog.debug(f"API POST /jobs install data: {install_data}")
+            mainlog.debug(f"API POST /jobs install data: {install_data}")
 
             # interate over the list of ESXi hosts and run corresponding actions for each host
-            jobid_list = create_jobs(install_data, args["installmethod"], self.mainlog)
+            jobid_list = create_jobs(install_data, args["installmethod"], mainlog)
             return jobid_list
         except KeyError as e:
             return {
@@ -505,20 +505,20 @@ class ProxmoxJobs(BaseEAIJobs):
         )
 
     def post(self):
-        self.mainlog = get_main_logger()
+        mainlog = get_main_logger()
         jobid_list = []
         install_data = {}
         try:
             args = self.reqparse.parse_args()
-            self.mainlog.debug(f"API /proxmox-jobs endpoint called with args: {args}")
+            mainlog.debug(f"API /proxmox-jobs endpoint called with args: {args}")
 
-            err = self._common_checks(args)
+            err = self._common_checks(args, mainlog)
             if err:
                 return err
             # CIMC/PXEBOOT is checked in _common_checks().
             # Verify that we are not PXEBOOT until it is supported.
             if args["installmethod"] == "pxeboot":
-                self.mainlog.error(
+                mainlog.error(
                     f"API POST /proxmox-jobs error - pxeboot not supported for proxmox yet."
                 )
                 return {
@@ -542,7 +542,7 @@ class ProxmoxJobs(BaseEAIJobs):
             if err:
                 return err
 
-            err = self._validate_hosts(args["hosts"], ip_subnet_obj, fqdn=True)
+            err = self._validate_hosts(args["hosts"], ip_subnet_obj, mainlog, fqdn=True)
             if err:
                 return err
 
@@ -553,17 +553,15 @@ class ProxmoxJobs(BaseEAIJobs):
 
             # Check if requested ISO is valid
             if not install_data["iso_image"] in get_proxmox_isos():
-                self.mainlog.error(
-                    f"Requested ISO {install_data['iso_image']} not found"
-                )
+                mainlog.error(f"Requested ISO {install_data['iso_image']} not found")
                 return {"status": "error", "message": "Requested ISO not found"}, 404
 
             # All data validated
-            self.mainlog.debug(f"API POST /proxmox-jobs install data: {install_data}")
+            mainlog.debug(f"API POST /proxmox-jobs install data: {install_data}")
 
             # Create jobs
             jobid_list = create_proxmox_jobs(
-                install_data, args["installmethod"], self.mainlog
+                install_data, args["installmethod"], mainlog
             )
             return jobid_list
         except KeyError as e:
