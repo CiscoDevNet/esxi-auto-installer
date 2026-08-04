@@ -1970,7 +1970,7 @@ def install_proxmox(
 
         vmedia_mount_create(
             cimchandle,
-            volume_name=jobid,
+            volume_name=f"{jobid}.iso",
             remote_share=remote_share,
             remote_file=remote_file,
             map="www",
@@ -1985,7 +1985,7 @@ def install_proxmox(
         time.sleep(2)
 
         # Check if mount exists (optional - doesn't verify status, just existence)
-        if vmedia_mount_exists(cimchandle, jobid):
+        if vmedia_mount_exists(cimchandle, f"{jobid}.iso"):
             mainlog.info(f"{jobid} vmedia_mount_exists: True")
             existing_uri = vmedia_get_existing_uri(cimchandle)
             mainlog.info(f"{jobid} vmedia_get_existing_uri: {existing_uri}")
