@@ -140,7 +140,7 @@ class BaseEAIJobs(Resource):
                     "message": "Missing CIMC credentials",
                 }, 400
             for host_data in args["hosts"]:
-                print(f"[DEBUG] Host data: {host_data}")
+                mainlog.debug(f"Host data: {host_data}")
                 if "cimc_ip" not in host_data:
                     # if not host_data['hostname'] or not host_data['host_ip'] or not host_data['cimc_ip']:
                     # in case some data is missing KeyError is thrown and corresponding error returned
@@ -201,7 +201,7 @@ class BaseEAIJobs(Resource):
         else:
             regexcheck = re.compile("^[A-Za-z\d\-_]{1,63}$")
         for host_data in hosts:
-            print(f"[DEBUG] Host data: {host_data}")
+            mainlog.debug(f"Host data: {host_data}")
             if "hostname" in host_data:
                 if not regexcheck.search(host_data["hostname"]):
                     return {
