@@ -1,5 +1,9 @@
 History
 =====================
+3.1 (2026-06-01)
+---------------------
+* Code restructure to reduce repetition.
+
 3.0 (2025-11-24)
 ---------------------
 * Added the ability to install Proxmox Servers as well as ESXi hosts (CIMC only)
