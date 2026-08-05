@@ -1,6 +1,7 @@
 History
 =====================
 3.2 (2026-08-04)
+---------------------
 * Fixed ISO failing to unmount from CIMC during Proxmox installs.
 
 3.1 (2026-06-01)
