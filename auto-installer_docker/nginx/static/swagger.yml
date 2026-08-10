@@ -307,6 +307,12 @@ components:
           type: string
           enum: ['ID_NET_NAME_SLOT', 'ID_NET_NAME_PATH', 'ID_NET_NAME_ONBOARD', 'ID_VENDOR_ID', 'ID_MODEL_ID', 'ID_PATH', 'ID_BUS', 'ID_PCI_CLASS_FROM_DATABASE', 'ID_PCI_SUBCLASS_FROM_DATABASE']
           default: ID_NET_NAME_SLOT
+        custom_script:
+          type: string
+          description: Optional custom bash script to run on first boot.
+          example: |
+            echo "Custom setup script"
+            # Your custom commands here
         hosts:
           type: array
           items:

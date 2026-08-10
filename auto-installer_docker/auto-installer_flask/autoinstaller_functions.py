@@ -1745,6 +1745,7 @@ def generate_first_boot_script(
     eai_host_ip=EAIHOST_IP,
     answerfile_dir=ANSWERFILEDIR,
     dryrun=DRYRUN,
+    custom_script=None,
 ):
     """
     Generate first-boot script that will mark the job as finished.
@@ -1755,14 +1756,26 @@ def generate_first_boot_script(
     :param eai_host_ip: (str) EAI host IP address
     :param answerfile_dir: (str) path to answer files directory
     :param dryrun: (bool) dry run flag
+    :param custom_script: (str) optional custom script to run before network wait
     :return: (str) path to generated script file
     """
     logger.info(f"Generating first-boot script for job completion")
 
+    # Build custom script section if provided
+    custom_section = ""
+    if custom_script and custom_script.strip():
+        custom_section = f"""
+# Custom user script
+{custom_script.strip()}
+
+"""
+        logger.info(f"Including custom script in first-boot")
+        mainlog.info(f"{jobid} Including custom script in first-boot")
+
     script_content = f"""#!/bin/bash
 # Proxmox first-boot script to mark installation as complete
 # Job ID: {jobid}
-
+{custom_section}
 # Wait for network to be available
 sleep 10
 
@@ -2056,7 +2069,10 @@ def process_proxmox_submission(jobid_list, logger_list, mainlog, form_data):
 
         # Generate first-boot script
         mainlog.info(f"{jobid} Generating first-boot script for server {hostname}")
-        first_boot_script_path = generate_first_boot_script(jobid, logger, mainlog)
+        custom_script = form_data.get("custom_script", None)
+        first_boot_script_path = generate_first_boot_script(
+            jobid, logger, mainlog, custom_script=custom_script
+        )
 
         # Prepare ISO with answer file and first-boot script
         mainlog.info(f"{jobid} Preparing Proxmox ISO for server {hostname}")

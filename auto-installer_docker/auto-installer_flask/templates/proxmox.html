@@ -75,7 +75,7 @@
                 <tr>
                     <td>Network Interface: </td>
                     <td><input type="text" name="interface" value='eno1' required></td>
-                    <td>Network interface name (e.g., eno1, eth0)</td>
+                    <td>Network interface name (e.g., eno1, ens1f0np0)</td>
                 </tr>
                 <tr>
                     <td>Network Filter: </td>
@@ -88,6 +88,14 @@
                         </select>
                     </td>
                     <td>Network interface filter type for auto-detection</td>
+                </tr>
+                <tr>
+                    <td>Custom First-Boot Script: </td>
+                    <td>
+                        <textarea name="custom_script" id="custom_script" rows="6" cols="40" placeholder="# Optional custom script to run on first boot"></textarea>
+                    </td>
+                    <td>Optional bash script to execute on first boot.<BR>
+                    "#!/bin/bash" is inserted as the first line automatically, so only bash commands are valid.</td>
                 </tr>
             </table>
             

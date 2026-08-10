@@ -516,6 +516,9 @@ class ProxmoxJobs(Resource):
         self.reqparse.add_argument(
             "net_filter", type=str, default="ID_NET_NAME", location="json"
         )
+        self.reqparse.add_argument(
+            "custom_script", type=str, default=None, location="json"
+        )
         super(ProxmoxJobs, self).__init__()
 
     def post(self):
