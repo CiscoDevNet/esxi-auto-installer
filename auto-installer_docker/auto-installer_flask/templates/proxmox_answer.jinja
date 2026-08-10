@@ -1,0 +1,21 @@
+[global]
+keyboard = "{{keyboard}}"
+country = "{{country}}"
+fqdn = "{{fqdn}}"
+timezone = "{{timezone}}"
+root-password-hashed = "{{root_password_hashed}}"
+mailto = "{{mailto}}"
+
+[network]
+source = "from-answer"
+cidr = "{{ipaddr}}/{{cidr}}"
+gateway = "{{gateway}}"
+dns = "{{dns}}"
+filter.{{net_filter}} = "{{interface}}"
+
+[disk-setup]
+filesystem = "{{filesystem}}"
+disk_list = ["{{disk_list}}"]
+
+[first-boot]
+source = "from-iso"

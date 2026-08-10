@@ -430,3 +430,225 @@ class EAIISOs(Resource):
     def get(self):
         # return the list of available ISO images
         return get_available_isos()
+
+
+class ProxmoxISOs(Resource):
+    def get(self):
+        # return the list of available Proxmox ISO images
+        return get_proxmox_isos()
+
+
+class ProxmoxJobs(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser()
+        self.reqparse.add_argument(
+            "installmethod",
+            type=str,
+            required=True,
+            help="No installation method provided",
+            location="json",
+        )
+        self.reqparse.add_argument(
+            "iso_image",
+            type=str,
+            required=True,
+            help="No ISO name provided",
+            location="json",
+        )
+        self.reqparse.add_argument(
+            "root_pwd",
+            type=str,
+            required=True,
+            help="No root password provided",
+            location="json",
+        )
+        self.reqparse.add_argument(
+            "cimc_pwd", type=str, required=True, help="No CIMC password provided", location="json"
+        )
+        self.reqparse.add_argument(
+            "cimc_usr",
+            type=str,
+            default="admin",
+            help="No CIMC account provided",
+            location="json",
+        )
+        self.reqparse.add_argument(
+            "host_gateway",
+            type=str,
+            required=True,
+            help="No Gateway provided",
+            location="json",
+        )
+        self.reqparse.add_argument(
+            "hosts",
+            type=list,
+            required=True,
+            help="No host list provided",
+            location="json",
+        )
+        self.reqparse.add_argument(
+            "keyboard", type=str, default="en-us", location="json"
+        )
+        self.reqparse.add_argument(
+            "country", type=str, default="us", location="json"
+        )
+        self.reqparse.add_argument(
+            "timezone", type=str, default="UTC", location="json"
+        )
+        self.reqparse.add_argument(
+            "mailto", type=str, default="admin@example.com", location="json"
+        )
+        self.reqparse.add_argument(
+            "filesystem", type=str, default="ext4", location="json"
+        )
+        self.reqparse.add_argument(
+            "disk_list", type=str, default="/dev/sda", location="json"
+        )
+        self.reqparse.add_argument(
+            "interface", type=str, default="eno1", location="json"
+        )
+        self.reqparse.add_argument(
+            "cidr", type=str, default="24", location="json"
+        )
+        self.reqparse.add_argument(
+            "dns", type=str, location="json"
+        )
+        self.reqparse.add_argument(
+            "net_filter", type=str, default="ID_NET_NAME", location="json"
+        )
+        super(ProxmoxJobs, self).__init__()
+    
+    def post(self):
+        mainlog = get_main_logger()
+        try:
+            jobid_list = []
+            install_data = {}
+            args = self.reqparse.parse_args()
+            mainlog.debug(f"API /proxmox-jobs endpoint called with args: {args}")
+            
+            # Verify installation method
+            if args["installmethod"] not in ("cimc",):
+                mainlog.error(
+                    f"API POST /proxmox-jobs error - Unknown installation method. Request aborted."
+                )
+                return {
+                    "status": "error",
+                    "message": "Unknown installation method. Proxmox only supports CIMC method.",
+                }, 400
+            
+            # Verify gateway
+            try:
+                ipaddress.ip_address(args["host_gateway"])
+            except ValueError:
+                return {
+                    "status": "error",
+                    "message": "Required field is not valid: host_gateway",
+                }, 400
+            
+            # Validate CIDR
+            try:
+                cidr_value = int(args["cidr"])
+                if cidr_value < 0 or cidr_value > 32:
+                    raise ValueError
+            except ValueError:
+                return {
+                    "status": "error",
+                    "message": "CIDR must be between 0 and 32",
+                }, 400
+            
+            # Verify hosts data
+            p = re.compile("^[A-Za-z\d\-_.]{1,253}$")
+            for host_data in args["hosts"]:
+                mainlog.debug(f"Host data: {host_data}")
+                
+                # Validate hostname (FQDN)
+                if "hostname" in host_data:
+                    if not re.search(p, host_data["hostname"]):
+                        return {
+                            "status": "error",
+                            "message": "Required hosts field is not valid: hostname (FQDN)",
+                        }, 400
+                else:
+                    return {
+                        "status": "error",
+                        "message": "Required hosts field not provided: hostname",
+                    }, 400
+                
+                # Validate host IP
+                if "host_ip" in host_data:
+                    try:
+                        ipaddress.ip_address(host_data["host_ip"])
+                    except ValueError:
+                        return {
+                            "status": "error",
+                            "message": "Required hosts field is not valid: host_ip",
+                        }, 400
+                else:
+                    return {
+                        "status": "error",
+                        "message": "Required hosts field not provided: host_ip",
+                    }, 400
+                
+                # Validate CIMC IP
+                if "cimc_ip" not in host_data:
+                    return {
+                        "status": "error",
+                        "message": "Required hosts field not provided: cimc_ip",
+                    }, 400
+                
+                try:
+                    if host_data["cimc_ip"].count(".") == 3:
+                        # It's an IPv4 address
+                        port_separator = host_data["cimc_ip"].rfind(":")
+                        address_string = (
+                            host_data["cimc_ip"]
+                            if port_separator == -1
+                            else host_data["cimc_ip"][0:port_separator]
+                        )
+                    else:
+                        # Could be IPv6 address
+                        port_separator = host_data["cimc_ip"].rfind("]:")
+                        address_string = (
+                            host_data["cimc_ip"]
+                            if port_separator == -1
+                            else host_data["cimc_ip"][0 : port_separator + 1]
+                        )
+                    
+                    ipaddress.ip_address(address_string)
+                except ValueError:
+                    return {
+                        "status": "error",
+                        "message": "Required hosts field is not valid: cimc_ip",
+                    }, 400
+            
+            # Check CIMC credentials
+            if not args["cimc_pwd"] or not args["cimc_usr"]:
+                mainlog.error(
+                    f"API POST /proxmox-jobs error - missing CIMC credentials. Request aborted."
+                )
+                return {
+                    "status": "error",
+                    "message": "Missing CIMC credentials",
+                }, 400
+            
+            # Skip arguments with None value
+            for k, v in args.items():
+                if v is not None:
+                    install_data[k] = v
+            
+            # Check if requested ISO is valid
+            if not install_data["iso_image"] in get_proxmox_isos():
+                mainlog.error(f"Requested ISO {install_data['iso_image']} not found")
+                return {"status": "error", "message": "Requested ISO not found"}, 404
+            
+            # All data validated
+            mainlog.debug(f"API POST /proxmox-jobs install data: {install_data}")
+            
+            # Create jobs
+            jobid_list = create_proxmox_jobs(install_data, args["installmethod"], mainlog)
+            return jobid_list
+        except KeyError as e:
+            return {
+                "status": "error",
+                "message": f"Incorrect or missing key when trying to create a new job. Expected key: {str(e)}",
+            }, 400

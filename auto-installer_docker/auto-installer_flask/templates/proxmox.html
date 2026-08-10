@@ -1,0 +1,274 @@
+{% extends 'base.html' %}
+
+{% block stylesheet %}
+<link rel=stylesheet type=text/css href="{{ url_for('static', filename='css/styles.css') }}">
+{% endblock stylesheet %}
+
+{% block content %}
+      <div class="content_section">
+        <h1>Step 1</h1>
+        <div class="content_section_text">
+          Set your Proxmox Installation Options
+        </div>
+
+        <form action="" method="POST" id="proxmoxForm">
+            <table>
+                <tr>
+                    <td>Select your ISO Image: </td>
+                    <td>
+                      <select name="iso_image" id="iso_image">
+                        {% for isover in isodirs %}
+                          <option value="{{isover}}" {% if loop.last %}selected{% endif %}>{{isover}}</option>
+                        {% endfor %}
+                      </select>
+                    </td>
+                    <td>Specify which Proxmox image your server will boot from.</td>
+                </tr>
+                <tr>
+                    <td>Root password: </td>
+                    <td>
+                      <input type="password" name="root_pwd" id="root_pwd" required value="">
+                      <div class="content_section_text_small">
+                        <label for="show_root_pass">Show password</label>
+                        <input id="show_root_pass" name="show_root_pass" type="checkbox" value="y">
+                      </div>
+                    </td>
+                    <td>Enter the password for the root account.</td>
+                </tr>
+                <tr>
+                    <td>Keyboard Layout: </td>
+                    <td><input type="text" name="keyboard" value='en-us' required></td>
+                    <td>Keyboard layout (e.g., en-us, de-de)</td>
+                </tr>
+                <tr>
+                    <td>Country: </td>
+                    <td><input type="text" name="country" value='us' required></td>
+                    <td>Country code (e.g., us, de, uk)</td>
+                </tr>
+                <tr>
+                    <td>Timezone: </td>
+                    <td><input type="text" name="timezone" value='UTC' required></td>
+                    <td>Timezone (e.g., UTC, America/New_York, Europe/Berlin)</td>
+                </tr>
+                <tr>
+                    <td>Email: </td>
+                    <td><input type="email" name="mailto" value='admin@example.com' required></td>
+                    <td>Administrator email address</td>
+                </tr>
+                <tr>
+                    <td>Filesystem: </td>
+                    <td>
+                        <select name="filesystem" id="filesystem">
+                            <option value="ext4" selected>ext4</option>
+                            <option value="xfs">xfs</option>
+                            <option value="zfs">zfs</option>
+                            <option value="btrfs">btrfs</option>
+                        </select>
+                    </td>
+                    <td>Filesystem type for installation</td>
+                </tr>
+                <tr>
+                    <td>Install Disk: </td>
+                    <td><input type="text" name="disk_list" value='/dev/sda' required></td>
+                    <td>Installation disk (e.g., /dev/sda, /dev/nvme0n1)</td>
+                </tr>
+                <tr>
+                    <td>Network Interface: </td>
+                    <td><input type="text" name="interface" value='eno1' required></td>
+                    <td>Network interface name (e.g., eno1, eth0)</td>
+                </tr>
+                <tr>
+                    <td>Network Filter: </td>
+                    <td>
+                        <select name="net_filter" id="net_filter">
+                            <option value="ID_NET_NAME">ID_NET_NAME</option>
+                            <option value="ID_NET_NAME_MAC">ID_NET_NAME_MAC</option>
+                            <option value="ID_VENDOR_FROM_DATABASE">ID_VENDOR_FROM_DATABASE</option>
+                            <option value="ID_MODEL_FROM_DATABASE">ID_MODEL_FROM_DATABASE</option>
+                        </select>
+                    </td>
+                    <td>Network interface filter type for auto-detection</td>
+                </tr>
+            </table>
+            
+            <h1>Step 2</h1>
+            <div class="content_section_text">
+              Select installation method:<br /><br />
+              <input type="radio" id="btnpxeboot" name="installmethod" value="pxeboot" oninput="InstallMethodShow('pxeboot')" style="display: none;">
+              <input type="radio" id="btncimc" name="installmethod" value="cimc" checked>
+              <label for="customiso">Cisco IMC ISO mount (Cisco UCS only, B-Series not supported)</label><br />
+              <table class="custom" id="oobm_creds">
+                <tr class="custom">
+                  <td class="custom">
+                      CIMC Account<br/>
+                      <input type="text" required name="cimc_usr" id="cimc_usr" value="admin">
+                  </td>
+                  <td class="custom">
+                      CIMC Password<br/>
+                      <input type="password" required name="cimc_pwd" id="cimc_pwd">
+                      <div class="content_section_text_small">
+                        <label for="show_cimc_pass">Show password</label>
+                        <input id="show_cimc_pass" name="show_cimc_pass" type="checkbox" value="y">
+                      </div>
+                  </td>
+              </tr>
+            </table>
+            </div>
+            
+            <h1>Step 3</h1>
+            <div class="content_section_text">
+              Enter network information for the Proxmox host:<br /><br />
+            </div>
+            <div ID="ManualIP" class="margin50">
+              Common Settings:<br />
+              <table class="custom">
+                <tr>
+                  <td class="custom">CIDR Prefix<br />
+                    <input type="number" required name="cidr" value="24" min="0" max="32"></td>
+                  <td class="custom">Gateway<br />
+                    <input type="text" required name="host_gateway"></td>
+                  <td class="custom">DNS<br />
+                    <input type="text" name="dns" id="dns" required placeholder="8.8.8.8"></td>
+                </tr>
+                <tr>
+                  <td class="custom">Hostname Prefix<br />
+                    <input type="text" name="host_prefix" id="host_prefix" oninput="UpdateESXiHostName()"><br />
+                    <div class="content_section_text_small">Optional</div></td>
+                  <td class="custom">Hostname Suffix<br />
+                    <input type="text" name="host_suffix" id="host_suffix" oninput="UpdateESXiHostName()"><br />
+                    <div class="content_section_text_small">Optional</div></td>
+                </tr>
+              </table>
+              <br />
+              Unique Settings:
+              <table id="ManualIPTable" class="manual_ip">
+                <tr>
+                  <td class="manual_ip_header_sm">Prefix</td>
+                  <td class="manual_ip_header">Hostname (FQDN)</td>
+                  <td class="manual_ip_header_sm">Suffix</td>
+                  <td class="manual_ip_header">Mgmt IP Address</td>
+                  <td class="manual_ip_header">CIMC IP Address</td>
+                </tr>
+              </table>
+              <input type="button" value="Add Row" onclick="AddManualIPRow()" class="margin50">
+              <input type="button" value="Delete Last Row" onclick="RemoveManualIPRow()" class="margin50">
+            </div>
+            
+            <div class="content_center">
+                <button class="button button3" type="submit" id="submitBtn">START</button>
+            </div>
+          </form>
+        </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+    <script>
+      // Initialize server count
+      ServerCount = 0;
+      const mac_placeholder = ["aa:bb:cc:dd:ee:ff", "aabb.ccdd.eeff", "aa-bb-cc-dd-ee-ff", "aabbccddeeff"];
+      
+      // Add first row on page load
+      AddManualIPRow();
+      
+      // Show/hide password functionality
+      document.getElementById('show_root_pass').addEventListener('change', function() {
+        const pwd = document.getElementById('root_pwd');
+        pwd.type = this.checked ? 'text' : 'password';
+      });
+      
+      document.getElementById('show_cimc_pass').addEventListener('change', function() {
+        const pwd = document.getElementById('cimc_pwd');
+        pwd.type = this.checked ? 'text' : 'password';
+      });
+
+      // Create fake btncimc element for scripts.js compatibility
+      const btncimc = document.getElementById('btncimc');
+
+      // Form submission handler
+      document.getElementById('proxmoxForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+        
+        // Prepare JSON data for API
+        const hosts = [];
+        for (let i = 1; i <= ServerCount; i++) {
+          const prefix = formData.get('host_prefix') || '';
+          const hostname = formData.get('hostname' + i);
+          const suffix = formData.get('host_suffix') || '';
+          const fullHostname = prefix + hostname + suffix;
+          
+          hosts.push({
+            hostname: fullHostname,
+            host_ip: formData.get('host_ip' + i),
+            cimc_ip: formData.get('cimc_ip' + i)
+          });
+        }
+        
+        const jsonData = {
+          installmethod: formData.get('installmethod'),
+          iso_image: formData.get('iso_image'),
+          root_pwd: formData.get('root_pwd'),
+          keyboard: formData.get('keyboard'),
+          country: formData.get('country'),
+          timezone: formData.get('timezone'),
+          mailto: formData.get('mailto'),
+          filesystem: formData.get('filesystem'),
+          disk_list: formData.get('disk_list'),
+          interface: formData.get('interface'),
+          net_filter: formData.get('net_filter'),
+          cidr: formData.get('cidr'),
+          host_gateway: formData.get('host_gateway'),
+          dns: formData.get('dns'),
+          cimc_usr: formData.get('cimc_usr'),
+          cimc_pwd: formData.get('cimc_pwd'),
+          hosts: hosts
+        };
+        
+        try {
+          const response = await fetch('/api/v1/proxmox-jobs', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(jsonData)
+          });
+          
+          const result = await response.json();
+          
+          if (response.ok) {
+            // Redirect to job status page
+            if (Array.isArray(result) && result.length > 0) {
+              window.location.href = '/show';
+            } else {
+              alert('Job created successfully!');
+              window.location.href = '/show';
+            }
+          } else {
+            alert('Error: ' + (result.message || 'Failed to create job'));
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'START';
+          }
+        } catch (error) {
+          alert('Error submitting form: ' + error.message);
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'START';
+        }
+      });
+
+      // Custom validation messages
+      const input_root = document.querySelector('input[name="root_pwd"]');
+      input_root.addEventListener('invalid', function (event) {
+        if (event.target.validity.valueMissing) {
+          event.target.setCustomValidity('Enter root password');
+        }
+      });
+      input_root.addEventListener('change', function (event) {
+        event.target.setCustomValidity('');
+      });
+    </script>
+{% endblock %}

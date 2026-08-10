@@ -49,12 +49,12 @@ paths:
         cimc_usr defaults to "admin" if not supplied.
 
         Refer to schema definition for all parameters and default values.
-      parameters:
-        - in: body
-          name: body
-          required: true
-          schema:
-            $ref: '#/components/schemas/JobsNew'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobsNew'
       responses:
         '200':
           description: Successful operation - return list of job IDs
@@ -133,6 +133,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/JobStatus'
+  /proxmox-jobs:
+    post:
+      tags:
+      - jobs
+      summary: 'Create a new Proxmox Installation job.'
+      description: |
+        Take installation details as json payload and create Proxmox installation job per each host in 'hosts' list.<br>
+        Mandatory (minimal) input data parameters:
+          - iso_image (Proxmox ISO)
+          - root_pwd
+          - host_gateway
+          - cidr
+          - installmethod (must be "cimc")
+          - hosts list with {hostname, host_ip, cimc_ip}
+          - cimc_pwd
+        
+        cimc_usr defaults to "admin" if not supplied.
+
+        Refer to schema definition for all parameters and default values.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProxmoxJobsNew'
+      responses:
+        '200':
+          description: Successful operation - return list of job IDs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobIDs'
+        '400':
+          description: Failed operation, check returned error message for details
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "Incorrect key when trying to create a new job. Expected key: 'host_ip'"
   /logs/{jobID}:
     get:
       tags:
@@ -171,6 +210,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/IsoList'
+  /proxmox-isos:
+    get:
+      tags:
+      - iso
+      summary: Get a list of available Proxmox Installation ISO(s)
+      description: |
+        Returns a list of available Proxmox installation ISOs from proxmox-iso directory
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example: ["proxmox-ve_9.0-1.iso", "proxmox-ve_8.2-1.iso"]
 components:
   schemas:
     Jobs:
@@ -179,6 +235,96 @@ components:
       properties:
         jobID:
           $ref: '#/components/schemas/JobStatus'
+    ProxmoxJobsNew:
+      description: Submit new Proxmox installation job
+      type: object
+      required:
+      - iso_image
+      - root_pwd
+      - host_gateway
+      - cidr
+      - installmethod
+      - hosts
+      - cimc_pwd
+      properties:
+        iso_image:
+          type: string
+          example: proxmox-ve_9.0-1.iso
+        root_pwd:
+          type: string
+          format: password
+        installmethod:
+          type: string
+          enum: ['cimc']
+          default: 'cimc'
+        cimc_usr:
+          type: string
+          default: 'admin'
+        cimc_pwd:
+          type: string
+          format: password
+        host_gateway:
+          type: string
+          example: 192.168.1.1
+        cidr:
+          type: string
+          example: "24"
+          default: "24"
+        dns:
+          type: string
+          example: 8.8.8.8
+          default: 8.8.8.8
+        keyboard:
+          type: string
+          example: en-us
+          default: en-us
+        country:
+          type: string
+          example: us
+          default: us
+        timezone:
+          type: string
+          example: UTC
+          default: UTC
+        mailto:
+          type: string
+          format: email
+          example: admin@example.com
+          default: admin@example.com
+        filesystem:
+          type: string
+          enum: ['ext4', 'xfs', 'zfs', 'btrfs']
+          default: ext4
+        disk_list:
+          type: string
+          example: /dev/sda
+          default: /dev/sda
+        interface:
+          type: string
+          example: eno1
+          default: eno1
+        net_filter:
+          type: string
+          enum: ['ID_NET_NAME_SLOT', 'ID_NET_NAME_PATH', 'ID_NET_NAME_ONBOARD', 'ID_VENDOR_ID', 'ID_MODEL_ID', 'ID_PATH', 'ID_BUS', 'ID_PCI_CLASS_FROM_DATABASE', 'ID_PCI_SUBCLASS_FROM_DATABASE']
+          default: ID_NET_NAME_SLOT
+        hosts:
+          type: array
+          items:
+            type: object
+            required:
+            - hostname
+            - host_ip
+            - cimc_ip
+            properties:
+              hostname:
+                type: string
+                example: pve-01.example.com
+              host_ip:
+                type: string
+                example: 192.168.1.100
+              cimc_ip:
+                type: string
+                example: 192.168.1.10
     JobsNew:
       description: Submit new job
       type: object

@@ -4,7 +4,9 @@ import os
 DRYRUN = False
 WORKDIR = "/opt/eai"
 ESXISODIR = os.path.join(WORKDIR, "esxi-iso")
+PROXMOXISODIR = os.path.join(WORKDIR, "proxmox-iso")
 CUSTOMISODIR = os.path.join(WORKDIR, "custom-iso")
+ANSWERFILEDIR = os.path.join(WORKDIR, "answerfiles")
 LOGDIR = os.path.join(WORKDIR, "logs/jobs")
 EAILOG = os.path.join(WORKDIR, "logs/eai.log")
 EAIDB = os.path.join(WORKDIR, "eaidb.sqlite3")
@@ -25,6 +27,7 @@ KSDIR = os.path.join(WORKDIR, "ks")
 TEMPLATESDIR = os.path.join(WORKDIR, "templates")
 KSTEMPLATE = os.path.join(TEMPLATESDIR, "kickstart.jinja")
 PXETEMPLATE = os.path.join(TEMPLATESDIR, "pxecfg.jinja")
+PROXMOX_ANSWER_TEMPLATE = os.path.join(TEMPLATESDIR, "proxmox_answer.jinja")
 
 DHCPD_CONF_TPL = os.path.join(TEMPLATESDIR, "dhcpd_conf_template.jinja")
 DHCP_SUBNET_TPL = os.path.join(TEMPLATESDIR, "dhcp_subnet.jinja")

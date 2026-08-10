@@ -5,3 +5,5 @@ esxi-iso/
 logs/jobs/
 venv
 www/__pycache__/
+tftpboot/iso
+proxmox-iso/

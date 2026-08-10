@@ -18,7 +18,7 @@
                     <td>
                       <select name="iso_image" id="iso_image">
                         {% for isover in isodirs %}
-                          <option value="{{isover}}" checked>{{isover}}</option>
+                          <option value="{{isover}}" {% if loop.last %}selected{% endif %}>{{isover}}</option>
                         {% endfor %}
                       </select>
                     </td>

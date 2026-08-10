@@ -1,5 +1,9 @@
 History
 =====================
+3.0 (2025-11-24)
+---------------------
+* Added the ability to install Proxmox Servers as well as ESXi hosts (CIMC only)
+
 2.4 (2023-11-08)
 ---------------------
 * Fix: cleanup after failed ISO upload
